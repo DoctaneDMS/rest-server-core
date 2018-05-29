@@ -1,0 +1,454 @@
+openapi: 3.0.0
+# Added by API Auto Mocking Plugin
+servers:
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/SoftwarePlumbers/dms/1.0.0
+info:
+  description: A simple, RESTFul API for document management systems
+  version: "1.0.0"
+  title: RESTFul DMS API
+  contact:
+    email: admin@softwareplumbers.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: users
+    description: Operations available to regular users
+paths:
+  /docs/{repositoryName}:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository to which document is to be uploaded 
+        schema:
+          type: string    
+    post:
+      tags:
+        - users
+      summary: upload a document file plus metadata, returning a new unique identifier
+      operationId: uploadDocument
+      description: |
+        Upload a new document to the repository, together with a metadata object, as a mime-encoded stream
+
+      responses:
+        '201':
+          description: item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReference'
+        '400':
+          description: 'invalid input, malformed request (e.g. metadata not valid JSON)'
+        '415':
+          description: 'invalid input, unsupported media type (e.g. server does not support storing .exe files)'
+      requestBody:
+        description: multipart request including document and metadata object
+        content:
+          multipart/mixed: # <-- Content-Type of the response
+            schema:
+              type: object
+              properties:
+                # Part 1 - application/octet-stream (or other mime type)
+                file:  # <-- part name
+                  type: string
+                  format: binary
+                # Part 2 - application/json
+                metadata:  # <-- part name
+                  type: object    
+  /docs/{repositoryName}/file:
+    post:
+      tags:
+        - users
+      summary: upload a document file without metadata, returning a new unique identifier
+      operationId: uploadDocument
+      description: |
+        Upload a new document to the repository, without metadata
+      parameters:
+        - in: path
+          required: true
+          name: repositoryName
+          description: Unique name of a repository to which document is to be uploaded 
+          schema:
+            type: string
+      responses:
+        '201':
+          description: item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReference'
+        '400':
+          description: invalid input, object invalid
+      requestBody:
+        description: multipart request including document and metadata object
+        content:
+          '*/*': # <-- Content-Type of the uploaded file
+            schema:
+              type: string
+              format: binary
+  /docs/{repositoryName}/{documentId}:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentId
+        description: Unique id of a document in a repository 
+        schema:
+          type: string
+    get:
+      tags:
+        - users
+      summary: retrieves a specific document by its unique identifier
+      operationId: getDocument
+      description: |
+        Retrieve a specific document from a repository
+      parameters:
+        - in: query
+          name: version
+          description: pass an optional version id
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: multipart response including document and metadata object
+          content:
+            multipart/mixed: # <-- Content-Type of the response
+              schema:
+                type: object
+                properties:
+                  # Part 1 - application/octet-stream
+                  file:  # <-- part name
+                    type: string
+                    format: binary
+                  # Part 2 - application/json
+                  metadata:  # <-- part name
+                    type: object
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id or repository name not found
+    put:
+      tags:
+        - users
+      summary: updates a document
+      operationId: updateDocument
+      description: update a document
+      responses:
+        '201':
+          description: item upadate
+        '400':
+          description: 'invalid input, malformed request (e.g. metadata not valid JSON)'
+        '404':
+          description: 'invalid input, document not found'
+        '415':
+          description: 'invalid input, unsupported media type (e.g. server does not support storing .exe files)'
+      requestBody:
+        description: multipart response including document and metadata object
+        content:
+          multipart/mixed: # <-- Content-Type of the response
+            schema:
+              type: object
+              properties:
+                # Part 1 - application/octet-stream
+                file:  # <-- part name
+                  type: string
+                  format: binary
+                # Part 2 - application/json
+                metadata:  # <-- part name
+                  type: object
+  /docs/{repositoryName}/{documentId}/file:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentId
+        description: Unique id of a document in a repository 
+        schema:
+          type: string
+    get:
+      tags:
+        - users
+      summary: retrieves a specific document file by its unique identifier
+      operationId: getDocumentFile
+      description: |
+        Retrieve a specific document from a repository
+      parameters:
+        - in: query
+          name: version
+          description: pass an optional version id
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: raw document file
+          content:
+            '*/*': # can have any mime type, but a type will be returned
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id or repository name not found
+    put:
+      tags:
+        - users
+      summary: updates a document without updating associated metadata
+      operationId: updateDocumentFile
+      description: update a document without updating associated metadata
+      requestBody:
+        description: document data
+        required: true
+        content:
+          '*/*':
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: item updated
+        '404':
+          description: invalid documentId or repositoryName - document does not exist
+  /docs/{repositoryName}/{documentId}/file/{documentPart}:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentId
+        description: Unique id of a document in a repository 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentPart
+        description: Where file is a multipart document, a the name of a document part
+        schema:
+          type: string
+    get:
+      tags:
+        - users
+      summary: retrieves a specific document part by its unique identifier and part name
+      operationId: getDocumentFilePart
+      description: |
+        Where file is a multipart document, retrieve a specific part of the document.
+      parameters:
+        - in: query
+          name: version
+          description: pass an optional document version id
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: raw document file part
+          content:
+            '*/*': # can have any mime type, but a type will be returned
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id, repository name, or file part not found
+  /docs/{repositoryName}/{documentId}/metadata:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentId
+        description: Unique id of a document in a repository 
+        schema:
+          type: string
+    get:
+      tags:
+        - users
+      summary: retrieves metadata for a specific document by its unique identifier
+      operationId: getDocumentMetadata
+      description: |
+        Retrieve a specific document from a repository
+      parameters:
+        - in: query
+          name: version
+          description: pass an optional version id
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: document metadata
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id or repository name not found
+    put:
+      tags:
+        - users
+      summary: updates document metadata without updating associated file
+      operationId: updateDocumentMetadata
+      description: updates document metadata without updating associated file
+      requestBody:
+        description: document metadata
+        required: true
+        content:
+          'application/json':
+            schema:
+              type: object
+      responses:
+        '204':
+          description: item updated
+        '404':
+          description: invalid documentId or repositoryName - document does not exist
+  /cat/{repositoryName}:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: query
+        name: filter
+        required: false
+        description: Filter object for metadata
+        schema:
+          type: object
+    get:
+      tags:
+        - users
+      summary: retrieves list of documents from a repository
+      operationId: catalogueRepository
+      description: |
+        Retrieves list of documents from a repository. if filter specified retrieves only documents with matching metadata. Only most recent version of each document will be returned
+      responses:
+        '200':
+          description: list of matching document references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReferenceList'
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id or repository name not found
+  /cat/{repositoryName}/{documentId}:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentId
+        description: Unique id of a document in a repository 
+        schema:
+          type: string
+      - in: query
+        name: filter
+        required: false
+        description: Filter object for metadata
+        schema:
+          type: object
+    get:
+      tags:
+        - users
+      summary: retrieves version information for a specific document by its unique identifier
+      operationId: catalogueDocumentVersions
+      description: |
+        Retrieves version identifiers for a document; if filter specified retrieves only versions with matching metadata
+      responses:
+        '200':
+          description: List of matching document references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReferenceList'
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id or repository name not found
+  /cat/{repositoryName}/{documentId}/file:
+    parameters:
+      - in: path
+        required: true
+        name: repositoryName
+        description: Unique name of a repository in which document can be found 
+        schema:
+          type: string
+      - in: path
+        required: true
+        name: documentId
+        description: Unique id of a document in a repository 
+        schema:
+          type: string
+      - in: query
+        name: version
+        required: false
+        description: Optional version id
+        schema:
+          type: string
+    get:
+      tags:
+        - users
+      summary: retrieves list of document parts
+      operationId: catalogueDocumentParts
+      description: |
+        Retrieves list of document parts, optionally for a specific version of a document (by default latest)
+      responses:
+        '200':
+          description: list of document parts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReferenceList'
+        '400':
+          description: bad input parameter
+        '404':
+          description: Document id or repository name not found
+
+components:
+  schemas:
+    DocumentReference:
+      type: object
+      properties:
+        documentId:
+          type: string
+          description: The document reference.
+        repositoryName:
+          type: string
+          description: The name of the repository.
+        versionId:
+          type: string
+          description: The version id of the document.
+        partName:
+          type: string
+          description: The name of a document part (optional)
+    DocumentReferenceList:
+      type: array
+      items: 
+        $ref: '#/components/schemas/DocumentReference'
