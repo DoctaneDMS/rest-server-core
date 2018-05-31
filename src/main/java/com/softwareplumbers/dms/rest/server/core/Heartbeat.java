@@ -5,11 +5,11 @@ import javax.ws.rs.Path;
 import org.springframework.stereotype.Component;
 
 @Component
-@Path("/docs")
-public class Documents {
+@Path("/heartbeat")
+public class Heartbeat {
 
     @GET
     public String get() {
-        return "Greetings from Spring Boot!";
+        return "OK!";
     }
 }
