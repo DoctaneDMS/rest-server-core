@@ -18,6 +18,10 @@ bootJar {
 
 repositories {
     mavenCentral()
+    
+    maven {
+    	url 'https://nexus.softwareplumbers.com/repository/maven-oss'
+    }
 }
 
 sourceCompatibility = 1.8
@@ -26,6 +30,9 @@ targetCompatibility = 1.8
 dependencies {
     compile("org.springframework.boot:spring-boot-starter-jersey")
     compile("org.springframework.boot:spring-boot-starter-tomcat")
-    compile("org.glassfish.jersey.media:jersey-media-json-processing")
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.27'
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.27'
+    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.0.4'
+    compile group: 'commons-io', name: 'commons-io', version: '2.6'
     testCompile("junit:junit")
 }

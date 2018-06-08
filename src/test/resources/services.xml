@@ -1,0 +1,14 @@
+<beans>
+
+   <bean id="test" class="TestRepositoryService" singleton="true"/>
+
+   <bean id="myServiceFactory"
+            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+     <property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
+   </bean>
+
+   <bean id="docs" class="com.softwareplumbers.dms.rest.server.core.Docs">
+     <property name="serviceFactory" ref="myServiceFactory"/>
+   </bean>
+
+</beans>
