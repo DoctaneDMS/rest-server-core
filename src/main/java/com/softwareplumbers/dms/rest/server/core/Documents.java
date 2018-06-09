@@ -13,6 +13,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -55,11 +56,11 @@ public class Documents {
 
     @GET
     @Path("{repository}/{id}")
-    @Produces(MediaType.MULTIPART_FORM_DATA)
+    @Produces({ MediaType.MULTIPART_FORM_DATA, MediaType.APPLICATION_JSON })
     public Response get(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@PathParam("version") Integer version) {
+    	@QueryParam("version") Integer version) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -85,7 +86,9 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}
-    	} catch (Exception e) {
+    	} catch (Throwable e) {
+    		LOG.severe(e.getMessage());
+    		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
     }

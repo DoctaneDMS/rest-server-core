@@ -1,9 +1,12 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import javax.json.Json;
+import javax.json.JsonNumber;
 import javax.json.JsonObject;
 
+/** Generate error reports in Json */
 public class Error {
+	
 	public static JsonObject repositoryNotFound(String repository) {
 		return Json.createObjectBuilder()
 				.add("error", "Repository " + repository + " does not exist")
@@ -13,14 +16,14 @@ public class Error {
 	
 	public static JsonObject documentNotFound(String repository, String id, Integer version) {
 		return Json.createObjectBuilder()
-				.add("error", "Document " + id + " with version " + version == null ? "none" : version + " does not exist in repository + " + repository)
+				.add("error", "Document " + id + " with version " + (version == null ? "none" : version.toString()) + " does not exist in repository " + repository)
 				.add("id", id)
-				.add("version", version)
+				.add("version", version == null ? JsonObject.NULL : Json.createValue(version))
 				.add("repository", repository)
 				.build();
 	}
 
-	public static JsonObject reportException(Exception e) {
+	public static JsonObject reportException(Throwable e) {
 		return Json.createObjectBuilder().add("error", "Exception " + e.toString()).build();		
 	}
 	

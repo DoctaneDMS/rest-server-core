@@ -26,7 +26,8 @@ public class TempRepositoryService implements RepositoryService {
 	public Document getDocument(Reference reference) {
 		if (reference.version == null) {
 			Map.Entry<Reference,Document> previous = store.floorEntry(reference);
-			return reference.id.equals(previous.getKey().id) ? previous.getValue() : null;  
+
+			return previous != null && reference.id.equals(previous.getKey().id) ? previous.getValue() : null;  
 		} else {
 			return store.get(reference);
 		}
