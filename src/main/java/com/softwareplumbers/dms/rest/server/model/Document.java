@@ -71,7 +71,7 @@ public interface Document {
 			target.write(data);
 		}
 		
-		public Default(MediaType mediaType, Supplier<InputStream> doc_src, JsonObject metadata) throws IOException {
+		public Default(MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
 			try (InputStream stream = doc_src.get()) {
 				data = IOUtils.toByteArray(stream);
 			} 

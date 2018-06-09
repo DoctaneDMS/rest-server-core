@@ -41,8 +41,12 @@ paths:
                 $ref: '#/components/schemas/DocumentReference'
         '400':
           description: 'invalid input, malformed request (e.g. metadata not valid JSON)'
+        '404':
+          description: 'repository not found'
         '415':
           description: 'invalid input, unsupported media type (e.g. server does not support storing .exe files)'
+        '500':
+          description: 'other error'
       requestBody:
         description: multipart request including document and metadata object
         content:
@@ -50,13 +54,13 @@ paths:
             schema:
               type: object
               properties:
-                # Part 1 - application/octet-stream (or other mime type)
+                # Part 1 - application/json
+                metadata:  # <-- part name
+                  type: object    
+                # Part 2 - application/octet-stream (or other mime type)
                 file:  # <-- part name
                   type: string
                   format: binary
-                # Part 2 - application/json
-                metadata:  # <-- part name
-                  type: object    
   /docs/{repositoryName}/file:
     post:
       tags:
@@ -81,8 +85,10 @@ paths:
                 $ref: '#/components/schemas/DocumentReference'
         '400':
           description: invalid input, object invalid
+        '500':
+          description: 'other error'
       requestBody:
-        description: multipart request including document and metadata object
+        description: binary stream of document data
         content:
           '*/*': # <-- Content-Type of the uploaded file
             schema:
@@ -135,6 +141,8 @@ paths:
           description: bad input parameter
         '404':
           description: Document id or repository name not found
+        '500':
+          description: other error
     put:
       tags:
         - users
@@ -219,7 +227,7 @@ paths:
               type: string
               format: binary
       responses:
-        '204':
+        '202':
           description: item updated
         '404':
           description: invalid documentId or repositoryName - document does not exist

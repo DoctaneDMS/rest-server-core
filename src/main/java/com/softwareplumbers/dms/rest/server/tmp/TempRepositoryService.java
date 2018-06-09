@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.tmp;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -16,16 +17,17 @@ import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Value;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Document.Reference;
+import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 
 public class TempRepositoryService implements RepositoryService {
 	
-	private TreeMap<Reference,Document> store = new TreeMap<Reference,Document>();
+	private TreeMap<Reference,Document.Default> store = new TreeMap<Reference,Document.Default>();
 
 	@Override
 	public Document getDocument(Reference reference) {
 		if (reference.version == null) {
-			Map.Entry<Reference,Document> previous = store.floorEntry(reference);
+			Map.Entry<Reference,Document.Default> previous = store.floorEntry(reference);
 
 			return previous != null && reference.id.equals(previous.getKey().id) ? previous.getValue() : null;  
 		} else {
@@ -34,10 +36,10 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Reference createDocument(MediaType mediaType, Supplier<InputStream> stream, JsonObject metadata) {
+	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata) {
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),0);
 		try {
-			Document new_document = new Document.Default(mediaType, stream, metadata);
+			Document.Default new_document = new Document.Default(mediaType, stream, metadata);
 			store.put(new_reference, new_document);
 			return new_reference;
 		} catch (IOException e) {
@@ -52,6 +54,27 @@ public class TempRepositoryService implements RepositoryService {
 			.filter(entry -> filter.containsItem(Value.from(entry.getValue().getMetadata())))
 			.map(entry -> entry.getKey())
 			.collect(Collectors.toList());
+	}
+
+	@Override
+	public Reference updateDocument(String id, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata) {
+		Map.Entry<Reference,Document.Default> previous = store.floorEntry(new Reference(id));
+		if (previous != null && previous.getKey().id.equals(id)) {
+			Reference new_reference = new Reference(id,previous.getKey().version);
+			if (metadata == null) metadata = previous.getValue().getMetadata();
+			if (stream == null) {
+				stream = ()-> new ByteArrayInputStream(previous.getValue().data);
+			}
+			
+			try {
+				store.put(new_reference, new Document.Default(mediaType, stream, metadata));
+				return new_reference;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		} else {
+			return null;
+		}
 	}
 
 }

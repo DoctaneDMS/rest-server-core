@@ -1,7 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import javax.json.Json;
-import javax.json.JsonNumber;
 import javax.json.JsonObject;
 
 /** Generate error reports in Json */
