@@ -19,7 +19,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.StreamingOutput;
@@ -33,12 +32,24 @@ import org.springframework.stereotype.Component;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 
+/** Handle CRUD operations on documents.
+ * 
+ * Create/Read/Update/Delete operations on documents in a  repository are all performed 
+ * via this interface under the /docs/{repository} path.
+ * 
+ * @author Jonathan Essex
+ *
+ */
 @Component
 @Path("/docs")
 public class Documents {
+
+	///////////--------- Static member classes --------////////////
 	
-	Logger LOG = Logger.getLogger("docs");
-	
+	/** Adapts a Document into a StreamingOutput object for use in the Jersey API 
+	 * 
+	 * @author Jonathan Essex.
+	 */
     private static class DocumentOutput implements StreamingOutput {   	
     	private final Document document;
 
@@ -49,23 +60,36 @@ public class Documents {
 		
 		public DocumentOutput(Document document) { this.document = document; }
     }
+
+	///////////--------- Static member variables --------////////////
+
+	private static Logger LOG = Logger.getLogger("docs");
+
+	///////////---------  member variables --------////////////
+
+	private RepositoryServiceFactory repositoryServiceFactory;
     
-    private RepositoryServiceFactory repositoryServiceFactory;
+	///////////---------  methods --------////////////
     
-    
+	/**
+	 * Use by Spring to inject a service factory for retrieval of a named repository service.
+	 * 
+	 * @param serviceFactory A factory for retrieving named services
+	 */
     @Autowired
     public void setRepositoryServiceFactory(RepositoryServiceFactory serviceFactory) {
         this.repositoryServiceFactory = serviceFactory;
     }
 
-    /**
+    /** GET a document on path /docs/{repository}/{id}
      * 
-     * retrieves a specific document by its unique identifier
+     * Retrieves a specific document by its unique identifier. On success, a multipart
+     * response contains the document in binary format and metadata as a Json object.
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @param version integer version number of documet
-     * @return
+     * @param version (optional) integer version number of document
+     * @returns Normally a multipart response.
      */
     @GET
     @Path("{repository}/{id}")
@@ -106,14 +130,15 @@ public class Documents {
     	}
     }
     
-    /**
+    /** GET a document on path /docs/{repository}/{id}/file
      * 
-     * retrieves a specific document by its unique identifier
+     * retrieves a specific document by its unique identifier. On success returns
+     * the original uploaded file as binary data with mime type as set when uploaded.
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @param version integer version number of document
-     * @return
+     * @param version (optional) integer version number of document
+     * @return A response, typically binary, with variable mime type.
      */
     @GET
     @Path("{repository}/{id}/file")
@@ -145,13 +170,14 @@ public class Documents {
     	}
     }
     
-    /**
+    /** GET metadata object on path /docs/{repository}/{id}/metadata
      * 
-     * retrieves metadata for a specific document by its unique identifier
+     * Retrieves metadata for a specific document by its unique identifier. Returns
+     * the Json-encoded metadata that was orignally uploaded with the document.
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @param version integer version number of document
+     * @param version (optional) integer version number of document
      * @return Response wrapping JSON metadata
      */
     @GET
@@ -184,10 +210,11 @@ public class Documents {
     	}
     }
     
-    /** Create a new document in the repository
+    /** POST a new document on path /docs/{repository}
      * 
-     * Upload a new document to the repository, together with a metadata JSON object, 
-     * as a mime-encoded stream
+     * Upload a new file to the repository, together with a metadata JSON object, 
+     * as a mime-encoded stream. Returns a JSON object with the new document reference
+     * and version. 
      * 
      * @param repository string identifier of a document repository
      * @param metadata_part
@@ -236,12 +263,13 @@ public class Documents {
     	}
     }
     
-    /** Create a new document in the repository without metadata
+    /** POST a new document on path /docs/{repository}/file
      * 
-     * Upload a new document to the repository, as a binary stream
+     * Upload a new document to the repository, as a binary stream. Metadata for
+     * this will initially be set to an empty Json object.
      * 
      * @param repository string identifier of a document repository
-     * @param request complete HTTP request
+     * @param request complete HTTP request. Body should contain binary document.
      * @return A document reference (document id and version) as JSON.
      */
     @POST
@@ -276,7 +304,16 @@ public class Documents {
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
     }
-    
+  
+    /** PUT a document on path /docs/{repository}/{id}
+     * 
+     * Updates a specific document by its unique identifier. On success, a JSON
+     * response contains the new version is identifier for the document.
+     * 
+     * @param repository string identifier of a document repository
+     * @param id string document id
+     * @returns A JSON response including the document id and new version id
+     */
     @PUT
     @Path("{repository}/{id}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -318,7 +355,16 @@ public class Documents {
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
     }
-    
+   
+    /** PUT a document file on path /docs/{repository}/{id}/file
+     * 
+     * Updates a specific document file by its unique identifier. On success, a JSON
+     * response contains the new version is identifier for the document.
+     * 
+     * @param repository string identifier of a document repository
+     * @param id string document id
+     * @returns A JSON response including the document id and new version id
+     */
     @PUT
     @Path("{repository}/{id}/file")
     @Produces(MediaType.APPLICATION_JSON)
@@ -353,7 +399,16 @@ public class Documents {
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
     }
-    
+
+    /** PUT a document meta-data on path /docs/{repository}/{id}/metadata
+     * 
+     * Updates specific document meta-data by its unique identifier. On success, a JSON
+     * response contains the new version identifier for the document.
+     * 
+     * @param repository string identifier of a document repository
+     * @param id string document id
+     * @returns A JSON response including the document id and new version id
+     */
     @PUT
     @Path("{repository}/{id}/metadata")
     @Consumes(MediaType.APPLICATION_JSON)

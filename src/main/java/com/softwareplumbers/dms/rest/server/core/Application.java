@@ -8,7 +8,7 @@ import org.springframework.context.annotation.ImportResource;
 
 @SpringBootApplication
 @ComponentScan
-@ImportResource("services.xml")
+@ImportResource("classpath:services.xml")
 public class Application extends SpringBootServletInitializer {
 
 	public static void main(String[] args) {
