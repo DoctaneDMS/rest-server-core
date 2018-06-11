@@ -61,13 +61,11 @@ public class TempRepositoryService implements RepositoryService {
 		Map.Entry<Reference,Document.Default> previous = store.floorEntry(new Reference(id));
 		if (previous != null && previous.getKey().id.equals(id)) {
 			Reference new_reference = new Reference(id,previous.getKey().version);
-			if (metadata == null) metadata = previous.getValue().getMetadata();
-			if (stream == null) {
-				stream = ()-> new ByteArrayInputStream(previous.getValue().data);
-			}
-			
+			Document.Default newDocument = previous.getValue();
 			try {
-				store.put(new_reference, new Document.Default(mediaType, stream, metadata));
+				if (metadata != null) newDocument = newDocument.setMetadata(metadata);
+				if (stream != null) newDocument = newDocument.setData(stream);			
+				store.put(new_reference, newDocument);
 				return new_reference;
 			} catch (IOException e) {
 				throw new RuntimeException(e);

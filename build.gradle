@@ -34,5 +34,7 @@ dependencies {
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.27'
     compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.0.4'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
+    compile group: 'org.apache.james', name: 'apache-mime4j-core', version: '0.8.2'
+    compile group: 'org.apache.james', name: 'apache-mime4j-dom', version: '0.8.2'
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }

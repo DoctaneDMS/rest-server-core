@@ -1,9 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-
 import java.util.logging.Logger;
 
 import javax.json.JsonObject;
@@ -16,16 +13,15 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.StreamingOutput;
 
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.glassfish.jersey.media.multipart.MultiPart;
+import org.glassfish.jersey.media.multipart.MultiPartMediaTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -43,23 +39,8 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 @Component
 @Path("/docs")
 public class Documents {
-
-	///////////--------- Static member classes --------////////////
 	
-	/** Adapts a Document into a StreamingOutput object for use in the Jersey API 
-	 * 
-	 * @author Jonathan Essex.
-	 */
-    private static class DocumentOutput implements StreamingOutput {   	
-    	private final Document document;
-
-		@Override
-		public void write(OutputStream output) throws IOException, WebApplicationException {
-			document.writeDocument(output);			
-		}
-		
-		public DocumentOutput(Document document) { this.document = document; }
-    }
+	
 
 	///////////--------- Static member variables --------////////////
 
@@ -107,7 +88,6 @@ public class Documents {
     		Document document = service.getDocument(new Document.Reference(id, version));
         
     		if (document != null) { 
-    			MultiPart response = new MultiPart();
     			FormDataBodyPart metadata = new FormDataBodyPart();
     			metadata.setName("metadata");
     			metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
@@ -117,9 +97,12 @@ public class Documents {
     			file.setMediaType(document.getMediaType());
     			file.getHeaders().add("Content-Length", Integer.toString(document.getLength()));
     			file.setEntity(new DocumentOutput(document));
-    			response.bodyPart(metadata);
-    			response.bodyPart(file);
-    			return Response.status(Status.OK).entity(response).build();
+    			
+    			MultiPart response = new MultiPart()
+    				.bodyPart(metadata)
+    				.bodyPart(file);
+    			
+    			return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}

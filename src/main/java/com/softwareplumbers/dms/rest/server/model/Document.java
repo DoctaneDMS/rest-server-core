@@ -53,9 +53,9 @@ public interface Document {
 	
 	public static class Default implements Document {
 		
-		public byte[] data;
-		public MediaType mediaType;
-		public JsonObject metadata;
+		private final byte[] data;
+		private final MediaType mediaType;
+		private final JsonObject metadata;
 
 		@Override
 		public JsonObject getMetadata() { return metadata; }
@@ -71,13 +71,30 @@ public interface Document {
 			target.write(data);
 		}
 		
+		private Default(MediaType mediaType, byte[] data, JsonObject metadata) {
+			this.data = data;
+			this.mediaType = mediaType;
+			this.metadata = metadata;
+		}
+		
 		public Default(MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
 			try (InputStream stream = doc_src.get()) {
-				data = IOUtils.toByteArray(stream);
+				this.data = IOUtils.toByteArray(stream);
 			} 
 			this.mediaType = mediaType;
 			this.metadata = metadata;
 		}
 		
+		public Default(String mediaType, InputStreamSupplier doc_src) throws IOException {
+			this(MediaType.valueOf(mediaType), doc_src, JsonObject.EMPTY_JSON_OBJECT);
+		}
+		
+		public Default setMetadata(JsonObject metadata) {
+			return new Default(this.mediaType, this.data, metadata);
+		}
+		
+		public Default setData(InputStreamSupplier doc_src) throws IOException {
+			return new Default(this.mediaType, doc_src, this.metadata);
+		}
 	}
 };
