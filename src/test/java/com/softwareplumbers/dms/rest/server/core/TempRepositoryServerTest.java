@@ -41,10 +41,23 @@ public class TempRepositoryServerTest {
     @LocalServerPort
     private int port;
     
+    /* Register a client that will use jersey's JSON processing 
+     * and Multipart processing features.
+     */
     Client client = ClientBuilder.newClient(new ClientConfig()
     		.register(MultiPartFeature.class)
             .register(JsonProcessingFeature.class));
     
+    /** Utility function to post a document using the Jersey client API.
+     * 
+     * Test documents are held in src/test/resources in this project. Two files
+     * <I>name</I>.txt and <I>name</I>.json make up a single test document, 
+     * where the json file contains the metadata.
+     * 
+     * @Param name Name of test document file (without extension)
+     * @return The result of posting the document to the test server.
+     * 
+     */
     public JsonObject postDocument(String name) throws IOException {
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp");
     	
@@ -77,6 +90,57 @@ public class TempRepositoryServerTest {
 		}
     }
     
+    /** Utility function to put a document using the Jersey client API.
+     * 
+     * Test documents are held in src/test/resources in this project. Two files
+     * <I>name</I>.txt and <I>name</I>.json make up a single test document, 
+     * where the json file contains the metadata.
+     * 
+     * @param name Name of test document file (without extension)
+     * @param id Id of document to update
+     * @return The result of posting the document to the test server.
+     * 
+     */
+    public JsonObject putDocument(String name, String id) throws IOException {
+    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
+    	
+    	MultiPart multiPart = new MultiPart();
+        multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
+        
+        StreamDataBodyPart file = new StreamDataBodyPart(
+        	"file",
+             TestRepository.getTestFile("/"+name+".txt"),
+             MediaType.TEXT_PLAIN);
+
+        FormDataBodyPart metadata = new FormDataBodyPart(
+            	"metadata",
+                 TestRepository.getTestMetadata("/"+name+".json"),
+                 MediaType.APPLICATION_JSON_TYPE);
+        
+        multiPart.bodyPart(file);
+        multiPart.bodyPart(metadata);
+
+    	Response response = target
+    			.request(MediaType.APPLICATION_JSON)
+    			.put(Entity.entity(multiPart, multiPart.getMediaType()));
+    	
+			
+		if (response.getStatus() == Response.Status.ACCEPTED.getStatusCode()) {
+			return response.readEntity(JsonObject.class);
+		} else {
+			System.out.println(response.toString());
+			throw new RuntimeException("Bad put");
+		}
+    }
+
+    
+    /** Utility function to get a document from the local test server
+     * 
+     * @param id The id of the document to get
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
     public Document.Default getDocument(String id) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
@@ -112,6 +176,9 @@ public class TempRepositoryServerTest {
 		throw new RuntimeException("Bad post");
     }
 
+    /** Test that the server responds on its heartbeat URL.
+     * 
+     */
 	@Test
 	public void heartbeatTest() {
 	   	WebTarget target = client.target("http://localhost:" + port + "/heartbeat");
@@ -122,6 +189,11 @@ public class TempRepositoryServerTest {
 		assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 	}
 	
+    /** Test that posting a test document returns a non-null ID.
+     * 
+     * Posts to /docs/{repository}/ are expected to be multipart posts containing
+     * two parts, one named 'file' and one named 'metadata'.
+     */
 	@Test
 	public void postDocumentTest() throws IllegalStateException, IOException {
 
@@ -132,6 +204,12 @@ public class TempRepositoryServerTest {
 		assertNotNull(id);
 	}
 	
+    /** Test that posting a test file returns a non-null ID.
+     * 
+     * Posts to /docs/{repository}/file are expected to be simple posts containing
+     * binary document data and a content type. The metadata in the resulting documetn
+     * will be empty.
+     */
 	@Test
 	public void postFileTest() throws IllegalStateException, IOException {
 
@@ -154,6 +232,13 @@ public class TempRepositoryServerTest {
 
 	}
 	
+    /** Test that getting a document that was posted returns a document equal to the original.
+     * 
+     * Posts to /docs/{repository}/ are expected to be multipart posts containing
+     * two parts, one named 'file' and one named 'metadata'. The response contains a
+     * json object with an id property. Getting /docs/{repository}/{id} should return
+     * a multipart response with file and metadata components identical to the original.
+     */
 	@Test
 	public void roundtripDocumentTest() throws IllegalStateException, IOException, ParseException {
 
@@ -168,6 +253,30 @@ public class TempRepositoryServerTest {
 		assertNotNull(doc);
 		
 		assertTrue(TestRepository.docEquals("test1", doc));
+		
+	}
+	
+    /** Test that updating a document returns a new version.
+     * 
+     * Puts to /docs/{repository}/{id} are expected to be multi-part posts containing
+     * two parts, one named 'file' and one named 'metadata'. The response contains a
+     * json object with id and version property. The returned id should be the same
+     * as the original document, whereas the version should be incremented.   
+     */
+	@Test
+	public void putDocumentTest() throws IllegalStateException, IOException, ParseException {
+
+		JsonObject response1 = postDocument("test1");
+		
+		assertNotNull(response1.getString("id"));
+		
+		JsonObject response2 = putDocument("test2", response1.getString("id"));
+		
+		assertNotNull(response2.getString("id"));
+		
+		assertEquals(response1.getString("id"), response2.getString("id"));
+		//TODO: fixme
+		//assertNotEquals(response1.getInt("version"), response2.getInt("version"));
 		
 	}
 }
