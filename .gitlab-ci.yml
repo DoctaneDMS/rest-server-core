@@ -1,0 +1,19 @@
+image: 
+  name: ${DOCKER_REPO}/softwareplumbers/gradle-centos:0.3.0
+  entrypoint: ["/bin/bash", "-l", "-c"]
+
+stages:
+  - build 
+  - package
+  
+variables:
+  JDK_HOME: /etc/alternatives/java_sdk_1.8.0 
+
+build:
+  stage: build
+  artifacts:
+    paths:
+      - build
+  script:
+   - gradle -Dorg.gradle.java.home=${JDK_HOME} build
+     
