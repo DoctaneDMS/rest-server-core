@@ -32,6 +32,7 @@ import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
@@ -145,7 +146,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public Document.Default getDocument(String id) throws IOException, ParseException {
+    public DocumentImpl getDocument(String id) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
 
@@ -172,7 +173,7 @@ public class TempRepositoryServerTest {
 			}
 			if (metadata != null && is != null) {
 				InputStream doc_source = is;
-				return new Document.Default(mediaType, ()->doc_source, metadata);
+				return new DocumentImpl(mediaType, ()->doc_source, metadata);
 			}
 		} 
 

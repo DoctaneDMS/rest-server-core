@@ -21,6 +21,7 @@ import javax.ws.rs.core.MediaType;
 import com.fasterxml.classmate.util.ResolvedTypeCache.Key;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Value;
+import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
 import com.softwareplumbers.dms.rest.server.model.Reference;
@@ -28,12 +29,12 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 
 public class TempRepositoryService implements RepositoryService {
 	
-	private TreeMap<Reference,Document.Default> store = new TreeMap<Reference,Document.Default>();
+	private TreeMap<Reference,DocumentImpl> store = new TreeMap<Reference,DocumentImpl>();
 
 	@Override
 	public Document getDocument(Reference reference) {
 		if (reference.version == null) {
-			Map.Entry<Reference,Document.Default> previous = store.floorEntry(reference);
+			Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(reference);
 
 			return previous != null && reference.id.equals(previous.getKey().id) ? previous.getValue() : null;  
 		} else {
@@ -45,7 +46,7 @@ public class TempRepositoryService implements RepositoryService {
 	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata) {
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),0);
 		try {
-			Document.Default new_document = new Document.Default(mediaType, stream, metadata);
+			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
 			store.put(new_reference, new_document);
 			return new_reference;
 		} catch (IOException e) {
@@ -78,10 +79,10 @@ public class TempRepositoryService implements RepositoryService {
 
 	@Override
 	public Reference updateDocument(String id, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata) {
-		Map.Entry<Reference,Document.Default> previous = store.floorEntry(new Reference(id));
+		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(id));
 		if (previous != null && previous.getKey().id.equals(id)) {
 			Reference new_reference = new Reference(id,previous.getKey().version+1);
-			Document.Default newDocument = previous.getValue();
+			DocumentImpl newDocument = previous.getValue();
 			try {
 				if (metadata != null) newDocument = newDocument.setMetadata(metadata);
 				if (stream != null) newDocument = newDocument.setData(stream);			
