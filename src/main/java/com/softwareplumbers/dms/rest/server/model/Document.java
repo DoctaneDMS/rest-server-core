@@ -14,9 +14,13 @@ import org.apache.commons.io.IOUtils;
  */
 public interface Document {
 	
+	/** Get the metadata associated with this document */
 	public JsonObject getMetadata();
+	/** Get the media type of this document file */
 	public MediaType getMediaType();
+	/** Get the metadata associated with this document */
 	public void writeDocument(OutputStream target) throws IOException;
+	/** Get the length of the document file */
 	public int getLength();
 	
 	public static class Default implements Document {
@@ -25,6 +29,7 @@ public interface Document {
 		private final MediaType mediaType;
 		private final JsonObject metadata;
 
+		/** get metadata object */
 		@Override
 		public JsonObject getMetadata() { return metadata; }
 
