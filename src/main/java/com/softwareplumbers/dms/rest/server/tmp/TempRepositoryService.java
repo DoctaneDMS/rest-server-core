@@ -22,8 +22,8 @@ import com.fasterxml.classmate.util.ResolvedTypeCache.Key;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Value;
 import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.Document.Reference;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
+import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 
 public class TempRepositoryService implements RepositoryService {

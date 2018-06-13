@@ -33,7 +33,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.Document.Reference;
+import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;

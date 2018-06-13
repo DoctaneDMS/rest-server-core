@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 
 /** Handle CRUD operations on documents.
@@ -85,7 +86,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-    		Document document = service.getDocument(new Document.Reference(id, version));
+    		Document document = service.getDocument(new Reference(id, version));
         
     		if (document != null) { 
     			FormDataBodyPart metadata = new FormDataBodyPart();
@@ -135,7 +136,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-    		Document document = service.getDocument(new Document.Reference(id, version));
+    		Document document = service.getDocument(new Reference(id, version));
         
     		if (document != null) { 
     			return Response
@@ -176,7 +177,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-    		Document document = service.getDocument(new Document.Reference(id, version));
+    		Document document = service.getDocument(new Reference(id, version));
         
     		if (document != null) { 
     			return Response
@@ -226,7 +227,7 @@ public class Documents {
     			return Response.status(Status.BAD_REQUEST).entity(Error.missingFile()).build();
 
 
-    		Document.Reference reference = 
+    		Reference reference = 
     			service
     				.createDocument(
     					file_part.getMediaType(),
@@ -268,7 +269,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-    		Document.Reference reference = 
+    		Reference reference = 
     			service
     				.createDocument(
     					MediaType.valueOf(request.getContentType()),
@@ -318,7 +319,7 @@ public class Documents {
     		if (file_part == null) 
     			return Response.status(Status.BAD_REQUEST).entity(Error.missingFile()).build();
 
-    		Document.Reference reference = 
+    		Reference reference = 
     			service
     				.updateDocument(
     					id,
@@ -362,7 +363,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     					
-    		Document.Reference reference = 
+    		Reference reference = 
     			service
     				.updateDocument(
     					id,
@@ -407,7 +408,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     					
-    		Document.Reference reference = 
+    		Reference reference = 
     			service
     				.updateDocument(
     					id,

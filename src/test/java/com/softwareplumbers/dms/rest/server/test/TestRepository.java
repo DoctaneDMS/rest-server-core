@@ -13,6 +13,7 @@ import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.IOUtils;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService;
 import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryServiceTest;
@@ -31,7 +32,7 @@ public class TestRepository {
 		}
 	}
 	
-	public static Document.Reference getTestDocument(RepositoryService service, String name) {
+	public static Reference getTestDocument(RepositoryService service, String name) {
 		try {
 			return service.createDocument(
 					MediaType.TEXT_PLAIN_TYPE, 
@@ -52,9 +53,9 @@ public class TestRepository {
 	}
 	
 	public RepositoryService service = new TempRepositoryService();
-	public Document.Reference ref1 = getTestDocument(service,"test1");
-	public Document.Reference ref2 = getTestDocument(service,"test2");
-	public Document.Reference ref3 = getTestDocument(service,"test3");
+	public Reference ref1 = getTestDocument(service,"test1");
+	public Reference ref2 = getTestDocument(service,"test2");
+	public Reference ref3 = getTestDocument(service,"test3");
 	public Document doc1 = service.getDocument(ref1);
 	public Document doc2 = service.getDocument(ref2);
 	public Document doc3 = service.getDocument(ref3);		

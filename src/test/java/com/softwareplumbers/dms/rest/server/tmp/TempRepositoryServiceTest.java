@@ -8,8 +8,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.Document.Reference;
+import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
 public class TempRepositoryServiceTest {
@@ -27,25 +26,25 @@ public class TempRepositoryServiceTest {
 	@Test
 	public void testRepositoryFetchWithInvalidRef() throws IOException {
 		TestRepository repository = new TestRepository();
-		Document.Reference ref1 = new Document.Reference("xxx");
+		Reference ref1 = new Reference("xxx");
 		assertNull(repository.service.getDocument(ref1));
 	}
 	
 	@Test
 	public void testRepositoryFetchWithInvalidVersion() throws IOException {
 		TestRepository repository = new TestRepository();
-		Document.Reference ref1 = new Document.Reference(repository.ref1.id, 777);
+		Reference ref1 = new Reference(repository.ref1.id, 777);
 		assertNull(repository.service.getDocument(ref1));
 	}
 	
 	@Test
 	public void testRepositoryFetchWithNoVersion() throws IOException {
 		TestRepository repository = new TestRepository();
-		Document.Reference ref1 = new Document.Reference(repository.ref1.id);
+		Reference ref1 = new Reference(repository.ref1.id);
 		assertTrue(TestRepository.docEquals("test1", repository.service.getDocument(ref1)));
-		Document.Reference ref2 = new Document.Reference(repository.ref2.id);
+		Reference ref2 = new Reference(repository.ref2.id);
 		assertTrue(TestRepository.docEquals("test2", repository.service.getDocument(ref2)));
-		Document.Reference ref3 = new Document.Reference(repository.ref3.id);
+		Reference ref3 = new Reference(repository.ref3.id);
 		assertTrue(TestRepository.docEquals("test3", repository.service.getDocument(ref3)));
 	}
 	

@@ -10,8 +10,8 @@ import javax.ws.rs.core.MediaType;
 /**  Represents a DMS repository
  */
 public interface RepositoryService {
-	public Document getDocument(Document.Reference reference);
-	public Document.Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
-	public Document.Reference updateDocument(String id, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
-	public List<Document.Reference> catalogue(Query filter);
+	public Document getDocument(Reference reference);
+	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
+	public Reference updateDocument(String id, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
+	public List<Reference> catalogue(Query filter);
 };
