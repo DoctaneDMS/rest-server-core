@@ -7,21 +7,40 @@ buildscript {
     }
 }
 
+String propValue(String propName, String defValue) {
+    (project.hasProperty(propName) && project.getProperty(propName)) ? project.getProperty(propName) : defValue
+}
+
+version = propValue("ci_version","master");
+group = "com.softwareplumbers.oss"
+
 apply plugin: 'java'
+apply plugin: 'maven'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
 bootJar {
     baseName = 'dms-rest-server-core'
-    version =  '0.1.0'
+    classifier = 'boot'
+}
+
+jar {
+	enabled = true
 }
 
 repositories {
-    mavenCentral()
-    
-    maven {
-    	url 'https://nexus.softwareplumbers.com/repository/maven-oss'
+	maven { url propValue("proxyMavenCentral", "https://repo.maven.apache.org/maven2/") }
+    maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss' }
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      repository(url: "https://nexus.softwareplumbers.com/repository/maven-oss") {
+      	authentication(userName: propValue("mavenUploadUser",""), password: propValue("mavenUploadPassword",""))
+      }
     }
+  }
 }
 
 sourceCompatibility = 1.8

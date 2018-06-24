@@ -4,7 +4,7 @@ image:
 
 stages:
   - build 
-  - package
+  - publish
   
 variables:
   JDK_HOME: /etc/alternatives/java_sdk_1.8.0 
@@ -15,5 +15,9 @@ build:
     paths:
       - build
   script:
-   - gradle -Dorg.gradle.java.home=${JDK_HOME} build
+   - gradle -P ci_version=${CI_COMMIT_REF_NAME} -P mavenUploadUser=${MAVEN_UPLOAD_USER} -P mavenUploadPassword=${MAVEN_UPLOAD_PASSWORD} -Dorg.gradle.java.home=${JDK_HOME} build
      
+publish:
+  stage: publish
+  script:
+   - gradle -P ci_version=${CI_COMMIT_REF_NAME} -P mavenUploadUser=${MAVEN_UPLOAD_USER} -P mavenUploadPassword=${MAVEN_UPLOAD_PASSWORD} -Dorg.gradle.java.home=${JDK_HOME} uploadArchives
