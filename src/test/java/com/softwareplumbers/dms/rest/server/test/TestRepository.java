@@ -52,11 +52,21 @@ public class TestRepository {
 		return metadata.equals(document.getMetadata()) && Arrays.equals(testfile, stream.toByteArray());
 	}
 	
-	public RepositoryService service = new TempRepositoryService();
-	public Reference ref1 = getTestDocument(service,"test1");
-	public Reference ref2 = getTestDocument(service,"test2");
-	public Reference ref3 = getTestDocument(service,"test3");
-	public Document doc1 = service.getDocument(ref1);
-	public Document doc2 = service.getDocument(ref2);
-	public Document doc3 = service.getDocument(ref3);		
+	public TestRepository(RepositoryService service) {
+		this.service = service;
+		ref1 = getTestDocument(service,"test1");
+		ref2 = getTestDocument(service,"test2");
+		ref3 = getTestDocument(service,"test3");
+		doc1 = service.getDocument(ref1);
+		doc2 = service.getDocument(ref2);
+		doc3 = service.getDocument(ref3);			
+	}
+	
+	public RepositoryService service;
+	public Reference ref1;
+	public Reference ref2;
+	public Reference ref3;
+	public Document doc1;
+	public Document doc2;
+	public Document doc3;		
 }

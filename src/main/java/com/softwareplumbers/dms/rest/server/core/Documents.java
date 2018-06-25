@@ -96,7 +96,7 @@ public class Documents {
     			FormDataBodyPart file = new FormDataBodyPart();
     			file.setName("file");
     			file.setMediaType(document.getMediaType());
-    			file.getHeaders().add("Content-Length", Integer.toString(document.getLength()));
+    			file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
     			file.setEntity(new DocumentOutput(document));
     			
     			MultiPart response = new MultiPart()

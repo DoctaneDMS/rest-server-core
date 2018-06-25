@@ -19,5 +19,5 @@ public interface Document {
 	/** Get the metadata associated with this document */
 	public void writeDocument(OutputStream target) throws IOException;
 	/** Get the length of the document file */
-	public int getLength();
+	public long getLength();
 };

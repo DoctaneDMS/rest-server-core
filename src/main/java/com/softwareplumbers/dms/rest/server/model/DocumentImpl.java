@@ -32,7 +32,7 @@ public class DocumentImpl implements Document {
 
 	/** get length of file */
 	@Override
-	public int getLength() { return data.length; }
+	public long getLength() { return data.length; }
 
 	/** Write document to an output stream */
 	@Override
