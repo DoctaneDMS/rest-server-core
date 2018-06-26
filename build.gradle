@@ -26,6 +26,8 @@ bootJar {
 
 jar {
 	enabled = true
+	// exclude services.xml from the library (because when we include this as a library we will specify our own services.xml)
+	exclude("services.xml")
 }
 
 repositories {
