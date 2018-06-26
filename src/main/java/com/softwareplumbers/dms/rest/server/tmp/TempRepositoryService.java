@@ -19,8 +19,9 @@ import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
 import com.fasterxml.classmate.util.ResolvedTypeCache.Key;
-import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.abstractquery.Cube;
 import com.softwareplumbers.common.abstractquery.Value;
+import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
@@ -60,14 +61,14 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public List<Reference> catalogue(Query filter) {
+	public List<Reference> catalogue(Cube filter) {
 
 		Comparator<Reference> COMPARE_REFS = Comparator.naturalOrder();
 
 		// This is hideous. Better to do it manually!
 		Stream<Reference> result = store.entrySet()
 			.stream()
-			.filter(entry -> filter.containsItem(Value.from(entry.getValue().getMetadata())))
+			.filter(entry -> filter.containsItem(MapValue.from(entry.getValue().getMetadata())))
 			.map(entry -> entry.getKey())
 			.collect(Collectors.groupingBy(Reference::getId, 
 					Collectors.collectingAndThen(Collectors.maxBy(COMPARE_REFS), Optional::get)))

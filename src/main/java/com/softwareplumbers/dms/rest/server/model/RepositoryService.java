@@ -1,6 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.abstractquery.Cube;
 import java.util.List;
 
 import javax.json.JsonObject;
@@ -13,5 +13,5 @@ public interface RepositoryService {
 	public Document getDocument(Reference reference);
 	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
 	public Reference updateDocument(String id, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
-	public List<Reference> catalogue(Query filter);
+	public List<Reference> catalogue(Cube filter);
 };

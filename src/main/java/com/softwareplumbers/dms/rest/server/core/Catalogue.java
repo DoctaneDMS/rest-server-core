@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
-import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.abstractquery.Cube;
 
 /** Handle catalog operations on repositories and documents.
  * 
@@ -72,7 +72,7 @@ public class Catalogue {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
-    			List<Reference> results = service.catalogue(query == null ? Query.UNBOUNDED : Query.urlDecode(query));
+    			List<Reference> results = service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query));
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(results).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
