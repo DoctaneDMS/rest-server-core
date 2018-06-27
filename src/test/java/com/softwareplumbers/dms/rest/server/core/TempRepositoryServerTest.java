@@ -33,6 +33,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
+import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
@@ -188,7 +189,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public List<Reference> getCatalog(String id) throws IOException, ParseException {
+    public List<Info> getCatalog(String id) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/cat/tmp" + id);
 
@@ -200,7 +201,7 @@ public class TempRepositoryServerTest {
 			JsonArray result = response.readEntity(JsonArray.class);
 			return result
 				.stream()
-				.map(value -> Reference.fromJSON((JsonObject)value))
+				.map(value -> Info.fromJson((JsonObject)value))
 				.collect(Collectors.toList());
 		} 
 
@@ -315,14 +316,14 @@ public class TempRepositoryServerTest {
 	@Test
 	public void searchDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		List<Reference> catalog0 = getCatalog("/");
+		List<Info> catalog0 = getCatalog("/");
 		JsonObject response1 = postDocument("test1");
 		JsonObject response2 = putDocument("test2", response1.getString("id"));
 		JsonObject response3 = postDocument("test3");
-		List<Reference> catalog1 = getCatalog("/");
+		List<Info> catalog1 = getCatalog("/");
 		assertEquals(2, catalog1.size() - catalog0.size());
-		assertTrue(catalog1.contains(Reference.fromJSON(response2)));
-		assertTrue(catalog1.contains(Reference.fromJSON(response3)));
-		assertFalse(catalog1.contains(Reference.fromJSON(response1)));
+		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response2))));
+		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response3))));
+		assertFalse(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response1))));
 	}
 }

@@ -7,23 +7,27 @@ import javax.json.JsonObjectBuilder;
 public class Info {
 	public final Reference reference;
 	public final JsonObject metadata;
-	public final String mime_type;
+	public final String mimeType;
 	
-	public Info(Reference reference, String mime_type, JsonObject metadata) {
+	public Info(Reference reference, String mimeType, JsonObject metadata) {
 		this.reference = reference;
-		this.mime_type = mime_type;
+		this.mimeType = mimeType;
 		this.metadata = metadata;
 	}
 	
 	public Info(Reference reference, Document document) {
 		this.reference = reference;
-		this.mime_type = document.getMediaType().toString();
+		this.mimeType = document.getMediaType().toString();
 		this.metadata = document.getMetadata();
 	}
 	
+	public Reference getReference() { return reference; }
+	public String getMimeType() { return mimeType; }
+	public JsonObject getMetadata() { return metadata; }
+	
 	public static Info fromJson(JsonObject obj) {
 		return new Info(
-				Reference.fromJSON(obj.getJsonObject("reference")),
+				Reference.fromJson(obj.getJsonObject("reference")),
 				obj.getString("mimeType"),
 				obj.getJsonObject("metadata")
 			);
@@ -32,8 +36,8 @@ public class Info {
 	public JsonObject toJson() {
 		JsonObjectBuilder builder = Json.createObjectBuilder();
 		return builder
-			.add("reference", reference.toJSON())
-			.add("mimeType", metadata)
+			.add("reference", reference.toJson())
+			.add("mimeType", mimeType)
 			.add("metadata", metadata)
 			.build();
 	}

@@ -60,14 +60,14 @@ public class Reference implements Comparable<Reference> {
 	 * @param object
 	 * @return A reference object
 	 */
-	public static Reference fromJSON(JsonObject object) {
+	public static Reference fromJson(JsonObject object) {
 		JsonNumber version = object.getJsonNumber("version");
 		return new Reference(
 				object.getString("id"), 
 				version != null && version != JsonValue.NULL ? (Integer)version.intValue() : null);
 	}
 	
-	public JsonObject toJSON() {
+	public JsonObject toJson() {
 		JsonObjectBuilder builder = Json.createObjectBuilder();
 		builder.add("id", id);
 		if (version != null) builder.add("version", version);
