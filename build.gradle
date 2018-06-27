@@ -30,6 +30,15 @@ jar {
 	exclude("services.xml")
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+	classifier 'sources'
+	from sourceSets.main.allSource
+}
+
+artifacts {
+	archives sourcesJar
+}
+
 repositories {
 	maven { url propValue("proxyMavenCentral", "https://repo.maven.apache.org/maven2/") }
     maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss' }
