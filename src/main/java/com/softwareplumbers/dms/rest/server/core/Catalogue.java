@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.common.abstractquery.Cube;
@@ -72,7 +73,7 @@ public class Catalogue {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
-    			List<Reference> results = service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query));
+    			List<Info> results = service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query));
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(results).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());

@@ -23,6 +23,7 @@ import com.softwareplumbers.common.abstractquery.Cube;
 import com.softwareplumbers.common.abstractquery.Value;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
+import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
 import com.softwareplumbers.dms.rest.server.model.Reference;
@@ -61,16 +62,16 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public List<Reference> catalogue(Cube filter) {
+	public List<Info> catalogue(Cube filter) {
 
-		Comparator<Reference> COMPARE_REFS = Comparator.naturalOrder();
+		Comparator<Info> COMPARE_REFS = Comparator.comparing(info->info.reference);
 
 		// This is hideous. Better to do it manually!
-		Stream<Reference> result = store.entrySet()
+		Stream<Info> result = store.entrySet()
 			.stream()
 			.filter(entry -> filter.containsItem(MapValue.from(entry.getValue().getMetadata())))
-			.map(entry -> entry.getKey())
-			.collect(Collectors.groupingBy(Reference::getId, 
+			.map(entry -> new Info(entry.getKey(), entry.getValue()))
+			.collect(Collectors.groupingBy((Info info) -> info.reference.id, 
 					Collectors.collectingAndThen(Collectors.maxBy(COMPARE_REFS), Optional::get)))
 			.values()
 			.stream();

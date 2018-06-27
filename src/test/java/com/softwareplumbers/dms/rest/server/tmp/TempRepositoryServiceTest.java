@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
@@ -53,7 +54,7 @@ public class TempRepositoryServiceTest {
 	@Test
 	public void testRepositoryCatalog() throws IOException {
 		TestRepository repository = getTestRepository();
-		List<Reference> result = repository.service.catalogue(Cube.UNBOUNDED);
+		List<Info> result = repository.service.catalogue(Cube.UNBOUNDED);
 		assertEquals(result.size(), 3);
 	}
 	
@@ -62,15 +63,15 @@ public class TempRepositoryServiceTest {
 		TestRepository repository = getTestRepository();
 		Reference ref4 = repository.service.updateDocument(repository.ref2.id, repository.doc3.getMediaType(), null, repository.doc3.getMetadata() );
 		assertEquals(1, (int)ref4.version);
-		List<Reference> result = repository.service.catalogue(Cube.UNBOUNDED);
+		List<Info> result = repository.service.catalogue(Cube.UNBOUNDED);
 		assertEquals(result.size(), 3);
 	}
 	
 	@Test
 	public void testRepositorySearch() throws IOException {
 		TestRepository repository = getTestRepository();
-		List<Reference> result = repository.service.catalogue(Cube.fromJson("{ 'filename': 'partiphuckborlz'}"));
+		List<Info> result = repository.service.catalogue(Cube.fromJson("{ 'filename': 'partiphuckborlz'}"));
 		assertEquals(result.size(), 1);
-		assertEquals(result.get(0), repository.ref2);
+		assertEquals(result.get(0).reference, repository.ref2);
 	}
 }

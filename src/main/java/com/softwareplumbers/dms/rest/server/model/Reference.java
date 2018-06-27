@@ -1,7 +1,9 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import javax.json.Json;
 import javax.json.JsonNumber;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.json.JsonValue;
 
 /** Class representing a reference to a specific version of a document in a repository.
@@ -63,6 +65,13 @@ public class Reference implements Comparable<Reference> {
 		return new Reference(
 				object.getString("id"), 
 				version != null && version != JsonValue.NULL ? (Integer)version.intValue() : null);
+	}
+	
+	public JsonObject toJSON() {
+		JsonObjectBuilder builder = Json.createObjectBuilder();
+		builder.add("id", id);
+		if (version != null) builder.add("version", version);
+		return builder.build();
 	}
 	
 	/** Create a string from a reference.

@@ -13,5 +13,5 @@ public interface RepositoryService {
 	public Document getDocument(Reference reference);
 	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
 	public Reference updateDocument(String id, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata);
-	public List<Reference> catalogue(Cube filter);
+	public List<Info> catalogue(Cube filter);
 };
