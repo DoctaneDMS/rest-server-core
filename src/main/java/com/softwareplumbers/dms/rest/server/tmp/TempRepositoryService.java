@@ -62,12 +62,12 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public List<Info> catalogue(Cube filter) {
+	public Stream<Info> catalogue(Cube filter) {
 
 		Comparator<Info> COMPARE_REFS = Comparator.comparing(info->info.reference);
 
 		// This is hideous. Better to do it manually!
-		Stream<Info> result = store.entrySet()
+		return store.entrySet()
 			.stream()
 			.filter(entry -> filter.containsItem(MapValue.from(entry.getValue().getMetadata())))
 			.map(entry -> new Info(entry.getKey(), entry.getValue()))
@@ -75,8 +75,6 @@ public class TempRepositoryService implements RepositoryService {
 					Collectors.collectingAndThen(Collectors.maxBy(COMPARE_REFS), Optional::get)))
 			.values()
 			.stream();
-		
-		return result.collect(Collectors.toList());		
 	}
 
 	@Override

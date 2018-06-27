@@ -54,8 +54,8 @@ public class TempRepositoryServiceTest {
 	@Test
 	public void testRepositoryCatalog() throws IOException {
 		TestRepository repository = getTestRepository();
-		List<Info> result = repository.service.catalogue(Cube.UNBOUNDED);
-		assertEquals(result.size(), 3);
+		Info[] result = repository.service.catalogue(Cube.UNBOUNDED).toArray(Info[]::new);
+		assertEquals(result.length, 3);
 	}
 	
 	@Test
@@ -63,15 +63,15 @@ public class TempRepositoryServiceTest {
 		TestRepository repository = getTestRepository();
 		Reference ref4 = repository.service.updateDocument(repository.ref2.id, repository.doc3.getMediaType(), null, repository.doc3.getMetadata() );
 		assertEquals(1, (int)ref4.version);
-		List<Info> result = repository.service.catalogue(Cube.UNBOUNDED);
-		assertEquals(result.size(), 3);
+		Info[] result = repository.service.catalogue(Cube.UNBOUNDED).toArray(Info[]::new);
+		assertEquals(result.length, 3);
 	}
 	
 	@Test
 	public void testRepositorySearch() throws IOException {
 		TestRepository repository = getTestRepository();
-		List<Info> result = repository.service.catalogue(Cube.fromJson("{ 'filename': 'partiphuckborlz'}"));
-		assertEquals(result.size(), 1);
-		assertEquals(result.get(0).reference, repository.ref2);
+		Info[] result = repository.service.catalogue(Cube.fromJson("{ 'filename': 'partiphuckborlz'}")).toArray(Info[]::new);
+		assertEquals(result.length, 1);
+		assertEquals(result[0].reference, repository.ref2);
 	}
 }

@@ -2,7 +2,11 @@ package com.softwareplumbers.dms.rest.server.core;
 
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -73,8 +77,13 @@ public class Catalogue {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
-    			List<Info> results = service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query));
-    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(results).build();
+    			JsonArrayBuilder result = Json.createArrayBuilder(); 
+    			service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    				.map(Info::toJson)
+    				.forEach(info->result.add(info));
+    			
+    			//TODO: must be able to do this in a stream somehow.
+    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
