@@ -217,7 +217,7 @@ public class TempRepositoryServerTest {
 	   	WebTarget target = client.target("http://localhost:" + port + "/heartbeat");
 
     	Response response = target
-    			.request(MediaType.APPLICATION_JSON)
+    			.request(MediaType.TEXT_PLAIN)
     			.get();
 		assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 	}
