@@ -12,6 +12,7 @@ public class JerseyConfig extends ResourceConfig {
 		register(Documents.class);
 		register(Catalogue.class);
 		register(Heartbeat.class);
+		register(CORSFilter.class);
 	    register(MultiPartFeature.class);
 	}
 
