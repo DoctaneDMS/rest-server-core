@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -20,24 +19,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Info;
-import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.common.abstractquery.Range;
+import com.softwareplumbers.common.abstractquery.Value;
 
 /** Handle catalog operations on repositories and documents.
  * 
- * Create/Read/Update/Delete operations on documents in a  repository are all performed 
- * via this interface under the /docs/{repository} path.
+ * operations on a workspace all performed 
+ * via this interface under the /workspace/{repository}/{workspace} path.
  * 
  * @author Jonathan Essex
  *
  */
 @Component
-@Path("/cat")
-public class Catalogue {
+@Path("/workspace")
+public class Workspaces {
 	///////////--------- Static member variables --------////////////
 
-	private static Logger LOG = Logger.getLogger("cat");
+	private static Logger LOG = Logger.getLogger("workspace");
 
 	///////////---------  member variables --------////////////
 
@@ -55,9 +55,9 @@ public class Catalogue {
         this.repositoryServiceFactory = serviceFactory;
     }
 
-    /** GET a catalog on path /cat/{repository}
+    /** GET a catalog on path /workspace/{repository}/{workspace}
      * 
-     * Retrieves the catalog for a given repository. Documents may be filtered
+     * Retrieves the catalog for a given workspace. Documents may be filtered
      * using a query. (See the abstract query project).
      * 
      * @param repository string identifier of a document repository
@@ -65,19 +65,22 @@ public class Catalogue {
      * @returns A list of references in json format
      */
     @GET
-    @Path("{repository}")
+    @Path("cat/{repository}/{workspace}")
     @Produces({ MediaType.APPLICATION_JSON })
     public Response get(
     	@PathParam("repository") String repository,
+    	@PathParam("workspace") String workspace,
     	@QueryParam("query") String query) {
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
+    			RepositoryService service = repositoryServiceFactory.getService(repository);
 
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
+    			Cube queryCube = query == null ? Cube.UNBOUNDED : Cube.urlDecode(query);
+    			queryCube = queryCube.intersect(Cube.from("workspace", Range.equals(Value.from(workspace))));
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    			service.catalogue(queryCube)
     				.map(Info::toJson)
     				.forEach(info->result.add(info));
     			

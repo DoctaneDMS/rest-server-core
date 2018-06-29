@@ -95,5 +95,9 @@ public class TempRepositoryService implements RepositoryService {
 			return null;
 		}
 	}
+	
+	public void clear() {
+		store.clear();
+	}
 
 }

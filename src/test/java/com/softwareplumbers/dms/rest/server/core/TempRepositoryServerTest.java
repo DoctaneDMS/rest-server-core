@@ -208,6 +208,46 @@ public class TempRepositoryServerTest {
 		System.out.println(response.getEntity().toString());
 		throw new RuntimeException("Bad get: " + response.getStatus());
     }
+    
+    /** Utility function to get a workspace catalog from the local test server
+     * 
+     * @param the workspace to get
+     * @return a list of info blocks
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public List<Info> getWorkspace(String workspace) throws IOException, ParseException {
+		
+    	WebTarget target = client.target("http://localhost:" + port + "/workspace/cat/tmp/" + workspace);
+
+    	Response response = target
+    			.request(MediaType.APPLICATION_JSON)
+    			.get();
+    	
+		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+			JsonArray result = response.readEntity(JsonArray.class);
+			return result
+				.stream()
+				.map(value -> Info.fromJson((JsonObject)value))
+				.collect(Collectors.toList());
+		} 
+
+		System.out.println(response.getEntity().toString());
+		throw new RuntimeException("Bad get: " + response.getStatus());
+    }
+    
+    public void clear() {
+       	WebTarget target = client.target("http://localhost:" + port + "/admin/temp/tmp/clear" );
+
+    	Response response = target
+    			.request(MediaType.APPLICATION_JSON)
+    			.get();
+    	
+		if (!(response.getStatus() == Response.Status.OK.getStatusCode())) {
+			throw new RuntimeException("Bad get: " + response.getStatus());
+		}
+    }
+
 
     /** Test that the server responds on its heartbeat URL.
      * 
@@ -325,5 +365,18 @@ public class TempRepositoryServerTest {
 		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response2))));
 		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response3))));
 		assertFalse(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response1))));
+	}
+	
+	@Test
+	public void searchWorkspaceTest() throws IOException, ParseException 
+	{
+		clear();
+		postDocument("test1");
+		postDocument("test2");
+		postDocument("test3");
+		List<Info> catalog0 = getWorkspace("workspaceA");
+		assertEquals(2, catalog0.size());
+		List<Info> catalog1 = getWorkspace("workspaceB");
+		assertEquals(1, catalog1.size());
 	}
 }
