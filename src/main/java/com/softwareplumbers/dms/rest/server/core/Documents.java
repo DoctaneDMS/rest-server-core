@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import java.io.InputStream;
 import java.util.logging.Logger;
 
+import javax.json.Json;
 import javax.json.JsonObject;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -41,6 +42,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 @Path("/docs")
 public class Documents {
 	
+	private static final JsonObject EMPTY_JSON_OBJECT = Json.createObjectBuilder().build();
 	
 
 	///////////--------- Static member variables --------////////////
@@ -274,7 +276,7 @@ public class Documents {
     				.createDocument(
     					MediaType.valueOf(request.getContentType()),
     					() -> request.getInputStream(),
-						JsonObject.EMPTY_JSON_OBJECT
+						EMPTY_JSON_OBJECT
 					);
 
     		if (reference != null) {

@@ -7,7 +7,9 @@ import java.util.Arrays;
 
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonReader;
 import javax.json.stream.JsonParser;
+import javax.json.stream.JsonParser.Event;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.IOUtils;
@@ -26,9 +28,8 @@ public class TestRepository {
 	
 	public static JsonObject getTestMetadata(String name) throws IOException {
 		try (InputStream stream = TempRepositoryServiceTest.class.getResourceAsStream(name)) {
-			JsonParser parser = Json.createParser(stream);
-			parser.next();
-			return parser.getObject();
+			JsonReader reader = Json.createReader(stream);
+			return reader.readObject();
 		}
 	}
 	
