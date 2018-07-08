@@ -26,6 +26,7 @@ import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
+import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 
@@ -84,7 +85,7 @@ public class TempRepositoryService implements RepositoryService {
 			Reference new_reference = new Reference(id,previous.getKey().version+1);
 			DocumentImpl newDocument = previous.getValue();
 			try {
-				if (metadata != null) newDocument = newDocument.setMetadata(metadata);
+				if (metadata != null) newDocument = newDocument.setMetadata(MetadataMerge.merge(newDocument.getMetadata(), metadata));
 				if (stream != null) newDocument = newDocument.setData(stream);			
 				store.put(new_reference, newDocument);
 				return new_reference;
