@@ -30,8 +30,19 @@ bootRun {
 	systemProperties = System.properties
 }
 
+
+bootRepackage {
+  classifier = 'standalone'
+  withJarTask = 'bootJar1'
+}
+
 test {
 	systemProperties = System.properties
+}
+
+task bootJar1(type: Jar, dependsOn: classes) {
+  classifier 'standalone'
+  from sourceSets.main.output
 }
 
 jar {
@@ -46,7 +57,8 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 }
 
 artifacts {
-	archives sourcesJar
+	archives sourcesJar 
+  archives bootJar1
 }
 
 test {
@@ -59,6 +71,7 @@ repositories {
 }
 
 uploadArchives {
+  dependsOn bootRepackage
   repositories {
     mavenDeployer {
       repository(url: "https://nexus.softwareplumbers.com/repository/maven-oss") {
