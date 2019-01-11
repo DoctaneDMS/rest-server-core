@@ -64,9 +64,9 @@ public class TempRepositoryServerTest {
      * @return The result of posting the document to the test server.
      * 
      */
-    public JsonObject postDocument(String name) throws IOException {
+    public JsonObject postDocument(String name, String workspace) throws IOException {
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp");
-    	
+    	if (workspace != null) target = target.queryParam("workspace", workspace).queryParam("createWorkspace", true);
     	MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
         
@@ -189,37 +189,12 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public List<Info> getCatalog(String id) throws IOException, ParseException {
+    public List<Info> getCatalog(String id, String workspace) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/cat/tmp" + id);
 
-    	Response response = target
-    			.request(MediaType.APPLICATION_JSON)
-    			.get();
+    	if (workspace != null) target = target.queryParam("workspace", workspace);
     	
-		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-			JsonArray result = response.readEntity(JsonArray.class);
-			return result
-				.stream()
-				.map(value -> Info.fromJson((JsonObject)value))
-				.collect(Collectors.toList());
-		} 
-
-		System.out.println(response.getEntity().toString());
-		throw new RuntimeException("Bad get: " + response.getStatus());
-    }
-    
-    /** Utility function to get a workspace catalog from the local test server
-     * 
-     * @param the workspace to get
-     * @return a list of info blocks
-     * @throws IOException In the case of low-level IO error
-     * @throws ParseException If response cannot be parsed
-     */
-    public List<Info> getWorkspace(String workspace) throws IOException, ParseException {
-		
-    	WebTarget target = client.target("http://localhost:" + port + "/workspace/cat/tmp/" + workspace);
-
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)
     			.get();
@@ -270,7 +245,7 @@ public class TempRepositoryServerTest {
 	@Test
 	public void postDocumentTest() throws IllegalStateException, IOException {
 
-		JsonObject response = postDocument("test1");
+		JsonObject response = postDocument("test1", null);
 		
 		String id = response.getString("id");
 		
@@ -315,7 +290,7 @@ public class TempRepositoryServerTest {
 	@Test
 	public void roundtripDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		JsonObject response = postDocument("test1");
+		JsonObject response = postDocument("test1", null);
 		
 		String id = response.getString("id");
 		
@@ -339,7 +314,7 @@ public class TempRepositoryServerTest {
 	@Test
 	public void putDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		JsonObject response1 = postDocument("test1");
+		JsonObject response1 = postDocument("test1", null);
 		
 		assertNotNull(response1.getString("id"));
 		
@@ -356,11 +331,11 @@ public class TempRepositoryServerTest {
 	@Test
 	public void searchDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		List<Info> catalog0 = getCatalog("/");
-		JsonObject response1 = postDocument("test1");
+		List<Info> catalog0 = getCatalog("/",null);
+		JsonObject response1 = postDocument("test1", null);
 		JsonObject response2 = putDocument("test2", response1.getString("id"));
-		JsonObject response3 = postDocument("test3");
-		List<Info> catalog1 = getCatalog("/");
+		JsonObject response3 = postDocument("test3", null);
+		List<Info> catalog1 = getCatalog("/",null);
 		assertEquals(2, catalog1.size() - catalog0.size());
 		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response2))));
 		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response3))));
@@ -371,12 +346,12 @@ public class TempRepositoryServerTest {
 	public void searchWorkspaceTest() throws IOException, ParseException 
 	{
 		clear();
-		postDocument("test1");
-		postDocument("test2");
-		postDocument("test3");
-		List<Info> catalog0 = getWorkspace("workspaceA");
+		postDocument("test1", "workspaceA");
+		postDocument("test2", "workspaceA");
+		postDocument("test3", "workspaceB");
+		List<Info> catalog0 = getCatalog("/", "workspaceA");
 		assertEquals(2, catalog0.size());
-		List<Info> catalog1 = getWorkspace("workspaceB");
+		List<Info> catalog1 = getCatalog("/", "workspaceB");
 		assertEquals(1, catalog1.size());
 	}
 }

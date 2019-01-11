@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Component;
 import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
 import com.softwareplumbers.common.abstractquery.Cube;
 
 /** Handle catalog operations on repositories and documents.
@@ -57,7 +60,7 @@ public class Catalogue {
 
     /** GET a catalog on path /cat/{repository}
      * 
-     * Retrieves the catalog for a given repository. Documents may be filtered
+     * Retrieves the catalog for a given repository or workspace. Documents may be filtered
      * using a query. (See the abstract query project).
      * 
      * @param repository string identifier of a document repository
@@ -69,6 +72,8 @@ public class Catalogue {
     @Produces({ MediaType.APPLICATION_JSON })
     public Response get(
     	@PathParam("repository") String repository,
+    	@QueryParam("workspace") String workspace,
+    	@QueryParam("searchHistory") @DefaultValue("false") boolean searchHistory,
     	@QueryParam("query") String query) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
@@ -77,12 +82,14 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogue(query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    			service.catalogue(workspace, query == null ? Cube.UNBOUNDED : Cube.urlDecode(query), searchHistory)
     				.map(Info::toJson)
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+    	} catch (InvalidWorkspaceName err) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -90,4 +97,84 @@ public class Catalogue {
     	}
     }
 
+    /** GET a catalog on path /cat/{repository}/{id}
+     * 
+     * Retrieves the history for a given document, from inception up to
+     * the given version. Results may be filtered
+     * using a query. (See the abstract query project).
+     * 
+     * @param repository string identifier of a document repository
+     * @param query Base64 encoded query string.
+     * @returns A list of info objects in json format
+     */
+    @GET
+    @Path("{repository}/{id}")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public Response get(
+    	@PathParam("repository") String repository,
+    	@PathParam("id") String id,
+    	@QueryParam("version") Integer version,
+    	@QueryParam("query") String query) {
+    	try {
+    		RepositoryService service = repositoryServiceFactory.getService(repository);
+
+    			if (service == null) 
+    				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    		
+    			JsonArrayBuilder result = Json.createArrayBuilder(); 
+    			service.catalogueHistory(new Reference(id,version), query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    				.map(Info::toJson)
+    				.forEach(info->result.add(info));
+    			
+    			//TODO: must be able to do this in a stream somehow.
+    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+    	} catch (InvalidReference err) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+    	} catch (Throwable e) {
+    		LOG.severe(e.getMessage());
+    		e.printStackTrace(System.err);
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    	}
+    }
+
+    /** GET a catalog on path /cat/{repository}/{id}
+     * 
+     * Retrieves the history for a given document, from inception up to
+     * the given version. Results may be filtered
+     * using a query. (See the abstract query project).
+     * 
+     * @param repository string identifier of a document repository
+     * @param query Base64 encoded query string.
+     * @returns A list of info objects in json format
+     */
+    @GET
+    @Path("{repository}/{id}/file")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public Response getParts(
+    	@PathParam("repository") String repository,
+    	@PathParam("id") String id,
+    	@QueryParam("version") Integer version,
+    	@QueryParam("query") String query) {
+    	try {
+    		RepositoryService service = repositoryServiceFactory.getService(repository);
+
+    			if (service == null) 
+    				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    		
+    			JsonArrayBuilder result = Json.createArrayBuilder(); 
+    			service.catalogueParts(new Reference(id,version), query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    				.map(Info::toJson)
+    				.forEach(info->result.add(info));
+    			
+    			//TODO: must be able to do this in a stream somehow.
+    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+    	} catch (InvalidReference err) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+    	} catch (Throwable e) {
+    		LOG.severe(e.getMessage());
+    		e.printStackTrace(System.err);
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    	}
+    }
+    
 }

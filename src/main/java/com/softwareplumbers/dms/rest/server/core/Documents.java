@@ -7,6 +7,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -29,6 +30,10 @@ import org.springframework.stereotype.Component;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 
 /** Handle CRUD operations on documents.
  * 
@@ -88,8 +93,7 @@ public class Documents {
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-    		Document document = service.getDocument(new Reference(id, version));
-        
+    		Document document = service.getDocument(new Reference(id, version));        
     		if (document != null) { 
     			FormDataBodyPart metadata = new FormDataBodyPart();
     			metadata.setName("metadata");
@@ -214,7 +218,9 @@ public class Documents {
     public Response post(
     	@PathParam("repository") String repository,
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
-    	@FormDataParam("file") FormDataBodyPart file_part
+    	@FormDataParam("file") FormDataBodyPart file_part,
+    	@QueryParam("workspace") String workspace,
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace
     	) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
@@ -234,7 +240,9 @@ public class Documents {
     				.createDocument(
     					file_part.getMediaType(),
     					()->file_part.getEntityAs(InputStream.class),
-						metadata_part.getEntityAs(JsonObject.class)
+						metadata_part.getEntityAs(JsonObject.class),
+						workspace,
+						createWorkspace
 					);
 
     		if (reference != null) {
@@ -242,6 +250,10 @@ public class Documents {
     		} else {
     			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();    			
     		}
+    	} catch (InvalidWorkspaceName e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    	} catch (InvalidWorkspaceState e) {
+    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -263,6 +275,8 @@ public class Documents {
     @Produces(MediaType.APPLICATION_JSON)
     public Response postFile(
     	@PathParam("repository") String repository,
+    	@QueryParam("workspace") String workspace,
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	@Context HttpServletRequest request
     	) {
     	try {
@@ -276,7 +290,9 @@ public class Documents {
     				.createDocument(
     					MediaType.valueOf(request.getContentType()),
     					() -> request.getInputStream(),
-						EMPTY_JSON_OBJECT
+						EMPTY_JSON_OBJECT,
+						workspace,
+						createWorkspace
 					);
 
     		if (reference != null) {
@@ -284,6 +300,10 @@ public class Documents {
     		} else {
     			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();    			
     		}
+    	} catch (InvalidWorkspaceName e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    	} catch (InvalidWorkspaceState e) {
+    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -307,7 +327,9 @@ public class Documents {
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
-    	@FormDataParam("file") FormDataBodyPart file_part
+    	@FormDataParam("file") FormDataBodyPart file_part,
+    	@QueryParam("workspace") String workspace,
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace
     	) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
@@ -327,7 +349,9 @@ public class Documents {
     					id,
     					file_part.getMediaType(),
     					()->file_part.getEntityAs(InputStream.class),
-						metadata_part.getEntityAs(JsonObject.class)
+						metadata_part.getEntityAs(JsonObject.class),
+						workspace,
+						createWorkspace
 					);
 
     		if (reference != null) {
@@ -335,6 +359,12 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
+    	} catch (InvalidWorkspaceName e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    	} catch (InvalidWorkspaceState e) {
+    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    	} catch (InvalidDocumentId e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -357,6 +387,8 @@ public class Documents {
     public Response updateFile(
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
+    	@QueryParam("workspace") String workspace,
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	@Context HttpServletRequest request
     	) {
     	try {
@@ -371,7 +403,9 @@ public class Documents {
     					id,
     					MediaType.valueOf(request.getContentType()),
     					()->request.getInputStream(),
-						null
+						null,
+						workspace,
+						createWorkspace
 					);
 
     		if (reference != null) {
@@ -379,7 +413,13 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
-    	} catch (Exception e) {
+    	}  catch (InvalidWorkspaceName e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    	} catch (InvalidWorkspaceState e) {
+    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    	} catch (InvalidDocumentId e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
+    	}catch (Exception e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
@@ -402,6 +442,8 @@ public class Documents {
     public Response updateMetadata(
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
+    	@QueryParam("workspace") String workspace,
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	JsonObject metadata
     	) {
     	try {
@@ -416,7 +458,9 @@ public class Documents {
     					id,
     					null,
     					null,
-						metadata
+						metadata,
+						workspace,
+						createWorkspace
 					);
 
     		if (reference != null) {
@@ -424,7 +468,13 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
-    	} catch (Exception e) {
+    	}  catch (InvalidWorkspaceName e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    	} catch (InvalidWorkspaceState e) {
+    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    	} catch (InvalidDocumentId e) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
+    	}catch (Exception e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();

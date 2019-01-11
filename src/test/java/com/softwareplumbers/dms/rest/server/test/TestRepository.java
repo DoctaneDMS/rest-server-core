@@ -17,6 +17,9 @@ import org.apache.commons.io.IOUtils;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService;
 import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryServiceTest;
 
@@ -38,9 +41,11 @@ public class TestRepository {
 			return service.createDocument(
 					MediaType.TEXT_PLAIN_TYPE, 
 					() -> getTestFile("/" + name + ".txt"), 
-					getTestMetadata("/" + name + ".json")
+					getTestMetadata("/" + name + ".json"),
+					null,
+					false
 				);
-		} catch (IOException e) {
+		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -58,9 +63,13 @@ public class TestRepository {
 		ref1 = getTestDocument(service,"test1");
 		ref2 = getTestDocument(service,"test2");
 		ref3 = getTestDocument(service,"test3");
-		doc1 = service.getDocument(ref1);
-		doc2 = service.getDocument(ref2);
-		doc3 = service.getDocument(ref3);			
+		try {
+			doc1 = service.getDocument(ref1);
+			doc2 = service.getDocument(ref2);
+			doc3 = service.getDocument(ref3);
+		} catch (InvalidReference err) {
+			throw new RuntimeException(err);
+		}
 	}
 	
 	public RepositoryService service;

@@ -5,6 +5,10 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 
 /** Generate error reports in Json */
 public class Error {
@@ -16,6 +20,35 @@ public class Error {
 				.build();
 	}
 	
+	public static JsonObject mapServiceError(InvalidReference err) {
+		return Json.createObjectBuilder()
+				.add("error", "Reference " + err.reference + " is invalid")
+				.add("reference", err.reference.toJson())
+				.build();		
+	}
+	
+	public static JsonObject mapServiceError(InvalidWorkspaceName err) {
+		return Json.createObjectBuilder()
+				.add("error", "Workspace name " + err.workspace + " is invalid")
+				.add("workspaceName", err.workspace)
+				.build();		
+	}
+
+	public static JsonObject mapServiceError(InvalidWorkspaceState err) {
+		return Json.createObjectBuilder()
+				.add("error", "Workspace " + err.workspace + " is in invalid state " + err.state)
+				.add("workspaceName", err.workspace)
+				.add("workspaceState", err.state.toString())
+				.build();		
+	}
+	
+	public static JsonObject mapServiceError(InvalidDocumentId err) {
+		return Json.createObjectBuilder()
+				.add("error", "Document " + err.id + " is in not found")
+				.add("id", err.id)
+				.build();		
+	}
+
 	public static JsonObject documentNotFound(String repository, String id, Integer version) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
 				.add("error", "Document " + id + " with version " + (version == null ? "none" : version.toString()) + " does not exist in repository " + repository)
