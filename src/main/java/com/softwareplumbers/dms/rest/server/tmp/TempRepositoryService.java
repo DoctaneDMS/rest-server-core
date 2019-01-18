@@ -341,9 +341,10 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	public Stream<Workspace> listWorkspaces(String id) {
+		LOG.logEntering("listWorkspaces", id);
 		Set<String> workspaceNames = workspacesByDocument.get(id);
-		if (workspaceNames == null) return Stream.empty();
-		return workspaceNames.stream().map(name->workspaces.get(name));
+		if (workspaceNames == null) return LOG.logReturn("listWorkspaces", Stream.empty());
+		return LOG.logReturn("listWorkspaces", workspaceNames.stream().map(name->workspaces.get(name)));
 	}
 
 }
