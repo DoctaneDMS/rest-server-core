@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -88,6 +89,39 @@ public class Workspaces {
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build();
     	} catch (InvalidWorkspaceName err) {
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+    	} catch (Throwable e) {
+    		LOG.severe(e.getMessage());
+    		e.printStackTrace(System.err);
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    	}
+    }
+    
+    /** GET workspaces that a given document belongs to state on path /ws/{repository}
+     * 
+     * Retrieves information about the workspaces a document belongs to 
+     * 
+     * @param repository string identifier of a document repository
+     * @param documentId string identifier of a document
+     * @returns Information about the workspaces in json format
+     */
+    @GET
+    @Path("/{repository}")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public Response getWorkspaces(
+    	@PathParam("repository") String repository,
+    	@QueryParam("id") String documentId) {
+    	try {
+    			RepositoryService service = repositoryServiceFactory.getService(repository);
+
+    			if (service == null) 
+    				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    		
+    			JsonArrayBuilder result = Json.createArrayBuilder();
+    			service.listWorkspaces(documentId).map(Workspace::toJson).forEach(value -> result.add(value));
+    			//TODO: must be able to do this in a stream somehow.
+    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+    	} catch (InvalidDocumentId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());

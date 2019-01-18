@@ -213,4 +213,6 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspaceState if workspace is not open
 	 */
 	public void deleteDocument(String workspace, String id) throws InvalidWorkspaceName, InvalidDocumentId, InvalidWorkspaceState;
+	
+	public Stream<Workspace> listWorkspaces(String id) throws InvalidDocumentId;
 };

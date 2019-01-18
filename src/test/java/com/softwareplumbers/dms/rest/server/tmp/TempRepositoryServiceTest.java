@@ -79,4 +79,26 @@ public class TempRepositoryServiceTest {
 		assertEquals(result.length, 1);
 		assertEquals(result[0].reference, repository.ref2);
 	}
+	
+	
+	@Test 
+	public void testWorkspaceUpdate() throws InvalidDocumentId, InvalidWorkspaceName, InvalidWorkspaceState {
+		TestRepository repository = getTestRepository();
+		repository.service.updateDocument(repository.ref1.id, null, null, null, "new workspace", true);
+		assertEquals(repository.service.catalogue("new workspace", null, false).count(), 1);
+		repository.service.deleteDocument("new workspace", repository.ref1.id);
+		assertEquals(repository.service.catalogue("new workspace", null, false).count(), 0);
+	}
+	
+	@Test 
+	public void testListWorkspaces() throws InvalidDocumentId, InvalidWorkspaceName, InvalidWorkspaceState {
+		TestRepository repository = getTestRepository();
+		repository.service.updateDocument(repository.ref1.id, null, null, null, "workspace1", true);
+		repository.service.updateDocument(repository.ref1.id, null, null, null, "workspace2", true);
+		repository.service.updateDocument(repository.ref2.id, null, null, null, "workspace2", true);
+		repository.service.updateDocument(repository.ref3.id, null, null, null, "workspace2", true);
+		assertEquals(2,repository.service.listWorkspaces(repository.ref1.id).count());
+		assertEquals(1,repository.service.listWorkspaces(repository.ref2.id).count());
+		assertEquals(1,repository.service.listWorkspaces(repository.ref3.id).count());
+	}
 }

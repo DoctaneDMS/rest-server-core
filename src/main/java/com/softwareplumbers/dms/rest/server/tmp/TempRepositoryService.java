@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,8 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.UUID;
@@ -34,6 +37,7 @@ import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
+import com.softwareplumbers.dms.rest.server.util.Log;
 
 /** In-memory repository implementation.
  * 
@@ -95,19 +99,25 @@ public class TempRepositoryService implements RepositoryService {
 			this.state = state;
 		}
 		
-		public void add(Reference reference) {
-			this.docs.put(reference, new WorkspaceInfo(false));
+		public void add(Reference reference) throws InvalidWorkspaceState {
+			LOG.logEntering("add", reference);
+			if (state == State.Open)
+				this.docs.put(new Reference(reference.id), new WorkspaceInfo(false));
+			else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
+			LOG.logExiting("add");
 		}
 		
 		public void delete(String id) throws InvalidDocumentId, InvalidWorkspaceState {
+			LOG.logEntering("delete", id);
 			if (state == State.Open) {
 				Reference ref = new Reference(id);
 				WorkspaceInfo info = docs.get(ref);
-				if (info == null) throw new InvalidDocumentId(id);
+				if (info == null) throw LOG.logThrow("delete",new InvalidDocumentId(id));
 				info.deleted = true;
 			} else {
-				throw new InvalidWorkspaceState(name, state);
+				throw LOG.logThrow("delete",new InvalidWorkspaceState(name, state));
 			}
+			LOG.logExiting("delete");
 		}
 
 		public Stream<Info> catalogue(Cube filter, boolean searchHistory) {
@@ -132,11 +142,17 @@ public class TempRepositoryService implements RepositoryService {
 		}
 	}
 	
-	private TreeMap<Reference,DocumentImpl> store = new TreeMap<Reference,DocumentImpl>();
-	private TreeMap<String, WorkspaceImpl> workspaces = new TreeMap<String, WorkspaceImpl>();
+	///////////--------- Static member variables --------////////////
+	private static Log LOG = new Log(TempRepositoryService.class);
+	
+	
+	private TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
+	private TreeMap<String, WorkspaceImpl> workspaces = new TreeMap<>();
+	private TreeMap<String, Set<String>> workspacesByDocument = new TreeMap<>();
 
 	@Override
 	public Document getDocument(Reference reference) throws InvalidReference {
+		LOG.logEntering("getDocument", reference);
 		Document result = null;
 		if (reference.version == null) {
 			Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(reference);
@@ -146,8 +162,8 @@ public class TempRepositoryService implements RepositoryService {
 		} else {
 			result = store.get(reference);
 		}
-		if (result == null) throw new InvalidReference(reference);
-		return result;
+		if (result == null) throw LOG.logThrow("getDocument",new InvalidReference(reference));
+		return LOG.logReturn("getDocument", result);
 	}
 
 	/** Update a workspace with new or updated document
@@ -159,28 +175,32 @@ public class TempRepositoryService implements RepositoryService {
 	 * @throws InvalidWorkspaceState 
 	 */
 	private void updateWorkspace(String workspaceName, Reference ref, boolean createWorkspace) throws InvalidWorkspaceName, InvalidWorkspaceState {
+		LOG.logEntering("updateWorkspace", ref, createWorkspace);
 		if (workspaceName != null) {
 			WorkspaceImpl workspace = workspaces.get(workspaceName);
 			if (workspace == null && createWorkspace) {
 				workspace = new WorkspaceImpl(workspaceName, State.Open);
 				workspaces.put(workspaceName, workspace);
 			}
-			if (workspace == null) throw new InvalidWorkspaceName(workspaceName);
-			if (workspace.getState() == State.Closed) throw new InvalidWorkspaceState(workspaceName, State.Closed);
+			if (workspace == null) throw LOG.logThrow("updateWorkspace", new InvalidWorkspaceName(workspaceName));
+			if (workspace.getState() == State.Closed) throw LOG.logThrow("updateWorkspace", new InvalidWorkspaceState(workspaceName, State.Closed));
 			workspace.add(ref);
+			workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<String>()).add(workspaceName);
 		}
+		LOG.logExiting("updateWorkspace");
 	}
 	
 	@Override
 	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata, String workspaceName, boolean createWorkspace) throws InvalidWorkspaceName, InvalidWorkspaceState {
+		LOG.logEntering("createDocument", mediaType, metadata, workspaceName, createWorkspace);
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),0);
 		try {
 			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
 			updateWorkspace(workspaceName, new_reference, createWorkspace);
 			store.put(new_reference, new_document);
-			return new_reference;
+			return LOG.logReturn("createDocument",new_reference);
 		} catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new RuntimeException(LOG.logRethrow("createDocument",e));
 		}
 	}
 	
@@ -191,6 +211,7 @@ public class TempRepositoryService implements RepositoryService {
 			JsonObject metadata, 
 			String workspace, 
 			boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspaceName, InvalidWorkspaceState {
+		LOG.logEntering("updateDocument", id, mediaType, metadata, workspace, createWorkspace);
 		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(id));
 		if (previous != null && previous.getKey().id.equals(id)) {
 			Reference new_reference = new Reference(id,previous.getKey().version+1);
@@ -200,12 +221,12 @@ public class TempRepositoryService implements RepositoryService {
 				if (stream != null) newDocument = newDocument.setData(stream);			
 				updateWorkspace(workspace, new_reference, createWorkspace);
 				store.put(new_reference, newDocument);
-				return new_reference;
+				return LOG.logReturn("updateDocument",new_reference);
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException(LOG.logRethrow("updateDocument", e));
 			}
 		} else {
-			throw new InvalidDocumentId(id);
+			throw LOG.logThrow("updateDocument", new InvalidDocumentId(id));
 		}
 	}
 
@@ -304,14 +325,25 @@ public class TempRepositoryService implements RepositoryService {
 
 	@Override
 	public void deleteDocument(String workspace, String id) throws InvalidWorkspaceName, InvalidDocumentId, InvalidWorkspaceState {
+		LOG.logEntering("deleteDocument", workspace, id);
 		WorkspaceImpl result = workspaces.get(workspace);
-		if (result == null) throw new InvalidWorkspaceName(workspace);
+		if (result == null) throw LOG.logThrow("deleteDocument", new InvalidWorkspaceName(workspace));
 		result.delete(id);
+		Set<String> docWorkspaces = workspacesByDocument.getOrDefault(id, Collections.emptySet());
+		docWorkspaces.remove(workspace);
+		if (docWorkspaces.isEmpty()) workspacesByDocument.remove(id);
+		LOG.logExiting("deleteDocument");
 	}
 
 	@Override
 	public Stream<Info> catalogueParts(Reference ref, Cube filter) throws InvalidReference {
 		return Stream.empty();
+	}
+	
+	public Stream<Workspace> listWorkspaces(String id) {
+		Set<String> workspaceNames = workspacesByDocument.get(id);
+		if (workspaceNames == null) return Stream.empty();
+		return workspaceNames.stream().map(name->workspaces.get(name));
 	}
 
 }
