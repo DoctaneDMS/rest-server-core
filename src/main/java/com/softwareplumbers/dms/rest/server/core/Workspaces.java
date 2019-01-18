@@ -42,7 +42,7 @@ import com.softwareplumbers.common.abstractquery.Value;
  *
  */
 @Component
-@Path("/workspace")
+@Path("/ws")
 public class Workspaces {
 	///////////--------- Static member variables --------////////////
 
@@ -73,7 +73,7 @@ public class Workspaces {
      * @returns Information about the workspace in json format
      */
     @GET
-    @Path("ws/{repository}/{workspace}")
+    @Path("/{repository}/{workspace}")
     @Produces({ MediaType.APPLICATION_JSON })
     public Response get(
     	@PathParam("repository") String repository,
@@ -105,7 +105,7 @@ public class Workspaces {
      * @param workspace string identifier of a workspace
      */
     @PUT
-    @Path("ws/{repository}/{workspace}")
+    @Path("/{repository}/{workspace}")
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
     	@PathParam("repository") String repository,
@@ -139,7 +139,7 @@ public class Workspaces {
      * @param id string identifier of a document
      */
     @DELETE
-    @Path("ws/{repository}/{workspace}/{id}")
+    @Path("/{repository}/{workspace}/{id}")
     public Response deleteDocument(
     	@PathParam("repository") String repository,
     	@PathParam("workspace") String workspaceName,

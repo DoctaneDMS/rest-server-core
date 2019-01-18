@@ -44,7 +44,7 @@ public class Error {
 	
 	public static JsonObject mapServiceError(InvalidDocumentId err) {
 		return Json.createObjectBuilder()
-				.add("error", "Document " + err.id + " is in not found")
+				.add("error", "Document " + err.id + " is not found")
 				.add("id", err.id)
 				.build();		
 	}

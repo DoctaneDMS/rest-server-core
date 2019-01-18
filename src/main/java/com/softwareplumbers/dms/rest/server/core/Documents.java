@@ -113,6 +113,8 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}
+    	} catch(InvalidReference e) { 
+    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
