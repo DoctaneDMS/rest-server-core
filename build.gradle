@@ -98,7 +98,7 @@ dependencies {
     compile("org.keycloak:keycloak-spring-boot-starter")
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
-    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.1.6'
+    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.1.8'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
