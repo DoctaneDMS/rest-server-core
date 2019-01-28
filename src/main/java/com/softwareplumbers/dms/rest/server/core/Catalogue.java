@@ -113,7 +113,7 @@ public class Catalogue {
     public Response get(
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
-    	@QueryParam("version") Integer version,
+    	@QueryParam("version") String version,
     	@QueryParam("query") String query) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
@@ -153,7 +153,7 @@ public class Catalogue {
     public Response getParts(
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
-    	@QueryParam("version") Integer version,
+    	@QueryParam("version") String version,
     	@QueryParam("query") String query) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);

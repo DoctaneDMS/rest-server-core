@@ -49,7 +49,7 @@ public class Error {
 				.build();		
 	}
 
-	public static JsonObject documentNotFound(String repository, String id, Integer version) {
+	public static JsonObject documentNotFound(String repository, String id, String version) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
 				.add("error", "Document " + id + " with version " + (version == null ? "none" : version.toString()) + " does not exist in repository " + repository)
 				.add("id", id)

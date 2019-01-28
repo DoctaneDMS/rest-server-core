@@ -41,7 +41,7 @@ public class TempRepositoryServiceTest {
 	@Test(expected = InvalidReference.class)
 	public void testRepositoryFetchWithInvalidVersion() throws IOException, InvalidReference {
 		TestRepository repository = getTestRepository();
-		Reference ref1 = new Reference(repository.ref1.id, 777);
+		Reference ref1 = new Reference(repository.ref1.id, "777");
 		Document document = repository.service.getDocument(ref1);
 	}
 	
@@ -67,7 +67,7 @@ public class TempRepositoryServiceTest {
 	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspaceName, InvalidWorkspaceState {
 		TestRepository repository = getTestRepository();
 		Reference ref4 = repository.service.updateDocument(repository.ref2.id, repository.doc3.getMediaType(), null, repository.doc3.getMetadata(), null, false );
-		assertEquals(1, (int)ref4.version);
+		assertEquals("0000002", ref4.version);
 		Info[] result = repository.service.catalogue(null, Cube.UNBOUNDED, false).toArray(Info[]::new);
 		assertEquals(result.length, 3);
 	}

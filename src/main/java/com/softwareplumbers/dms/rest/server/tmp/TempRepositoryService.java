@@ -193,7 +193,7 @@ public class TempRepositoryService implements RepositoryService {
 	@Override
 	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata, String workspaceName, boolean createWorkspace) throws InvalidWorkspaceName, InvalidWorkspaceState {
 		LOG.logEntering("createDocument", mediaType, metadata, workspaceName, createWorkspace);
-		Reference new_reference = new Reference(UUID.randomUUID().toString(),0);
+		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
 		try {
 			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
 			updateWorkspace(workspaceName, new_reference, createWorkspace);
@@ -202,6 +202,11 @@ public class TempRepositoryService implements RepositoryService {
 		} catch (IOException e) {
 			throw new RuntimeException(LOG.logRethrow("createDocument",e));
 		}
+	}
+	
+	public static final String newVersion(String prev) {
+		String result = Integer.toString(1 + Integer.parseInt(prev));
+		return "0000000".substring(result.length()) + result;
 	}
 	
 	@Override
@@ -214,7 +219,7 @@ public class TempRepositoryService implements RepositoryService {
 		LOG.logEntering("updateDocument", id, mediaType, metadata, workspace, createWorkspace);
 		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(id));
 		if (previous != null && previous.getKey().id.equals(id)) {
-			Reference new_reference = new Reference(id,previous.getKey().version+1);
+			Reference new_reference = new Reference(id, newVersion(previous.getKey().version));
 			DocumentImpl newDocument = previous.getValue();
 			try {
 				if (metadata != null) newDocument = newDocument.setMetadata(MetadataMerge.merge(newDocument.getMetadata(), metadata));
@@ -295,7 +300,7 @@ public class TempRepositoryService implements RepositoryService {
 	@Override
 	public Stream<Info> catalogueHistory(Reference ref, Cube filter) throws InvalidReference {
 		final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
-		Map<Reference, DocumentImpl> history = store.subMap(new Reference(ref.id,0), true, ref, true);
+		Map<Reference, DocumentImpl> history = store.subMap(new Reference(ref.id,newVersion("0")), true, ref, true);
 		if (history.isEmpty()) throw new InvalidReference(ref);
 		return history
 			.entrySet()

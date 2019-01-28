@@ -4,6 +4,7 @@ import javax.json.Json;
 import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonString;
 import javax.json.JsonValue;
 
 /** Class representing a reference to a specific version of a document in a repository.
@@ -15,16 +16,16 @@ public class Reference implements Comparable<Reference> {
 	/** Document identifier */
 	public final String id;
 	/** Version number */
-	public final Integer version;
+	public final String version;
 	/** Construct a reference to a particular version of a document */
-	public Reference(String id, Integer version) { this.id = id; this.version = version; }
+	public Reference(String id, String version) { this.id = id; this.version = version; }
 	/** Construct a reference to the latest version of a document */
 	public Reference(String id) { this.id = id; this.version = null; }
 	
 	/** Get the identifier */
 	public String getId() { return id; }
 	/** Get the version number */
-	public Integer getVersion() { return version; }
+	public String getVersion() { return version; }
 	/** Compare two references for equality */
 	public boolean equals(Reference other) { return compareTo(other) == 0; }
 	
@@ -35,7 +36,7 @@ public class Reference implements Comparable<Reference> {
 	
 	/** Create a hash value for this reference */		
 	public int hashCode() {
-		return id.hashCode() ^ (version == null ? 0 : version.intValue());
+		return id.hashCode() ^ (version == null ? 0 : version.hashCode());
 	}
 
 	/** Compare two references
@@ -48,9 +49,7 @@ public class Reference implements Comparable<Reference> {
 		if (version == other.version) return 0; 
 		if (version == null) return 1;
 		if (other.version == null) return -1;
-		if (version < other.version) return -1;
-		if (version > other.version) return 1;
-		return 0;
+		return version.compareTo(other.version);
 	}
 	
 	/** Create a reference from a JSON object.
@@ -61,10 +60,10 @@ public class Reference implements Comparable<Reference> {
 	 * @return A reference object
 	 */
 	public static Reference fromJson(JsonObject object) {
-		JsonNumber version = object.getJsonNumber("version");
+		JsonString version = object.getJsonString("version");
 		return new Reference(
 				object.getString("id"), 
-				version != null && version != JsonValue.NULL ? (Integer)version.intValue() : null);
+				version != null && version != JsonValue.NULL ? version.getString() : null);
 	}
 	
 	public JsonObject toJson() {

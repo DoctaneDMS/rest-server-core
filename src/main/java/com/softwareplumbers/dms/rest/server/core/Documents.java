@@ -86,7 +86,7 @@ public class Documents {
     public Response get(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") Integer version) {
+    	@QueryParam("version") String version) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -137,7 +137,7 @@ public class Documents {
     public Response getFile(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") Integer version) {
+    	@QueryParam("version") String version) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -178,7 +178,7 @@ public class Documents {
     public Response getMetadata(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") Integer version) {
+    	@QueryParam("version") String version) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
