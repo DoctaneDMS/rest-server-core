@@ -7,9 +7,10 @@ buildscript {
     }
 }
 
-plugins {
-  id "org.jdrupes.mdoclet" version "1.0.3"
-}
+//uncomment if building standalone javadoc
+//plugins {
+//  id "org.jdrupes.mdoclet" version "1.0.3"
+//}
 
 String propValue(String propName, String defValue) {
     (project.hasProperty(propName) && project.getProperty(propName)) ? project.getProperty(propName) : defValue
