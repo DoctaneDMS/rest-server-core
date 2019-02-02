@@ -65,7 +65,7 @@ public class Catalogue {
      * 
      * @param repository string identifier of a document repository
      * @param query Base64 encoded query string.
-     * @returns A list of references in json format
+     * @return A list of references in json format
      */
     @GET
     @Path("{repository}")
@@ -105,7 +105,7 @@ public class Catalogue {
      * 
      * @param repository string identifier of a document repository
      * @param query Base64 encoded query string.
-     * @returns A list of info objects in json format
+     * @return A list of info objects in json format
      */
     @GET
     @Path("{repository}/{id}")
@@ -145,7 +145,7 @@ public class Catalogue {
      * 
      * @param repository string identifier of a document repository
      * @param query Base64 encoded query string.
-     * @returns A list of info objects in json format
+     * @return A list of info objects in json format
      */
     @GET
     @Path("{repository}/{id}/file")

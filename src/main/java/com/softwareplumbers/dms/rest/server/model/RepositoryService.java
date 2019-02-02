@@ -153,7 +153,7 @@ public interface RepositoryService {
 	 * Get all versions of the given document earlier than the given reference,
 	 * that match some criteria.
 	 * 
-	 * @param reference Document reference to search for history
+	 * @param ref Document reference to search for history
 	 * @param filter object to match meta-data
 	 * @return a Stream of Info objects with the results of the search
 	 * @throws InvalidDocumentId if no document exists with the given id
@@ -169,7 +169,7 @@ public interface RepositoryService {
 	 * 
 	 * @param ref
 	 * @param filter
-	 * @return
+	 * @return a stream of Info objects relating to the selected parts of the document
 	 * @throws InvalidReference
 	 */
 	public Stream<Info> catalogueParts(Reference ref, Cube filter) throws InvalidReference;

@@ -78,7 +78,7 @@ public class Documents {
      * @param repository string identifier of a document repository
      * @param id string document id
      * @param version (optional) integer version number of document
-     * @returns Normally a multipart response.
+     * @return Normally a multipart response.
      */
     @GET
     @Path("{repository}/{id}")
@@ -320,7 +320,7 @@ public class Documents {
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @returns A JSON response including the document id and new version id
+     * @return A JSON response including the document id and new version id
      */
     @PUT
     @Path("{repository}/{id}")
@@ -381,7 +381,7 @@ public class Documents {
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @returns A JSON response including the document id and new version id
+     * @return A JSON response including the document id and new version id
      */
     @PUT
     @Path("{repository}/{id}/file")
@@ -435,7 +435,7 @@ public class Documents {
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @returns A JSON response including the document id and new version id
+     * @return A JSON response including the document id and new version id
      */
     @PUT
     @Path("{repository}/{id}/metadata")

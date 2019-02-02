@@ -78,9 +78,9 @@ public class DocumentImpl implements Document {
 		this(MediaType.valueOf(mediaType), doc_src, EMPTY_JSON_OBJECT);
 	}
 	
-	/** Create a new document with update meta-data and same data. 
+	/** Create a new document with updated meta-data and same data. 
 	 * 
-	 * @param new meta-data
+	 * @param metadata new meta-data
 	 * @return A new document
 	 */
 	public DocumentImpl setMetadata(JsonObject metadata) {
@@ -89,7 +89,7 @@ public class DocumentImpl implements Document {
 	
 	/** Create a new document with same meta-data new data. 
 	 * 
-	 * @param new meta-data
+	 * @param doc_src new data for document
 	 * @return A new document
 	 */
 	public DocumentImpl setData(InputStreamSupplier doc_src) throws IOException {

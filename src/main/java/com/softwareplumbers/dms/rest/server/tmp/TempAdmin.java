@@ -49,7 +49,7 @@ public class TempAdmin {
     /** Trigger a clear of the repository
      * 
      * @param repository string identifier of a document repository
-     * @returns OK
+     * @return OK
      */
     @GET
     @Path("{repository}/clear")

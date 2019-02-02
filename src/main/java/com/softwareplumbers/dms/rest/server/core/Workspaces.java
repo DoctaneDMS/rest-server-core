@@ -70,8 +70,8 @@ public class Workspaces {
      * Retrieves information about the given workspace. 
      * 
      * @param repository string identifier of a document repository
-     * @param workspace string identifier of a workspace
-     * @returns Information about the workspace in json format
+     * @param workspaceName string identifier of a workspace
+     * @return Information about the workspace in json format
      */
     @GET
     @Path("/{repository}/{workspace}")
@@ -103,7 +103,7 @@ public class Workspaces {
      * 
      * @param repository string identifier of a document repository
      * @param documentId string identifier of a document
-     * @returns Information about the workspaces in json format
+     * @return Information about the workspaces in json format
      */
     @GET
     @Path("/{repository}")
@@ -169,7 +169,7 @@ public class Workspaces {
     /** Delete document from workspace on path /ws/{repository}/{workspace}/{id}
      * 
      * @param repository string identifier of a document repository
-     * @param workspace string identifier of a workspace
+     * @param workspaceName string identifier of a workspace
      * @param id string identifier of a document
      */
     @DELETE
