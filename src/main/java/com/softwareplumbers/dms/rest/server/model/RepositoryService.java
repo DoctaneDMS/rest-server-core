@@ -156,7 +156,7 @@ public interface RepositoryService {
 	 * @param ref Document reference to search for history
 	 * @param filter object to match meta-data
 	 * @return a Stream of Info objects with the results of the search
-	 * @throws InvalidDocumentId if no document exists with the given id
+	 * @throws InvalidReference no document exists with the given id
 	 */
 	public Stream<Info> catalogueHistory(Reference ref, Cube filter) throws InvalidReference;
 	
