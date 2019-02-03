@@ -12,6 +12,10 @@ public class Log {
 	public final Logger log;
 	public final String className;
 	
+	public static String fmt(Object value) {
+		return value == null ? "null" : value.getClass().getSimpleName(); 
+	}
+	
 	public Log(Class<?> clazz) {
 		className = clazz.getName();
 		log = Logger.getLogger(className);	
