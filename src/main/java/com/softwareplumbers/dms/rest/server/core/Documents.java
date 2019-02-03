@@ -236,6 +236,8 @@ public class Documents {
     		if (file_part == null) 
     			return Response.status(Status.BAD_REQUEST).entity(Error.missingFile()).build();
 
+    		if (file_part.getMediaType() == null)
+    			return Response.status(Status.BAD_REQUEST).entity(Error.missingContentType()).build();
 
     		Reference reference = 
     			service

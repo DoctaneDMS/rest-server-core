@@ -74,6 +74,10 @@ public class Error {
 		return Json.createObjectBuilder().add("error", "Document metadata missing from request").build();				
 	}
 
+	public static JsonObject missingContentType() {
+		return Json.createObjectBuilder().add("error", "Content type is mandatory when creating a document").build();				
+	}
+
 	public static JsonObject unexpectedFailure() {
 		return Json.createObjectBuilder().add("error", "Request failed for unknown reason").build();				
 	}
