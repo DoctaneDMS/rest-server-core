@@ -7,10 +7,9 @@ buildscript {
     }
 }
 
-//uncomment if building standalone javadoc
-//plugins {
-//  id "org.jdrupes.mdoclet" version "1.0.3"
-//}
+plugins {
+  id "org.jdrupes.mdoclet" version "1.0.3"
+}
 
 String propValue(String propName, String defValue) {
     (project.hasProperty(propName) && project.getProperty(propName)) ? project.getProperty(propName) : defValue
@@ -96,7 +95,7 @@ dependencies {
     compile("org.keycloak:keycloak-spring-boot-starter")
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
-    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.1.10'
+    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.1.11'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
