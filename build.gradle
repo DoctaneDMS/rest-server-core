@@ -24,13 +24,6 @@ apply plugin: 'maven'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
-/* Put this back in when we move to spring boot 2.x (which is currently unsupported by keycloak). Use bootRepackage for now instead.
-bootJar {
-    baseName = 'dms-rest-server-core'
-    classifier = 'boot'
-}
-*/
-
 bootRun {
 	systemProperties = System.properties
 }
