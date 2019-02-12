@@ -8,8 +8,6 @@ import java.util.Arrays;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
-import javax.json.stream.JsonParser;
-import javax.json.stream.JsonParser.Event;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.IOUtils;
@@ -18,9 +16,6 @@ import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
-import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService;
 import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryServiceTest;
 
 public class TestRepository {

@@ -32,7 +32,7 @@ import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 
 /** Handle CRUD operations on documents.
@@ -254,7 +254,7 @@ public class Documents {
     		} else {
     			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();    			
     		}
-    	} catch (InvalidWorkspaceName e) {
+    	} catch (InvalidWorkspaceId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
@@ -304,7 +304,7 @@ public class Documents {
     		} else {
     			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();    			
     		}
-    	} catch (InvalidWorkspaceName e) {
+    	} catch (InvalidWorkspaceId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
@@ -363,7 +363,7 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
-    	} catch (InvalidWorkspaceName e) {
+    	} catch (InvalidWorkspaceId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
@@ -417,7 +417,7 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
-    	}  catch (InvalidWorkspaceName e) {
+    	}  catch (InvalidWorkspaceId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
@@ -472,7 +472,7 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
-    	}  catch (InvalidWorkspaceName e) {
+    	}  catch (InvalidWorkspaceId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		

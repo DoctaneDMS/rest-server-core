@@ -22,12 +22,15 @@ public interface Workspace {
 	String getName();
 	/** Get the state of a workspace */
 	State getState();
+	/** Get the id of a workspace */
+	String getId();
 	
 	/** Get the default Json representation for a workspace */
 	default JsonObject toJson() {
 		return Json.createObjectBuilder()
 			.add("name", getName())
 			.add("state", getState().toString())
+			.add("id", getId())
 			.build();
 
 	}

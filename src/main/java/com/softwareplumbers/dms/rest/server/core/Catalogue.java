@@ -24,7 +24,7 @@ import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
 import com.softwareplumbers.common.abstractquery.Cube;
 
 /** Handle catalog operations on repositories and documents.
@@ -82,13 +82,13 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogue(workspace, query == null ? Cube.UNBOUNDED : Cube.urlDecode(query), searchHistory)
+    			service.catalogueById(workspace, query == null ? Cube.UNBOUNDED : Cube.urlDecode(query), searchHistory)
     				.map(Info::toJson)
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
-    	} catch (InvalidWorkspaceName err) {
+    	} catch (InvalidWorkspaceId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());

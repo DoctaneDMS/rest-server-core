@@ -7,7 +7,7 @@ import javax.json.JsonObjectBuilder;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 
 /** Generate error reports in Json */
@@ -27,7 +27,7 @@ public class Error {
 				.build();		
 	}
 	
-	public static JsonObject mapServiceError(InvalidWorkspaceName err) {
+	public static JsonObject mapServiceError(InvalidWorkspaceId err) {
 		return Json.createObjectBuilder()
 				.add("error", "Workspace name " + err.workspace + " is invalid")
 				.add("workspaceName", err.workspace)

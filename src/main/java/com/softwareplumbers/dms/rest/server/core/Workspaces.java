@@ -1,13 +1,10 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -24,15 +21,12 @@ import javax.ws.rs.core.Response.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
-import com.softwareplumbers.common.abstractquery.Cube;
-import com.softwareplumbers.common.abstractquery.Range;
-import com.softwareplumbers.common.abstractquery.Value;
+import com.softwareplumbers.common.QualifiedName;
 
 /** Handle catalog operations on repositories and documents.
  * 
@@ -67,14 +61,17 @@ public class Workspaces {
 
     /** GET workspace state on path /ws/{repository}/{workspace}
      * 
-     * Retrieves information about the given workspace. 
+     * Retrieves information about the given workspace. The workspace may be a path (i.e.
+     * have several elements separated by '/'). If the first element is a '~', what follows
+     * is assumed to be a workspace id. If not, we assume it is a name and query the service
+     * accordingly.
      * 
      * @param repository string identifier of a document repository
      * @param workspaceName string identifier of a workspace
      * @return Information about the workspace in json format
      */
     @GET
-    @Path("/{repository}/{workspace}")
+    @Path("/{repository}/{workspace: [^&?]+}")
     @Produces({ MediaType.APPLICATION_JSON })
     public Response get(
     	@PathParam("repository") String repository,
@@ -85,10 +82,18 @@ public class Workspaces {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
-    			Workspace workspace = service.getWorkspace(workspaceName);
+    			QualifiedName wsName = QualifiedName.ROOT.parse(workspaceName, "/").reverse();
+    			
+    			Workspace workspace = null;
+    			if (wsName.part.equals("~")) { 
+    				workspace = service.getWorkspaceById(wsName.parent.part);
+    			} else {
+    				workspace = service.getWorkspaceByName(workspaceName);
+    			}
+    			
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build();
-    	} catch (InvalidWorkspaceName err) {
+    	} catch (InvalidWorkspaceId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
@@ -132,14 +137,20 @@ public class Workspaces {
 
     /** PUT workspace state on path /ws/{repository}/{workspace}
      * 
+     * The workspace may be a path (i.e.have several elements separated by '/'). If the first
+     * element is a '~', what follows is assumed to be a workspace id. If not, we assume it 
+     * is a name and call the service accordingly.
+     * 
      * Can be used to modify workspace state (e.g. Closing or Finalizing a workspace),
      * and to create a new workspace.
      * 
      * @param repository string identifier of a document repository
-     * @param workspace string identifier of a workspace
+     * @param workspaceId string identifier of a workspace
+     * @param workspaceName string identifier of a workspace
+     * @param createWorkspace string identifier of a workspace
      */
     @PUT
-    @Path("/{repository}/{workspace}")
+    @Path("/{repository}/{workspace: [^&?]+}")
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
     	@PathParam("repository") String repository,
@@ -152,12 +163,24 @@ public class Workspaces {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
+    			String updateName = workspace.getString("name");
     			String stateString = workspace.getString("state");
     			Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
     			
-    			service.updateWorkspace(workspaceName, state, createWorkspace);
-    			return Response.status(Status.ACCEPTED).build();
-    	} catch (InvalidWorkspaceName err) {
+    			QualifiedName wsName = QualifiedName.ROOT.parse(workspaceName, "/").reverse();
+    			
+    			String wsId = null;
+    			if (wsName.part.equals("~")) {    			
+    				wsId = service.updateWorkspaceById(wsName.parent.part, workspaceName, state, createWorkspace);
+    			} else {
+    				wsId = service.updateWorkspaceByName(workspaceName, updateName, state, createWorkspace);
+    			}
+    			
+    			JsonObjectBuilder result = Json.createObjectBuilder();
+    			result.add("id", wsId);
+    			
+    			return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+    	} catch (InvalidWorkspaceId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
@@ -173,7 +196,7 @@ public class Workspaces {
      * @param id string identifier of a document
      */
     @DELETE
-    @Path("/{repository}/{workspace}/{id}")
+    @Path("/{repository}/{workspace: [^&?]+}/{id}")
     public Response deleteDocument(
     	@PathParam("repository") String repository,
     	@PathParam("workspace") String workspaceName,
@@ -184,9 +207,17 @@ public class Workspaces {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     			
-    			service.deleteDocument(workspaceName, id);
+    			QualifiedName wsName = QualifiedName.ROOT.parse(workspaceName, "/").reverse();
+    			
+    			if (wsName.part.equals("~")) {    			
+        			service.deleteDocument(wsName.parent.part, id);
+    			} else {
+    				Workspace ws = service.getWorkspaceByName(workspaceName);
+        			service.deleteDocument(ws.getId(), id);
+    			}    			
+    			
     			return Response.status(Status.NO_CONTENT).build();
-    	} catch (InvalidWorkspaceName err) {
+    	} catch (InvalidWorkspaceId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (InvalidDocumentId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
