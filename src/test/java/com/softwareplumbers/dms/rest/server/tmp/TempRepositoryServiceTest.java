@@ -118,7 +118,7 @@ public class TempRepositoryServiceTest {
 	@Test
 	public void testCreateAndFindWorkspace() throws InvalidWorkspaceId {
 		TestRepository repository = getTestRepository();
-		String workspace = repository.service.updateWorkspaceByName("abc", null, State.Open, true);
+		String workspace = repository.service.updateWorkspaceByName("abc", "abc", State.Open, true);
 		Workspace ws = repository.service.getWorkspaceByName("abc");
 		assertEquals(workspace, ws.getId());
 	}

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.json.JsonArray;
@@ -180,7 +181,7 @@ public class TempRepositoryServerTest {
 
 		System.out.println(response.getEntity().toString());
 		throw new RuntimeException("Bad post");
-    }
+    } 
 
     /** Utility function to get a catalog from the local test server
      * 
@@ -345,13 +346,16 @@ public class TempRepositoryServerTest {
 	@Test
 	public void searchWorkspaceTest() throws IOException, ParseException 
 	{
+		String workspaceA = UUID.randomUUID().toString();
+		String workspaceB = UUID.randomUUID().toString();
+		
 		clear();
-		postDocument("test1", "workspaceA");
-		postDocument("test2", "workspaceA");
-		postDocument("test3", "workspaceB");
-		List<Info> catalog0 = getCatalog("/", "workspaceA");
+		postDocument("test1", workspaceA);
+		postDocument("test2", workspaceA);
+		postDocument("test3", workspaceB);
+		List<Info> catalog0 = getCatalog("/", workspaceA);
 		assertEquals(2, catalog0.size());
-		List<Info> catalog1 = getCatalog("/", "workspaceB");
+		List<Info> catalog1 = getCatalog("/", workspaceB);
 		assertEquals(1, catalog1.size());
 	}
 }

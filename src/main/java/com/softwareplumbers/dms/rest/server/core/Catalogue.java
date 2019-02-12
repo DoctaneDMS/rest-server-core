@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -82,7 +83,15 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueById(workspace, query == null ? Cube.UNBOUNDED : Cube.urlDecode(query), searchHistory)
+    			Stream<Info> infos = null;
+    			Cube queryCube = query == null ? Cube.UNBOUNDED : Cube.urlDecode(query);
+    			
+    			if (workspace != null)
+    				infos = service.catalogueById(workspace, queryCube , searchHistory);
+    			else
+    				infos = service.catalogue(queryCube, searchHistory);
+    			
+    			infos
     				.map(Info::toJson)
     				.forEach(info->result.add(info));
     			

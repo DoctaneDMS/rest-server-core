@@ -307,7 +307,7 @@ public class TempRepositoryService implements RepositoryService {
 
 		LOG.logEntering("catalogueById", filter, searchHistory);
 		
-		if (workspaceId == null) LOG.logThrow("catalogueById", new InvalidWorkspaceId("null"));
+		if (workspaceId == null) throw LOG.logThrow("catalogueById", new InvalidWorkspaceId("null"));
 
 		UUID id = UUID.fromString(workspaceId);
 		WorkspaceImpl workspace = workspacesById.get(id);
