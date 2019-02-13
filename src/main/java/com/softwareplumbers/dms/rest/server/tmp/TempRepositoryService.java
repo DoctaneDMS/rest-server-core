@@ -365,7 +365,9 @@ public class TempRepositoryService implements RepositoryService {
 			if (workspace == null) throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(key.toString()));
 			workspace.setState(state);
 			if (name != null && !name.equals(workspace.getName())) {
-				workspacesByName.remove(workspace.getName());
+				if (workspacesByName.containsKey(name)) 
+					throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(name));
+				if (workspace.getName() != null) workspacesByName.remove(workspace.getName());
 				workspace.setName(name);
 				workspacesByName.put(name, workspace);
 			}

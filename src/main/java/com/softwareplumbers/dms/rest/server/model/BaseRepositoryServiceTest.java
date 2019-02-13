@@ -5,8 +5,6 @@ import static org.junit.Assert.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Base64;
-import java.util.UUID;
 
 import javax.ws.rs.core.MediaType;
 
@@ -17,7 +15,6 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidRefer
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
-import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
 /** Unit tests that should pass for all implementations of RepositoryService. 
  * 
@@ -132,5 +129,30 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id).count());
 	}
 
-
+	@Test
+	public void testContentLength() throws InvalidReference, InvalidWorkspace, InvalidWorkspaceState {
+		for (int i = 0; i < 3; i++) {
+			String testData = randomText();
+			Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(testData), null, null, false);
+			Document doc = service().getDocument(ref);
+			assertEquals(testData.length(), doc.getLength());
+		}
+	}
+	
+	@Test
+	public void testRenameWorkspace() throws InvalidWorkspace {
+		String wsId = service().createWorkspace(null, State.Open);
+		String wsName = randomUrlSafeName();
+		service().updateWorkspaceById(wsId, wsName, null, false);
+		Workspace ws = service().getWorkspaceByName(wsName);
+		assertEquals(wsId, ws.getId());
+	}
+	
+	@Test  (expected = InvalidWorkspace.class)
+	public void testRenameFolderExistingName() throws InvalidWorkspace {
+		String wsName = randomUrlSafeName();
+		service().createWorkspace(wsName, State.Open);
+		String wsId = service().createWorkspace(null, State.Open);
+		service().updateWorkspaceById(wsId,wsName, null, false);
+	}
 }
