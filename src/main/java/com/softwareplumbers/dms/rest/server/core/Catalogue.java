@@ -25,7 +25,7 @@ import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.common.abstractquery.Cube;
 
 /** Handle catalog operations on repositories and documents.
@@ -97,7 +97,7 @@ public class Catalogue {
     			
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
-    	} catch (InvalidWorkspaceId err) {
+    	} catch (InvalidWorkspace err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());

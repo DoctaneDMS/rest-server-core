@@ -174,10 +174,10 @@ public class TempRepositoryService implements RepositoryService {
 	 * @param workspaceId
 	 * @param ref
 	 * @param createWorkspace
-	 * @throws InvalidWorkspaceId
+	 * @throws InvalidWorkspace
 	 * @throws InvalidWorkspaceState 
 	 */
-	private String updateWorkspace(String workspaceId, Reference ref, boolean createWorkspace) throws InvalidWorkspaceId, InvalidWorkspaceState {
+	private String updateWorkspace(String workspaceId, Reference ref, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
 		LOG.logEntering("updateWorkspace", ref, createWorkspace);
 		
 		if (workspaceId == null) return null;
@@ -188,7 +188,7 @@ public class TempRepositoryService implements RepositoryService {
 		if (id != null) {
 			workspace = workspacesById.get(id);
 			if (workspace == null && !createWorkspace) 
-				throw LOG.logThrow("updateWorkspace",new InvalidWorkspaceId(workspaceId));
+				throw LOG.logThrow("updateWorkspace",new InvalidWorkspace(workspaceId));
 		} 
 		
 		if (workspace == null) {
@@ -206,7 +206,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata, String workspaceId, boolean createWorkspace) throws InvalidWorkspaceId, InvalidWorkspaceState {
+	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata, String workspaceId, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
 		LOG.logEntering("createDocument", mediaType, metadata, workspaceId, createWorkspace);
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
 		try {
@@ -230,7 +230,7 @@ public class TempRepositoryService implements RepositoryService {
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			String workspaceId, 
-			boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspaceId, InvalidWorkspaceState {
+			boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
 		LOG.logEntering("updateDocument", id, mediaType, metadata, workspaceId, createWorkspace);
 		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(id));
 		if (previous != null && previous.getKey().id.equals(id)) {
@@ -303,15 +303,15 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogueById(String workspaceId, Cube filter, boolean searchHistory) throws InvalidWorkspaceId {
+	public Stream<Info> catalogueById(String workspaceId, Cube filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueById", filter, searchHistory);
 		
-		if (workspaceId == null) throw LOG.logThrow("catalogueById", new InvalidWorkspaceId("null"));
+		if (workspaceId == null) throw LOG.logThrow("catalogueById", new InvalidWorkspace("null"));
 
 		UUID id = UUID.fromString(workspaceId);
 		WorkspaceImpl workspace = workspacesById.get(id);
-		if (workspace == null) throw LOG.logThrow("catalogueById", new InvalidWorkspaceId(workspaceId));
+		if (workspace == null) throw LOG.logThrow("catalogueById", new InvalidWorkspace(workspaceId));
 		return LOG.logReturn("catalogueById", workspace.catalogue(filter, searchHistory));
 	}
 
@@ -319,14 +319,14 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogueByName(String workspaceName, Cube filter, boolean searchHistory) throws InvalidWorkspaceId {
+	public Stream<Info> catalogueByName(String workspaceName, Cube filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueByName", filter, searchHistory);
 
-		if (workspaceName == null) LOG.logThrow("catalogueByName", new InvalidWorkspaceId("null"));
+		if (workspaceName == null) LOG.logThrow("catalogueByName", new InvalidWorkspace("null"));
 
 		WorkspaceImpl workspace = workspacesByName.get(workspaceName);
-		if (workspace == null) throw LOG.logThrow("catalogueByName", new InvalidWorkspaceId(workspaceName));
+		if (workspace == null) throw LOG.logThrow("catalogueByName", new InvalidWorkspace(workspaceName));
 		return LOG.logReturn("catalogueByName", workspace.catalogue(filter, searchHistory));
 	}
 
@@ -350,16 +350,19 @@ public class TempRepositoryService implements RepositoryService {
 			.filter(filterPredicate);
 	}
 
-	private <T> String updateWorkspaceByIndex(Map<T,WorkspaceImpl> index, T key, UUID id, String name, State state, boolean createWorkspace) throws InvalidWorkspaceId {
-		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspaceId("null"));
+	private <T> String updateWorkspaceByIndex(Map<T,WorkspaceImpl> index, T key, UUID id, String name, State state, boolean createWorkspace) throws InvalidWorkspace {
+		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspace("null"));
 		WorkspaceImpl workspace = index.get(key);
 		if (workspace == null && createWorkspace) {
 			if (id == null) id = UUID.randomUUID();
 			workspace = new WorkspaceImpl(id, name, state);
+			if (name != null) {
+				if (workspacesByName.containsKey(name)) throw new InvalidWorkspace(name);
+				workspacesByName.put(name, workspace);
+			}
 			workspacesById.put(id, workspace);
-			if (name != null) workspacesByName.put(name, workspace);
 		} else {
-			if (workspace == null) LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspaceId(key.toString()));
+			if (workspace == null) throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(key.toString()));
 			workspace.setState(state);
 			if (name != null && !name.equals(workspace.getName())) {
 				workspacesByName.remove(workspace.getName());
@@ -370,44 +373,44 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("updateWorkspaceByIndex", id.toString());
 	}
 	
-	public String updateWorkspaceById(String workspaceId, String name, State state, boolean createWorkspace) throws InvalidWorkspaceId {
-		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspaceId("null"));
+	public String updateWorkspaceById(String workspaceId, String name, State state, boolean createWorkspace) throws InvalidWorkspace {
+		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspace("null"));
 		UUID id = UUID.fromString(workspaceId);
 		return updateWorkspaceByIndex(workspacesById, id, id, name, state, createWorkspace);
 	}
 
-	public String updateWorkspaceByName(String name, String newName, State state, boolean createWorkspace) throws InvalidWorkspaceId {
+	public String updateWorkspaceByName(String name, String newName, State state, boolean createWorkspace) throws InvalidWorkspace {
 		return updateWorkspaceByIndex(workspacesByName, name, null, newName, state, createWorkspace);
 	}
 
 	@Override
-	public Workspace getWorkspaceById(String workspaceId) throws InvalidWorkspaceId {
+	public Workspace getWorkspaceById(String workspaceId) throws InvalidWorkspace {
 		LOG.logEntering("getWorkspaceById", workspaceId);
-		if (workspaceId == null) throw LOG.logThrow("getWorkspaceById", new InvalidWorkspaceId("null"));
+		if (workspaceId == null) throw LOG.logThrow("getWorkspaceById", new InvalidWorkspace("null"));
 		UUID id = UUID.fromString(workspaceId);
 		Workspace result = workspacesById.get(id);
-		if (result == null) throw LOG.logThrow("gerWorkspaceById", new InvalidWorkspaceId(workspaceId));
+		if (result == null) throw LOG.logThrow("gerWorkspaceById", new InvalidWorkspace(workspaceId));
 		return LOG.logReturn("getWorkspaceById",result);
 	}
 
 	@Override
-	public Workspace getWorkspaceByName(String workspaceName) throws InvalidWorkspaceId {
+	public Workspace getWorkspaceByName(String workspaceName) throws InvalidWorkspace {
 		LOG.logEntering("getWorkspaceByName", workspaceName);
-		if (workspaceName == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspaceId("null"));
+		if (workspaceName == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace("null"));
 		Workspace result = workspacesByName.get(workspaceName);
-		if (result == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspaceId(workspaceName));
+		if (result == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace(workspaceName));
 		return LOG.logReturn("getWorkspaceByName",result);
 	}
 	
 	@Override
-	public void deleteDocument(String workspaceId, String docId) throws InvalidWorkspaceId, InvalidDocumentId, InvalidWorkspaceState {
+	public void deleteDocument(String workspaceId, String docId) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
 		LOG.logEntering("deleteDocument", workspaceId, docId);
-		if (workspaceId == null) throw LOG.logThrow("getWorkspaceById", new InvalidWorkspaceId("null"));
+		if (workspaceId == null) throw LOG.logThrow("getWorkspaceById", new InvalidWorkspace("null"));
 		if (docId == null) throw LOG.logThrow("getWorkspaceById", new InvalidDocumentId("null"));
 
 		UUID id = UUID.fromString(workspaceId);
 		WorkspaceImpl result = workspacesById.get(id);
-		if (result == null) throw LOG.logThrow("deleteDocument", new InvalidWorkspaceId(workspaceId));
+		if (result == null) throw LOG.logThrow("deleteDocument", new InvalidWorkspace(workspaceId));
 
 		result.delete(docId);
 		
@@ -429,6 +432,12 @@ public class TempRepositoryService implements RepositoryService {
 		Set<UUID> workspaceIds = workspacesByDocument.get(id);
 		if (workspaceIds == null) return LOG.logReturn("listWorkspaces", Stream.empty());
 		return LOG.logReturn("listWorkspaces", workspaceIds.stream().map(name->workspacesById.get(name)));
+	}
+
+	@Override
+	public String createWorkspace(String name, State state) throws InvalidWorkspace {
+		UUID id = UUID.randomUUID();
+		return updateWorkspaceByIndex(workspacesById, id, id, name, state, true);
 	}
 
 }

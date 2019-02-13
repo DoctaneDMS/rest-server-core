@@ -5,24 +5,34 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
-public class TempRepositoryServiceTest {
+public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
+	
+	public TempRepositoryService service;
+	
+	@Before
+	public void createService() {
+		service = new TempRepositoryService();
+	}
 	
 	public TestRepository getTestRepository() {
-		return new TestRepository(new TempRepositoryService());
+		return new TestRepository(service);
 	}
 	
 	@Test
@@ -33,12 +43,7 @@ public class TempRepositoryServiceTest {
 		assertTrue(TestRepository.docEquals("test3", repository.doc3));
 	}
 	
-	@Test(expected = InvalidReference.class)
-	public void testRepositoryFetchWithInvalidRef() throws IOException, InvalidReference {
-		TestRepository repository = getTestRepository();
-		Reference ref1 = new Reference("xxx");
-		Document document = repository.service.getDocument(ref1);
-	}
+
 	
 	@Test(expected = InvalidReference.class)
 	public void testRepositoryFetchWithInvalidVersion() throws IOException, InvalidReference {
@@ -59,14 +64,14 @@ public class TempRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testRepositoryCatalog() throws IOException, InvalidWorkspaceId {
+	public void testRepositoryCatalog() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();
 		Info[] result = repository.service.catalogue(Cube.UNBOUNDED, false).toArray(Info[]::new);
 		assertEquals(result.length, 3);
 	}
 	
 	@Test
-	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspaceId, InvalidWorkspaceState {
+	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
 		TestRepository repository = getTestRepository();
 		Reference ref4 = repository.service.updateDocument(repository.ref2.id, repository.doc3.getMediaType(), null, repository.doc3.getMetadata(), null, false );
 		assertEquals("0000002", ref4.version);
@@ -75,7 +80,7 @@ public class TempRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testRepositorySearch() throws IOException, InvalidWorkspaceId {
+	public void testRepositorySearch() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();
 		Info[] result = repository.service.catalogue(Cube.fromJson("{ 'filename': 'partiphuckborlz'}"), false).toArray(Info[]::new);
 		assertEquals(result.length, 1);
@@ -84,7 +89,7 @@ public class TempRepositoryServiceTest {
 	
 	
 	@Test 
-	public void testWorkspaceUpdate() throws InvalidDocumentId, InvalidWorkspaceId, InvalidWorkspaceState {
+	public void testWorkspaceUpdate() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
 		TestRepository repository = getTestRepository();
 		String workspace_id = UUID.randomUUID().toString();
 		repository.service.updateDocument(repository.ref1.id, null, null, null, workspace_id, true);
@@ -94,7 +99,7 @@ public class TempRepositoryServiceTest {
 	}
 	
 	@Test 
-	public void testListWorkspaces() throws InvalidDocumentId, InvalidWorkspaceId, InvalidWorkspaceState {
+	public void testListWorkspaces() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
 		TestRepository repository = getTestRepository();
 		String workspace1 = UUID.randomUUID().toString();
 		String workspace2 = UUID.randomUUID().toString();
@@ -106,20 +111,23 @@ public class TempRepositoryServiceTest {
 		assertEquals(1,repository.service.listWorkspaces(repository.ref2.id).count());
 		assertEquals(1,repository.service.listWorkspaces(repository.ref3.id).count());
 	}
-	
-	@Test
-	public void testCreateWorkspace() throws InvalidWorkspaceId {
-		TestRepository repository = getTestRepository();
-		String workspace = repository.service.updateWorkspaceByName("abc", null, State.Open, true);
-		UUID result = UUID.fromString(workspace);
-		assertNotNull(result);
+
+	@Override
+	public RepositoryService service() {
+		return service;
+	}
+
+	@Override
+	public Reference randomDocumentReference() {
+		return new Reference(UUID.randomUUID().toString(), null);
+	}
+
+	@Override
+	public String randomWorkspaceId() {
+		return UUID.randomUUID().toString();
 	}
 	
-	@Test
-	public void testCreateAndFindWorkspace() throws InvalidWorkspaceId {
-		TestRepository repository = getTestRepository();
-		String workspace = repository.service.updateWorkspaceByName("abc", "abc", State.Open, true);
-		Workspace ws = repository.service.getWorkspaceByName("abc");
-		assertEquals(workspace, ws.getId());
-	}
+
+	
+
 }

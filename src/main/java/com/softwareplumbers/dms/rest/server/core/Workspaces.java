@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.common.QualifiedName;
@@ -93,7 +93,7 @@ public class Workspaces {
     			
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build();
-    	} catch (InvalidWorkspaceId err) {
+    	} catch (InvalidWorkspace err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
@@ -126,8 +126,6 @@ public class Workspaces {
     			service.listWorkspaces(documentId).map(Workspace::toJson).forEach(value -> result.add(value));
     			//TODO: must be able to do this in a stream somehow.
     			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
-    	} catch (InvalidDocumentId err) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -180,7 +178,7 @@ public class Workspaces {
     			result.add("id", wsId);
     			
     			return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
-    	} catch (InvalidWorkspaceId err) {
+    	} catch (InvalidWorkspace err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (Throwable e) {
     		LOG.severe(e.getMessage());
@@ -217,7 +215,7 @@ public class Workspaces {
     			}    			
     			
     			return Response.status(Status.NO_CONTENT).build();
-    	} catch (InvalidWorkspaceId err) {
+    	} catch (InvalidWorkspace err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (InvalidDocumentId err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();

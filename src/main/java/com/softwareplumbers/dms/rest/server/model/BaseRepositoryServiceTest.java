@@ -1,0 +1,136 @@
+package com.softwareplumbers.dms.rest.server.model;
+
+import static org.junit.Assert.*;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
+import java.util.UUID;
+
+import javax.ws.rs.core.MediaType;
+
+import org.junit.Test;
+
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.rest.server.model.Workspace.State;
+import com.softwareplumbers.dms.rest.server.test.TestRepository;
+
+/** Unit tests that should pass for all implementations of RepositoryService. 
+ * 
+ */
+public abstract class BaseRepositoryServiceTest {
+	
+	public abstract RepositoryService service();
+	
+	public static final String[] names = { "julien", "peter", "fairfax", "austen", "celtic", "a", "the", "halibut", "eaten" };
+	public static final String characters = "-._~";
+	public static final String reserved = "&$+,/:;=?@#";
+	
+	public static int unique = 0;
+	
+	public static final String randomUrlSafeName() {
+		StringBuffer buffer = new StringBuffer(names[(int)(Math.random() * names.length)]);
+		buffer.append(characters.charAt((int)(Math.random() * characters.length())));
+		buffer.append(Integer.toHexString(unique++));
+		return buffer.toString();
+	}
+	
+	public static final String randomReservedName() {
+		StringBuffer buffer = new StringBuffer();
+		for (int i = 1; i < 3; i++) {
+			buffer.append(reserved.charAt((int)(Math.random() * reserved.length())));
+			buffer.append(randomUrlSafeName());
+		}
+		return buffer.toString();
+	}
+	
+	public static final String randomText() {
+		StringBuffer buffer = new StringBuffer();
+		for (int i = 1; i < 10; i++) {
+			buffer.append(randomUrlSafeName());
+			buffer.append(" ");
+		}
+		return buffer.toString();		
+	}
+	
+	public static final InputStream toStream(String out) {
+		return new ByteArrayInputStream(out.getBytes());
+	}
+	
+	public abstract Reference randomDocumentReference();
+	public abstract String randomWorkspaceId();
+	
+	@Test
+	public void testAnonymousCreateWorkspace() throws InvalidWorkspace {
+		String workspace1 = service().createWorkspace(null, State.Open);
+		assertNotNull(workspace1);
+		String workspace2 = service().createWorkspace(null, State.Open);
+		assertNotNull(workspace1);
+		assertNotEquals(workspace1, workspace2);
+	}
+	
+	@Test
+	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace {
+		String name = randomUrlSafeName();
+		String workspace = service().createWorkspace(name, State.Open);
+		Workspace ws = service().getWorkspaceByName(name);
+		assertEquals(workspace, ws.getId());
+	}
+	
+	@Test(expected = InvalidReference.class)
+	public void testRepositoryFetchWithInvalidRef() throws IOException, InvalidReference {
+		Reference ref1 = randomDocumentReference();
+		service().getDocument(ref1);
+	}
+	
+	@Test (expected = InvalidWorkspace.class)
+	public void testGetWorkspaceNotFoundByNameError() throws InvalidWorkspace {
+		Workspace test = service().getWorkspaceByName(randomUrlSafeName());
+	}
+	
+	@Test (expected = InvalidWorkspace.class)
+	public void testGetWorkspaceNotFoundByIdError() throws InvalidWorkspace {
+		Workspace test = service().getWorkspaceById(randomWorkspaceId());
+	}
+
+	@Test (expected = InvalidWorkspace.class)
+	public void testUpdateWorkspaceNotFoundError() throws InvalidWorkspace {
+		service().updateWorkspaceByName(randomUrlSafeName(), "null", Workspace.State.Closed, false);
+	}
+	
+	@Test (expected = InvalidWorkspace.class)
+	public void testCreateDocumentNotFoundError() throws InvalidWorkspace, InvalidWorkspaceState, IOException {
+		service().createDocument(
+			MediaType.TEXT_PLAIN_TYPE, 
+			()->toStream(randomText()), 
+			null,
+			randomWorkspaceId(), 
+			false);
+	}
+	
+	@Test (expected = InvalidDocumentId.class)
+	public void testDeleteDocumentInvalidDocumentError() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
+		String workspace = service().createWorkspace(null, State.Open);
+		service().deleteDocument(workspace, randomDocumentReference().getId());
+	}
+
+	@Test (expected = InvalidWorkspace.class)
+	public void testDeleteDocumentInvalidWorkspaceId() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
+		Reference ref = service().createDocument(
+			MediaType.TEXT_PLAIN_TYPE, 
+			()->toStream(randomText()), null, null, false
+		);
+		service().deleteDocument(randomWorkspaceId(), ref.id);
+	}
+	
+	@Test 
+	public void testListWorkspacesInvalidWorkspaceId() throws InvalidDocumentId {
+		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id).count());
+	}
+
+
+}

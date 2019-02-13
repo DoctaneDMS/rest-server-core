@@ -45,11 +45,11 @@ public interface RepositoryService {
 		}
 	}
 
-	/** Exception type for an invalid workspace name */
-	public static class InvalidWorkspaceId extends Exception {
+	/** Exception type for an invalid workspace name or id */
+	public static class InvalidWorkspace extends Exception {
 		private static final long serialVersionUID = 2546274609900213587L;
 		public final String workspace;
-		public InvalidWorkspaceId(String workspace) {
+		public InvalidWorkspace(String workspace) {
 			super("Invalid workspace: " + workspace);
 			this.workspace = workspace;
 		}
@@ -83,14 +83,14 @@ public interface RepositoryService {
 	 * @param workspaceId An optional string identifying a workspace in which to place the document
 	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
 	 * @return A Reference object that can later be used to retrieve the document
-	 * @throws InvalidWorkspaceId if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
 	public Reference createDocument(MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			String workspaceId,
-			boolean createWorkspace) throws InvalidWorkspaceId, InvalidWorkspaceState;
+			boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState;
 	
 	/** Update a document in the repository.
 	 * <p>
@@ -115,7 +115,7 @@ public interface RepositoryService {
 	 * @param metadata (optional) a json object describing the document
 	 * @param workspaceId (optional) string identifying the workspace in which to place the document
 	 * @return A reference to the new version of the document.
-	 * @throws InvalidWorkspaceId if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 * @throws InvalidDocumentId if no document exists with the given id
 	 */
@@ -124,7 +124,7 @@ public interface RepositoryService {
 		InputStreamSupplier stream, 
 		JsonObject metadata, 
 		String workspaceId,
-		boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspaceId, InvalidWorkspaceState;
+		boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState;
 	
 	
 	/** Catalog a repository.
@@ -164,9 +164,9 @@ public interface RepositoryService {
 	 * @param workspaceId id to catalogue
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
-	 * @throws InvalidWorkspaceId if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueById(String workspaceId, Cube filter, boolean searchHistory) throws InvalidWorkspaceId;
+	public Stream<Info> catalogueById(String workspaceId, Cube filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog a workspace.
 	 * <p>
@@ -186,9 +186,9 @@ public interface RepositoryService {
 	 * @param workspaceName name of workspace to catalogue
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
-	 * @throws InvalidWorkspaceId if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueByName(String workspaceName, Cube filter, boolean searchHistory) throws InvalidWorkspaceId;
+	public Stream<Info> catalogueByName(String workspaceName, Cube filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 
@@ -216,6 +216,22 @@ public interface RepositoryService {
 	 */
 	public Stream<Info> catalogueParts(Reference ref, Cube filter) throws InvalidReference;
 	
+	
+	/** Create a workspace 
+	 * 
+	 * Workspaces may be open, finalized or closed; catalog operations on a closed or finalized
+	 * workspace work on the versions of documents that were current at the time the workspace
+	 * was closed. Operations that create or update documents in a finalized workspace will create
+	 * new versions of the document but will not change the workspace; attempting such operations
+	 * on a closed workspace will throw an error.
+	 * 
+	 * @param name name of workspace to create/update
+	 * @param state Initial/Updated state of workspace
+	 * return the id of the created/updated workspace
+	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
+	 */
+	public String createWorkspace(String name, Workspace.State state) throws InvalidWorkspace;
+	
 	/** Create or update a workspace 
 	 * 
 	 * A workspace may be specified by id 
@@ -235,10 +251,10 @@ public interface RepositoryService {
 	 * @param name name of workspace to create/update
 	 * @param state Initial/Updated state of workspace
 	 * @param createWorkspace create workspace with given name if it does not already exist
-	 * @param the id of the created/updated workspace
-	 * @throws InvalidWorkspaceId if createWorkspace is false and workspace does not already exisit
+	 * @return the id of the created/updated workspace
+	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceById(String id, String name, Workspace.State state, boolean createWorkspace) throws InvalidWorkspaceId;
+	public String updateWorkspaceById(String id, String name, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Create or update a workspace 
 	 * 
@@ -259,26 +275,26 @@ public interface RepositoryService {
 	 * @param newName new name for workspace
 	 * @param state Initial/Updated state of workspace
 	 * @param createWorkspace create workspace with given name if it does not already exist
-	 * @param the id of the created/updated workspace
-	 * @throws InvalidWorkspaceId if createWorkspace is false and workspace does not already exisit
+	 * @return the id of the created/updated workspace
+	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceByName(String name, String newName, Workspace.State state, boolean createWorkspace) throws InvalidWorkspaceId;
+	public String updateWorkspaceByName(String name, String newName, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Get current state of workspace 
 	 * 
 	 * @param name the name of the workspace
 	 * @return a Workspace object containing current workspace state
-	 * @throws InvalidWorkspaceId if workspace does not already exist
+	 * @throws InvalidWorkspace if workspace does not already exist
 	 */
-	public Workspace getWorkspaceByName(String name) throws InvalidWorkspaceId;
+	public Workspace getWorkspaceByName(String name) throws InvalidWorkspace;
 	
 	/** Get current state of workspace 
 	 * 
 	 * @param workspace the id of the workspace
 	 * @return a Workspace object containing current workspace state
-	 * @throws InvalidWorkspaceId if workspace does not already exist
+	 * @throws InvalidWorkspace if workspace does not already exist
 	 */
-	public Workspace getWorkspaceById(String id) throws InvalidWorkspaceId;
+	public Workspace getWorkspaceById(String id) throws InvalidWorkspace;
 
 	/** Remove a document from a workspace
 	 *   
@@ -288,17 +304,18 @@ public interface RepositoryService {
 	 *  
 	 * @param workspace_id
 	 * @param doc_id document id to remove from workspace
-	 * @throws InvalidWorkspaceId if workspace does not exist
+	 * @throws InvalidWorkspace if workspace does not exist
 	 * @throws InvalidDocumentId if document is not in workspace
 	 * @throws InvalidWorkspaceState if workspace is not open
 	 */
-	public void deleteDocument(String workspace_id, String doc_id) throws InvalidWorkspaceId, InvalidDocumentId, InvalidWorkspaceState;
+	public void deleteDocument(String workspace_id, String doc_id) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState;
 	
-	/** List all the workspaces of which the given document is a member
+	/** List all the workspaces of which the given document is a member.
+	 * 
+	 * Will return an empty stream if no workspace is found.
 	 * 
 	 * @param id Id of document
 	 * @return A Stream of workspaces, all of which the given doc is in.
-	 * @throws InvalidDocumentId
 	 */
-	public Stream<Workspace> listWorkspaces(String id) throws InvalidDocumentId;
+	public Stream<Workspace> listWorkspaces(String id);
 };
