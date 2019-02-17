@@ -71,7 +71,7 @@ public class Workspaces {
      * @return Information about the workspace in json format
      */
     @GET
-    @Path("/{repository}/{workspace: [^&?]+}")
+    @Path("/{repository}/{workspace: [a-zA-Z0-9_/]+}")
     @Produces({ MediaType.APPLICATION_JSON })
     public Response get(
     	@PathParam("repository") String repository,
@@ -148,12 +148,12 @@ public class Workspaces {
      * @param createWorkspace string identifier of a workspace
      */
     @PUT
-    @Path("/{repository}/{workspace: [^&?]+}")
+    @Path("/{repository}/{workspace: [a-zA-Z0-9_/]+}")
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
     	@PathParam("repository") String repository,
     	@PathParam("workspace") String workspaceName,
-    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+    	@QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
     	JsonObject workspace) {
     	try {
     			RepositoryService service = repositoryServiceFactory.getService(repository);
@@ -161,8 +161,8 @@ public class Workspaces {
     			if (service == null) 
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-    			String updateName = workspace.getString("name");
-    			String stateString = workspace.getString("state");
+    			String updateName = workspace.getString("name",null);
+    			String stateString = workspace.getString("state", null);
     			Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
     			
     			QualifiedName wsName = QualifiedName.ROOT.parse(workspaceName, "/").reverse();
@@ -193,8 +193,8 @@ public class Workspaces {
      * @param workspaceName string identifier of a workspace
      * @param id string identifier of a document
      */
-    @DELETE
-    @Path("/{repository}/{workspace: [^&?]+}/{id}")
+//    @DELETE
+//    @Path("/{repository}/{workspace: [a-zA-Z0-9_/]+}/{id}")
     public Response deleteDocument(
     	@PathParam("repository") String repository,
     	@PathParam("workspace") String workspaceName,

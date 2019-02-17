@@ -26,7 +26,7 @@ import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 
 /** Handle catalog operations on repositories and documents.
  * 
@@ -84,12 +84,12 @@ public class Catalogue {
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			Stream<Info> infos = null;
-    			Cube queryCube = query == null ? Cube.UNBOUNDED : Cube.urlDecode(query);
+    			ObjectConstraint queryObjectConstraint = query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query);
     			
     			if (workspace != null)
-    				infos = service.catalogueById(workspace, queryCube , searchHistory);
+    				infos = service.catalogueById(workspace, queryObjectConstraint , searchHistory);
     			else
-    				infos = service.catalogue(queryCube, searchHistory);
+    				infos = service.catalogue(queryObjectConstraint, searchHistory);
     			
     			infos
     				.map(Info::toJson)
@@ -131,7 +131,7 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueHistory(new Reference(id,version), query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    			service.catalogueHistory(new Reference(id,version), query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query))
     				.map(Info::toJson)
     				.forEach(info->result.add(info));
     			
@@ -171,7 +171,7 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueParts(new Reference(id,version), query == null ? Cube.UNBOUNDED : Cube.urlDecode(query))
+    			service.catalogueParts(new Reference(id,version), query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query))
     				.map(Info::toJson)
     				.forEach(info->result.add(info));
     			

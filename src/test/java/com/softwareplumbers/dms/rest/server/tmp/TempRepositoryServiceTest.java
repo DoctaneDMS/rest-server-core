@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Info;
@@ -66,7 +66,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	@Test
 	public void testRepositoryCatalog() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();
-		Info[] result = repository.service.catalogue(Cube.UNBOUNDED, false).toArray(Info[]::new);
+		Info[] result = repository.service.catalogue(ObjectConstraint.UNBOUNDED, false).toArray(Info[]::new);
 		assertEquals(result.length, 3);
 	}
 	
@@ -75,14 +75,14 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 		TestRepository repository = getTestRepository();
 		Reference ref4 = repository.service.updateDocument(repository.ref2.id, repository.doc3.getMediaType(), null, repository.doc3.getMetadata(), null, false );
 		assertEquals("0000002", ref4.version);
-		Info[] result = repository.service.catalogue(Cube.UNBOUNDED, false).toArray(Info[]::new);
+		Info[] result = repository.service.catalogue(ObjectConstraint.UNBOUNDED, false).toArray(Info[]::new);
 		assertEquals(result.length, 3);
 	}
 	
 	@Test
 	public void testRepositorySearch() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();
-		Info[] result = repository.service.catalogue(Cube.fromJson("{ 'filename': 'partiphuckborlz'}"), false).toArray(Info[]::new);
+		Info[] result = repository.service.catalogue(ObjectConstraint.fromJson("{ 'filename': 'partiphuckborlz'}"), false).toArray(Info[]::new);
 		assertEquals(result.length, 1);
 		assertEquals(result[0].reference, repository.ref2);
 	}

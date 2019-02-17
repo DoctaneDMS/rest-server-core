@@ -17,7 +17,7 @@ import java.util.UUID;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
-import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Info;
@@ -122,7 +122,7 @@ public class TempRepositoryService implements RepositoryService {
 			LOG.logExiting("delete");
 		}
 
-		public Stream<Info> catalogue(Cube filter, boolean searchHistory) {
+		public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory) {
 			
 			final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
 			Stream<Map.Entry<Reference, WorkspaceInfo>> entries = docs.entrySet().stream();
@@ -262,7 +262,7 @@ public class TempRepositoryService implements RepositoryService {
 		return new Info(entry.getKey(), entry.getValue()); 
 	}
 	
-	private Stream<Info> historicalInfo(Reference ref, Cube filter) {
+	private Stream<Info> historicalInfo(Reference ref, ObjectConstraint filter) {
 		try {
 			return catalogueHistory(ref, filter);
 		} catch (InvalidReference err) {
@@ -283,7 +283,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogue(Cube filter, boolean searchHistory) {
+	public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory) {
 		
 		LOG.logEntering("catalogue", filter, searchHistory);
 
@@ -303,7 +303,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogueById(String workspaceId, Cube filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<Info> catalogueById(String workspaceId, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueById", filter, searchHistory);
 		
@@ -319,7 +319,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogueByName(String workspaceName, Cube filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<Info> catalogueByName(String workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueByName", filter, searchHistory);
 
@@ -339,7 +339,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<Info> catalogueHistory(Reference ref, Cube filter) throws InvalidReference {
+	public Stream<Info> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference {
 		final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
 		Map<Reference, DocumentImpl> history = store.subMap(new Reference(ref.id,newVersion("0")), true, ref, true);
 		if (history.isEmpty()) throw new InvalidReference(ref);
@@ -382,7 +382,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	public String updateWorkspaceByName(String name, String newName, State state, boolean createWorkspace) throws InvalidWorkspace {
-		return updateWorkspaceByIndex(workspacesByName, name, null, newName, state, createWorkspace);
+		return updateWorkspaceByIndex(workspacesByName, name, null, newName == null ? name : newName, state, createWorkspace);
 	}
 
 	@Override
@@ -424,7 +424,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<Info> catalogueParts(Reference ref, Cube filter) throws InvalidReference {
+	public Stream<Info> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference {
 		return Stream.empty();
 	}
 

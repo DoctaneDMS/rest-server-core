@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.ws.rs.client.Client;
@@ -139,6 +140,50 @@ public class TempRepositoryServerTest {
 			throw new RuntimeException("Bad put");
 		}
     }
+    
+    /** Utility function to put a workspace using the Jersey client API.
+     * 
+     * @param path Path of workspace
+     * @param data for workspace
+     * @return Json object containing the id of the workspace
+     * 
+     */
+    public JsonObject putWorkspace(String path, JsonObject data) throws IOException {
+    	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
+    	
+    	Response response = target
+    			.request(MediaType.APPLICATION_JSON)
+    			.put(Entity.entity(data, MediaType.APPLICATION_JSON_TYPE));
+			
+		if (response.getStatus() == Response.Status.ACCEPTED.getStatusCode()) {
+			return response.readEntity(JsonObject.class);
+		} else {
+			System.out.println(response.toString());
+			throw new RuntimeException("Bad put");
+		}
+    }
+    
+    /** Utility function to put a workspace using the Jersey client API.
+     * 
+     * @param path Path of workspace
+     * @return Json object containing data for the workspace
+     * 
+     */
+    public JsonObject getWorkspace(String path) throws IOException {
+    	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
+    	
+    	Response response = target
+    			.request(MediaType.APPLICATION_JSON)
+    			.get();
+			
+		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+			return response.readEntity(JsonObject.class);
+		} else {
+			System.out.println(response.toString());
+			throw new RuntimeException("Bad get");
+		}
+    }
+
 
     
     /** Utility function to get a document from the local test server
@@ -358,4 +403,37 @@ public class TempRepositoryServerTest {
 		List<Info> catalog1 = getCatalog("/", workspaceB);
 		assertEquals(1, catalog1.size());
 	}
+	
+	@Test
+	public void createWorkspaceTest() throws IOException {
+		JsonObject workspace = Json.createObjectBuilder()
+			.add("state","Open")
+			.build();
+		
+		JsonObject result = putWorkspace("test4/test5", workspace);
+		
+		assertTrue(result.containsKey("id"));
+		
+		JsonObject result2 = getWorkspace("test4/test5");
+		
+		assertEquals("test4/test5", result2.getString("name"));
+		assertEquals("Open", result2.getString("state"));
+	}
+	
+	@Test
+	public void getWorkspaceByIdTest() throws IOException {
+		JsonObject workspace = Json.createObjectBuilder()
+				.add("state","Open")
+				.build();
+			
+			JsonObject result = putWorkspace("test4/test5", workspace);
+			
+			assertTrue(result.containsKey("id"));
+			
+			JsonObject result2 = getWorkspace("~/"+result.getString("id"));
+			
+			assertEquals("test4/test5", result2.getString("name"));
+			assertEquals("Open", result2.getString("state"));		
+	}
 }
+

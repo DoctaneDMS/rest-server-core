@@ -1,6 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.common.abstractquery.Cube;
+import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import java.util.stream.Stream;
 
 import javax.json.JsonObject;
@@ -131,7 +131,7 @@ public interface RepositoryService {
 	 * 
 	 * Returns information (including reference and meta-data) about documents in the repository 
 
-	 * Results can be filtered using a 'Cube' object to filter for documents with metadata matching
+	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
 	 * the specified query.
 	 * 
 	 * By default catalog operation works on only the most recent version of any document in a workspace
@@ -144,14 +144,14 @@ public interface RepositoryService {
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
 	 */
-	public Stream<Info> catalogue(Cube filter, boolean searchHistory);
+	public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory);
 	
 	/** Catalog a workspace.
 	 * <p>
 	 * Returns information (including reference and meta-data) about documents in a workspace 
 	 * (or the entire repository if the workspace is set to null).
 	 * </p><p>
-	 * Results can be filtered using a 'Cube' object to filter for documents with metadata matching
+	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
 	 * the specified query.
 	 * </p><p>
 	 * By default catalog operation works on only the most recent version of any document in a workspace
@@ -166,14 +166,14 @@ public interface RepositoryService {
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueById(String workspaceId, Cube filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<Info> catalogueById(String workspaceId, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog a workspace.
 	 * <p>
 	 * Returns information (including reference and meta-data) about documents in a workspace 
 	 * (or the entire repository if the workspace is set to null).
 	 * </p><p>
-	 * Results can be filtered using a 'Cube' object to filter for documents with metadata matching
+	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
 	 * the specified query.
 	 * </p><p>
 	 * By default catalog operation works on only the most recent version of any document in a workspace
@@ -188,7 +188,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueByName(String workspaceName, Cube filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<Info> catalogueByName(String workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 
@@ -200,7 +200,7 @@ public interface RepositoryService {
 	 * @return a Stream of Info objects with the results of the search
 	 * @throws InvalidReference no document exists with the given id
 	 */
-	public Stream<Info> catalogueHistory(Reference ref, Cube filter) throws InvalidReference;
+	public Stream<Info> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference;
 	
 	/** Catalog all the parts of a document.
 	 * 
@@ -214,7 +214,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects relating to the selected parts of the document
 	 * @throws InvalidReference
 	 */
-	public Stream<Info> catalogueParts(Reference ref, Cube filter) throws InvalidReference;
+	public Stream<Info> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference;
 	
 	
 	/** Create a workspace 
@@ -225,9 +225,9 @@ public interface RepositoryService {
 	 * new versions of the document but will not change the workspace; attempting such operations
 	 * on a closed workspace will throw an error.
 	 * 
-	 * @param name name of workspace to create/update
-	 * @param state Initial/Updated state of workspace
-	 * return the id of the created/updated workspace
+	 * @param name name of workspace to create (optional)
+	 * @param state Initial/Updated state of workspace (optional)
+	 * return the id of the created workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
 	public String createWorkspace(String name, Workspace.State state) throws InvalidWorkspace;
