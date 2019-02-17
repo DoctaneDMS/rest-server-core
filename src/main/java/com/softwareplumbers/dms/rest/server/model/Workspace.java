@@ -1,6 +1,9 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import javax.json.JsonObject;
+
+import com.softwareplumbers.common.QualifiedName;
+
 import javax.json.Json;
 
 /** Representation of a Workspace in a repository 
@@ -19,7 +22,7 @@ public interface Workspace {
 	enum State { Open, Closed, Finalized }
 	
 	/** Get the name of a workspace */
-	String getName();
+	QualifiedName getName();
 	/** Get the state of a workspace */
 	State getState();
 	/** Get the id of a workspace */
@@ -28,7 +31,7 @@ public interface Workspace {
 	/** Get the default Json representation for a workspace */
 	default JsonObject toJson() {
 		return Json.createObjectBuilder()
-			.add("name", getName())
+			.add("name", getName().join("/"))
 			.add("state", getState().toString())
 			.add("id", getId())
 			.build();

@@ -10,6 +10,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.junit.Test;
 
+import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
@@ -72,7 +73,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace {
-		String name = randomUrlSafeName();
+		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		String workspace = service().createWorkspace(name, State.Open);
 		Workspace ws = service().getWorkspaceByName(name);
 		assertEquals(workspace, ws.getId());
@@ -86,7 +87,8 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test (expected = InvalidWorkspace.class)
 	public void testGetWorkspaceNotFoundByNameError() throws InvalidWorkspace {
-		Workspace test = service().getWorkspaceByName(randomUrlSafeName());
+		QualifiedName name = QualifiedName.of(randomUrlSafeName());
+		Workspace test = service().getWorkspaceByName(name);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
@@ -96,7 +98,8 @@ public abstract class BaseRepositoryServiceTest {
 
 	@Test (expected = InvalidWorkspace.class)
 	public void testUpdateWorkspaceNotFoundError() throws InvalidWorkspace {
-		service().updateWorkspaceByName(randomUrlSafeName(), "null", Workspace.State.Closed, false);
+		QualifiedName name = QualifiedName.of(randomUrlSafeName());
+		service().updateWorkspaceByName(name, null, Workspace.State.Closed, false);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
@@ -142,7 +145,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testRenameWorkspace() throws InvalidWorkspace {
 		String wsId = service().createWorkspace(null, State.Open);
-		String wsName = randomUrlSafeName();
+		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceById(wsId, wsName, null, false);
 		Workspace ws = service().getWorkspaceByName(wsName);
 		assertEquals(wsId, ws.getId());
@@ -150,7 +153,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test  (expected = InvalidWorkspace.class)
 	public void testRenameFolderExistingName() throws InvalidWorkspace {
-		String wsName = randomUrlSafeName();
+		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().createWorkspace(wsName, State.Open);
 		String wsId = service().createWorkspace(null, State.Open);
 		service().updateWorkspaceById(wsId,wsName, null, false);

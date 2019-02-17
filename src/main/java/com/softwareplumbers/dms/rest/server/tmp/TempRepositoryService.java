@@ -17,6 +17,7 @@ import java.util.UUID;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
+import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
@@ -50,12 +51,12 @@ public class TempRepositoryService implements RepositoryService {
 	
 	private class WorkspaceImpl implements Workspace {
 		
-		private String name;
+		private QualifiedName name;
 		private UUID id;
 		private Map<Reference,WorkspaceInfo> docs;
 		private State state;
 		
-		public WorkspaceImpl(UUID id, String name, State state) {
+		public WorkspaceImpl(UUID id, QualifiedName name, State state) {
 			this.id = id;
 			this.name = name;
 			this.state = state;
@@ -63,7 +64,7 @@ public class TempRepositoryService implements RepositoryService {
 		}
 
 		@Override
-		public String getName() {
+		public QualifiedName getName() {
 			return name;
 		}
 		
@@ -97,7 +98,7 @@ public class TempRepositoryService implements RepositoryService {
 			this.state = state;
 		}
 		
-		public void setName(String name) {
+		public void setName(QualifiedName name) {
 			this.name = name;
 		}
 		
@@ -150,7 +151,7 @@ public class TempRepositoryService implements RepositoryService {
 	
 	private TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
 	private TreeMap<UUID, WorkspaceImpl> workspacesById = new TreeMap<>();
-	private TreeMap<String, WorkspaceImpl> workspacesByName = new TreeMap<>();
+	private TreeMap<QualifiedName, WorkspaceImpl> workspacesByName = new TreeMap<>();
 	private TreeMap<String, Set<UUID>> workspacesByDocument = new TreeMap<>();
 
 	@Override
@@ -319,7 +320,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogueByName(String workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<Info> catalogueByName(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueByName", filter, searchHistory);
 
@@ -350,7 +351,7 @@ public class TempRepositoryService implements RepositoryService {
 			.filter(filterPredicate);
 	}
 
-	private <T> String updateWorkspaceByIndex(Map<T,WorkspaceImpl> index, T key, UUID id, String name, State state, boolean createWorkspace) throws InvalidWorkspace {
+	private <T> String updateWorkspaceByIndex(Map<T,WorkspaceImpl> index, T key, UUID id, QualifiedName name, State state, boolean createWorkspace) throws InvalidWorkspace {
 		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspace("null"));
 		WorkspaceImpl workspace = index.get(key);
 		if (workspace == null && createWorkspace) {
@@ -375,13 +376,13 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("updateWorkspaceByIndex", id.toString());
 	}
 	
-	public String updateWorkspaceById(String workspaceId, String name, State state, boolean createWorkspace) throws InvalidWorkspace {
+	public String updateWorkspaceById(String workspaceId, QualifiedName name, State state, boolean createWorkspace) throws InvalidWorkspace {
 		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspace("null"));
 		UUID id = UUID.fromString(workspaceId);
 		return updateWorkspaceByIndex(workspacesById, id, id, name, state, createWorkspace);
 	}
 
-	public String updateWorkspaceByName(String name, String newName, State state, boolean createWorkspace) throws InvalidWorkspace {
+	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, State state, boolean createWorkspace) throws InvalidWorkspace {
 		return updateWorkspaceByIndex(workspacesByName, name, null, newName == null ? name : newName, state, createWorkspace);
 	}
 
@@ -396,7 +397,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Workspace getWorkspaceByName(String workspaceName) throws InvalidWorkspace {
+	public Workspace getWorkspaceByName(QualifiedName workspaceName) throws InvalidWorkspace {
 		LOG.logEntering("getWorkspaceByName", workspaceName);
 		if (workspaceName == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace("null"));
 		Workspace result = workspacesByName.get(workspaceName);
@@ -437,7 +438,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public String createWorkspace(String name, State state) throws InvalidWorkspace {
+	public String createWorkspace(QualifiedName name, State state) throws InvalidWorkspace {
 		UUID id = UUID.randomUUID();
 		return updateWorkspaceByIndex(workspacesById, id, id, name, state, true);
 	}

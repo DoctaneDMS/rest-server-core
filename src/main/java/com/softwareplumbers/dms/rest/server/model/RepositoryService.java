@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import java.util.stream.Stream;
 
@@ -50,8 +51,12 @@ public interface RepositoryService {
 		private static final long serialVersionUID = 2546274609900213587L;
 		public final String workspace;
 		public InvalidWorkspace(String workspace) {
-			super("Invalid workspace: " + workspace);
+			super("Invalid workspace Id: " + workspace);
 			this.workspace = workspace;
+		}
+		public InvalidWorkspace(QualifiedName workspace) {
+			super("Invalid workspace name: " + workspace);
+			this.workspace = workspace.toString();
 		}
 	}
 
@@ -60,9 +65,14 @@ public interface RepositoryService {
 		private static final long serialVersionUID = -4516622808487331082L;
 		public final String workspace;
 		public final Workspace.State state;
+		public InvalidWorkspaceState(QualifiedName workspace, Workspace.State state) {
+			super("Attempt to change workspace: " + workspace + " in state " + state);
+			this.workspace = workspace.toString();
+			this.state = state;
+		}
 		public InvalidWorkspaceState(String workspace, Workspace.State state) {
 			super("Attempt to change workspace: " + workspace + " in state " + state);
-			this.workspace = workspace;
+			this.workspace = workspace.toString();
 			this.state = state;
 		}
 	}
@@ -188,7 +198,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueByName(String workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<Info> catalogueByName(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 
@@ -230,7 +240,7 @@ public interface RepositoryService {
 	 * return the id of the created workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
-	public String createWorkspace(String name, Workspace.State state) throws InvalidWorkspace;
+	public String createWorkspace(QualifiedName name, Workspace.State state) throws InvalidWorkspace;
 	
 	/** Create or update a workspace 
 	 * 
@@ -254,7 +264,7 @@ public interface RepositoryService {
 	 * @return the id of the created/updated workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceById(String id, String name, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
+	public String updateWorkspaceById(String id, QualifiedName name, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Create or update a workspace 
 	 * 
@@ -278,7 +288,7 @@ public interface RepositoryService {
 	 * @return the id of the created/updated workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceByName(String name, String newName, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
+	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Get current state of workspace 
 	 * 
@@ -286,7 +296,7 @@ public interface RepositoryService {
 	 * @return a Workspace object containing current workspace state
 	 * @throws InvalidWorkspace if workspace does not already exist
 	 */
-	public Workspace getWorkspaceByName(String name) throws InvalidWorkspace;
+	public Workspace getWorkspaceByName(QualifiedName name) throws InvalidWorkspace;
 	
 	/** Get current state of workspace 
 	 * 
