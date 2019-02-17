@@ -35,6 +35,9 @@ bootRepackage {
 
 test {
 	systemProperties = System.properties
+	testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 task bootJar1(type: Jar, dependsOn: classes) {
