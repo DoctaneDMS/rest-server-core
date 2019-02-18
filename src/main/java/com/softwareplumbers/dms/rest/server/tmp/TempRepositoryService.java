@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.UUID;
 
+import javax.json.Json;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
@@ -145,20 +146,28 @@ public class TempRepositoryService implements RepositoryService {
 			final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
 			Stream<Map.Entry<Reference, WorkspaceInfo>> entries = docs.entrySet().stream();
 
+			Stream<Info> docInfo = null;
+			QualifiedName path = getName();
+			
 			if (searchHistory) {
 				// Search all historical info, and return latest matching version
 				// of any document.
-				return latestVersionsOf(
+				docInfo = latestVersionsOf(
 					entries
-						.flatMap(entry -> historicalInfo(entry.getKey(), filter))
+						.flatMap(entry -> historicalInfo(path, entry.getKey(), filter))
 				);
 			} else {
-				// Now convert refs to info and filter it
-				return entries
-					.filter(entry -> !entry.getValue().deleted)
-					.map(entry -> info(entry.getKey()))
-					.filter(filterPredicate);
+				docInfo = entries
+						.filter(entry -> !entry.getValue().deleted)
+						.map(entry -> info(path, entry.getKey()))
+						.filter(filterPredicate);
 			}
+			
+			Stream<Info> folderInfo = children.entrySet().stream()
+					.map(entry -> info(entry.getValue()))
+					.filter(filterPredicate);
+			
+			return Stream.concat(docInfo, folderInfo);
 		}
 		
 		public Stream<Info> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
@@ -221,6 +230,11 @@ public class TempRepositoryService implements RepositoryService {
 			} catch (InvalidWorkspace e) {
 				return null;
 			}
+		}
+
+		@Override
+		public JsonObject getMetadata() {
+			return Json.createObjectBuilder().build();
 		}
 	}
 	
@@ -330,19 +344,23 @@ public class TempRepositoryService implements RepositoryService {
 		}
 	}
 
-	private Info info(Reference ref) {
+	private Info info(QualifiedName name, Reference ref) {
 		try {
-			return new Info(ref, getDocument(ref));
+			return new Info(name, ref, getDocument(ref));
 		} catch (InvalidReference err) {
 			throw new RuntimeException(err);
 		}
 	}
 	
-	private Info info(Map.Entry<Reference, DocumentImpl> entry) {
-		return new Info(entry.getKey(), entry.getValue()); 
+	private Info info(Workspace ws) {
+		return new Info(ws);
 	}
 	
-	private Stream<Info> historicalInfo(Reference ref, ObjectConstraint filter) {
+	private Info info(QualifiedName name, Map.Entry<Reference, DocumentImpl> entry) {
+		return new Info(name, entry.getKey(), entry.getValue()); 
+	}
+	
+	private Stream<Info> historicalInfo(QualifiedName path, Reference ref, ObjectConstraint filter) {
 		try {
 			return catalogueHistory(ref, filter);
 		} catch (InvalidReference err) {
@@ -371,7 +389,7 @@ public class TempRepositoryService implements RepositoryService {
 
 		Stream<Info> infos = store.entrySet()
 				.stream()
-				.map(entry -> info(entry));
+				.map(entry -> info(QualifiedName.ROOT, entry));
 		if (searchHistory) {
 			return LOG.logReturn("catalogue", latestVersionsOf(infos.filter(filterPredicate)));
 		} else {
@@ -450,16 +468,20 @@ public class TempRepositoryService implements RepositoryService {
 		workspacesByDocument.clear();
 	}
 
-	@Override
-	public Stream<Info> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference {
+	private Stream<Info> catalogueHistory(QualifiedName path, Reference ref, ObjectConstraint filter) throws InvalidReference {
 		final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
 		Map<Reference, DocumentImpl> history = store.subMap(new Reference(ref.id,newVersion("0")), true, ref, true);
 		if (history.isEmpty()) throw new InvalidReference(ref);
 		return history
 			.entrySet()
 			.stream()
-			.map(entry -> info(entry))
+			.map(entry -> info(path, entry))
 			.filter(filterPredicate);
+	}
+
+	@Override
+	public Stream<Info> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference {
+		return catalogueHistory(QualifiedName.ROOT, ref, filter);
 	}
 
 	private <T> String updateWorkspaceByIndex(Function<T,WorkspaceImpl> index, T key, UUID id, QualifiedName name, State state, boolean createWorkspace) throws InvalidWorkspace {

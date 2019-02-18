@@ -27,6 +27,8 @@ public interface Workspace {
 	State getState();
 	/** Get the id of a workspace */
 	String getId();
+	/** Get workspace metadata */
+	JsonObject getMetadata();
 	
 	/** Get the default Json representation for a workspace */
 	default JsonObject toJson() {
@@ -34,6 +36,7 @@ public interface Workspace {
 			.add("name", getName().join("/"))
 			.add("state", getState().toString())
 			.add("id", getId())
+			.add("metadata", getMetadata())
 			.build();
 
 	}
