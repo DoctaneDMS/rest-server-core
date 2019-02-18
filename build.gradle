@@ -99,7 +99,7 @@ dependencies {
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
     compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.0'
-    compile('com.softwareplumbers.oss:qualified-name:0.0.6') 
+    compile('com.softwareplumbers.oss:qualified-name:0.0.9') 
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile("junit:junit:4.12")
     

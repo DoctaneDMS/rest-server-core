@@ -184,7 +184,7 @@ public interface RepositoryService {
 	 * (or the entire repository if the workspace is set to null).
 	 * </p><p>
 	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
-	 * the specified query.
+	 * the specified query. The path provided may contain the wildcard characters * and ?. 
 	 * </p><p>
 	 * By default catalog operation works on only the most recent version of any document in a workspace
 	 * or repository. If the most recent version does not match the filter, no reference to that document
@@ -193,12 +193,12 @@ public interface RepositoryService {
 	 * will be returned.
 	 * </p>
 	 * @param filter filter object to match meta-data
-	 * @param workspaceName name of workspace to catalogue
+	 * @param path search path.
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueByName(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<Info> catalogueByName(QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 

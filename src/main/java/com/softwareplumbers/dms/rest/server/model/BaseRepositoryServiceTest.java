@@ -146,7 +146,7 @@ public abstract class BaseRepositoryServiceTest {
 	public void testRenameWorkspace() throws InvalidWorkspace {
 		String wsId = service().createWorkspace(null, State.Open);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().updateWorkspaceById(wsId, wsName, null, false);
+		service().updateWorkspaceById(wsId, wsName, null, true);
 		Workspace ws = service().getWorkspaceByName(wsName);
 		assertEquals(wsId, ws.getId());
 	}
@@ -157,5 +157,20 @@ public abstract class BaseRepositoryServiceTest {
 		service().createWorkspace(wsName, State.Open);
 		String wsId = service().createWorkspace(null, State.Open);
 		service().updateWorkspaceById(wsId,wsName, null, false);
+	}
+	
+	@Test
+	public void testSearchForWorkspaceByWildcard() throws InvalidWorkspace {
+		QualifiedName base = QualifiedName.of(randomUrlSafeName());
+		QualifiedName jones = base.add("jones");
+		QualifiedName carter = base.add("carter");
+		QualifiedName peter_jones = jones.add("peter");
+		QualifiedName peter_carter = carter.add("peter");
+		QualifiedName pamela_jones = jones.add("pamela");
+		QualifiedName roger_carter = carter.add("roger");
+		service().createWorkspace(peter_jones, State.Open);
+		service().createWorkspace(peter_carter, State.Open);
+		service().createWorkspace(pamela_jones, State.Open);
+		service().createWorkspace(roger_carter, State.Open);
 	}
 }
