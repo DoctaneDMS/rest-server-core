@@ -11,6 +11,7 @@ import javax.ws.rs.core.MediaType;
 import org.junit.Test;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
@@ -172,5 +173,11 @@ public abstract class BaseRepositoryServiceTest {
 		service().createWorkspace(peter_carter, State.Open);
 		service().createWorkspace(pamela_jones, State.Open);
 		service().createWorkspace(roger_carter, State.Open);
+				
+		assertEquals(4, service().catalogueByName(base.addAll("*","*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2, service().catalogueByName(base.addAll("jones","*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2, service().catalogueByName(base.addAll("carter","*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(3, service().catalogueByName(base.addAll("*","p*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(3, service().catalogueByName(base.addAll("*","*r"), ObjectConstraint.UNBOUNDED, false).count());
 	}
 }

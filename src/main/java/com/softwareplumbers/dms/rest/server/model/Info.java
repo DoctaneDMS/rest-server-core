@@ -67,7 +67,7 @@ public class Info {
 		return new Info(
 				ResourceType.valueOf(obj.getString("type")),
 				name == null ? null : QualifiedName.parse(name, "/"),
-				reference == null ? Reference.fromJson(reference) : null,
+				reference == null ? null : Reference.fromJson(reference),
 				obj.getString("mimeType",null),
 				obj.getJsonObject("metadata")
 			);
@@ -78,7 +78,7 @@ public class Info {
 		JsonObjectBuilder builder = Json.createObjectBuilder();		
 		if (reference !=null) builder.add("reference", reference.toJson());
 		if (mimeType != null) builder.add("mimeType", mimeType);
-		if (name != null) builder.add("name", name.toString());
+		if (name != null) builder.add("name", name.join("/"));
 		builder.add("metadata", metadata);
 		builder.add("type", type.toString());
 		return builder.build();

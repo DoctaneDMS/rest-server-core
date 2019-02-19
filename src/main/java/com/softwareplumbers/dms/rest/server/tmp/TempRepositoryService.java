@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -158,42 +159,58 @@ public class TempRepositoryService implements RepositoryService {
 				);
 			} else {
 				docInfo = entries
-						.filter(entry -> !entry.getValue().deleted)
-						.map(entry -> info(path, entry.getKey()))
-						.filter(filterPredicate);
+					.filter(entry -> !entry.getValue().deleted)
+					.map(entry -> info(path, entry.getKey()))
+					.filter(filterPredicate);
 			}
 			
 			Stream<Info> folderInfo = children.entrySet().stream()
-					.map(entry -> info(entry.getValue()))
-					.filter(filterPredicate);
+				.map(entry -> info(entry.getValue()))
+				.filter(filterPredicate);
 			
 			return Stream.concat(docInfo, folderInfo);
 		}
 		
-		public Stream<Info> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
+		public boolean doMatch(Map.Entry<String,WorkspaceImpl> entry, String template) {
+			return entry.getKey().matches(template);
+		}
+		
+		public Stream<Info> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) {
 			
 			if (workspaceName == QualifiedName.ROOT) return catalogue(filter, searchHistory);
 
 			String firstPart = workspaceName.get(0);
+			QualifiedName remainingName = workspaceName.rightFromStart(1);
+
 			int star = firstPart.indexOf('*'); 
 			int questionMark = firstPart.indexOf('?'); 
 			int firstWildcard = star < 0 || questionMark < 0 ? Math.max(star, questionMark) : Math.min(star, questionMark);
 
 			if (firstWildcard < 0) {
 				WorkspaceImpl child = children.get(firstPart);
-				if (child == null) throw new InvalidWorkspace(workspaceName);
-				return child.catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
+				return (child == null) 
+					? Stream.empty() 
+					: child.catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
 			}
-						
-			String lowerBound = firstPart.substring(0, firstWildcard);
-			String upperBound = nextSeq(lowerBound);
-			String pattern = wildcardToRegex(firstPart);
+			
+			SortedMap<String,WorkspaceImpl> submap = children;
 				
-			return children.subMap(lowerBound, upperBound).entrySet()
+			if (firstWildcard > 0) {
+				String lowerBound = firstPart.substring(0, firstWildcard);
+				String upperBound = nextSeq(lowerBound);
+				submap = children.subMap(lowerBound, upperBound);
+			}
+				
+			String pattern = wildcardToRegex(firstPart);
+			
+			Stream<WorkspaceImpl> matchingChildren = submap.entrySet()
 				.stream()
 				.filter(e -> e.getKey().matches(pattern))
-				.map(e -> e.getValue())
-				.flatMap(workspace -> workspace.catalogue(filter,  searchHistory));
+				.map(e -> e.getValue());
+						
+			return (remainingName.isEmpty())
+				? matchingChildren.map(workspace -> info(workspace))
+				: matchingChildren.flatMap(workspace -> workspace.catalogue(remainingName, filter,  searchHistory));
 		}
 		
 		public WorkspaceImpl getOrCreateWorkspace(QualifiedName name, boolean createWorkspace) throws InvalidWorkspace {

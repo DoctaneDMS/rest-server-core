@@ -18,8 +18,6 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocum
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
-import com.softwareplumbers.dms.rest.server.model.Workspace;
-import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
 public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
