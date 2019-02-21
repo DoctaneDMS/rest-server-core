@@ -102,6 +102,28 @@ public interface RepositoryService {
 			String workspaceId,
 			boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState;
 	
+	/** Create a new document in the repository.
+	 * 
+	 * Creates document within the given workspace. The first parts of the given name are the
+	 * name of the workspace. The last part of the given name is used as the name of the document
+	 * within the workspace.
+	 * 
+	 * @param documentName the fully qualified name of the document in a workspace
+	 * @param mediaType the type of document
+	 * @param stream a supplier function that produces a stream of binary data representing the document
+	 * @param metadata a Json object describing the document
+	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
+	 * @return A Reference object that can later be used to retrieve the document
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspaceState if workspace is already closed
+	 */
+	public Reference createDocumentByName(
+			QualifiedName documentName,
+			MediaType mediaType, 
+			InputStreamSupplier stream, 
+			JsonObject metadata, 
+			boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState;
+	
 	/** Update a document in the repository.
 	 * <p>
 	 * Update a document in the repository. Uses an id rather than a Reference because a Reference

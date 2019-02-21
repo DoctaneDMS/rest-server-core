@@ -6,6 +6,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
 
 import org.junit.Test;
@@ -179,5 +182,42 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(2, service().catalogueByName(base.addAll("carter","*"), ObjectConstraint.UNBOUNDED, false).count());
 		assertEquals(3, service().catalogueByName(base.addAll("*","p*"), ObjectConstraint.UNBOUNDED, false).count());
 		assertEquals(3, service().catalogueByName(base.addAll("*","*r"), ObjectConstraint.UNBOUNDED, false).count());
+	}
+	
+	@Test
+	public void testWorkspaceMetadataRoundtrip() throws InvalidWorkspace {
+		QualifiedName base = QualifiedName.of(randomUrlSafeName());
+		JsonObject testMetadata = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
+		service().createWorkspace(base, State.Open, testMetadata);
+		Workspace fetched = service().getWorkspaceByName(base);
+		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
+	}
+	
+	@Test
+	public void testCatalogueWorkspaceWithMixedEntyTypes() throws InvalidWorkspace, InvalidWorkspaceState {
+		QualifiedName base = QualifiedName.of(randomUrlSafeName());
+		QualifiedName jones = base.add("jones");
+		QualifiedName carter = base.add("carter");
+		service().createWorkspace(base, State.Open, null);
+		service().createWorkspace(jones, State.Open, null);
+		service().createDocumentByName(carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
+		assertEquals(2,service().catalogueByName(base, ObjectConstraint.UNBOUNDED, false).count());
+	}
+	
+	@Test
+	public void testWorkspaceMetadataMerge() throws InvalidWorkspace {
+		QualifiedName base = QualifiedName.of(randomUrlSafeName());
+		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
+		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
+		service().createWorkspace(base, State.Open, testMetadata1);
+		service().updateWorkspaceByName(base, null, null, testMetadata2, false);
+		Workspace fetched = service().getWorkspaceByName(base);
+		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
+		assertEquals("alcatraz", fetched.getMetadata().getString("Team"));
+		JsonObject testMetadata3 = Json.createObjectBuilder().add("Branch", JsonValue.NULL).build();
+		service().updateWorkspaceByName(base, null, null, testMetadata3, false);
+		Workspace fetched2 = service().getWorkspaceByName(base);
+		assertEquals(null, fetched2.getMetadata().getString("Branch",null));
+		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
 	}
 }

@@ -20,8 +20,11 @@ import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.rest.server.util.Log;
 
 class WorkspaceImpl implements Workspace {
+	
+	static Log LOG = new Log(WorkspaceImpl.class);
 	
 	private static class WorkspaceInfo {
 		public boolean deleted;
@@ -124,41 +127,47 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public void add(Reference reference, Document doc) throws InvalidWorkspaceState {
-		TempRepositoryService.LOG.logEntering("add", reference);
+		LOG.logEntering("add", reference, doc);
+		add(reference, getContainmentName(doc));
+		LOG.logExiting("add");
+	}
+	
+	public void add(Reference reference, String docName) throws InvalidWorkspaceState {
+		LOG.logEntering("add", reference, docName);
 		if (state == State.Open) {
 			Reference latest = new Reference(reference.id);
-			this.docs.put(getContainmentName(doc), new WorkspaceInfo(latest,false));
+			this.docs.put(docName, new WorkspaceInfo(latest,false));
 		}
-		else throw TempRepositoryService.LOG.logThrow("add", new InvalidWorkspaceState(name, state));
-		TempRepositoryService.LOG.logExiting("add");
+		else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
+		LOG.logExiting("add");
 	}
 	
 	public void deleteByName(String docName) throws InvalidDocumentId, InvalidWorkspaceState {
-		TempRepositoryService.LOG.logEntering("deleteByName", docName);
+		LOG.logEntering("deleteByName", docName);
 		if (state == State.Open) {
 			WorkspaceInfo info = docs.get(docName);
 			// TODO: It isn't the document Id that's invalid here. It's the containment name
-			if (info == null) throw TempRepositoryService.LOG.logThrow("deleteByName",new InvalidDocumentId(docName));
+			if (info == null) throw LOG.logThrow("deleteByName",new InvalidDocumentId(docName));
 			info.deleted = true;
 		} else {
-			throw TempRepositoryService.LOG.logThrow("deleteByName",new InvalidWorkspaceState(docName, state));
+			throw LOG.logThrow("deleteByName",new InvalidWorkspaceState(docName, state));
 		}
-		TempRepositoryService.LOG.logExiting("deleteByName");
+		LOG.logExiting("deleteByName");
 	}
 	
 	public void deleteById(String id) throws InvalidDocumentId, InvalidWorkspaceState {
-		TempRepositoryService.LOG.logEntering("deleteById", id);
+		LOG.logEntering("deleteById", id);
 		if (state == State.Open) {
 			WorkspaceInfo info = docs.values()
 				.stream()
 				.filter(i -> i.reference.id.equals(id))
 				.findFirst()
-				.orElseThrow(()->TempRepositoryService.LOG.logThrow("deleteById",new InvalidDocumentId(id)));
+				.orElseThrow(()->LOG.logThrow("deleteById",new InvalidDocumentId(id)));
 			info.deleted = true;
 		} else {
-			throw TempRepositoryService.LOG.logThrow("deleteById",new InvalidWorkspaceState(name, state));
+			throw LOG.logThrow("deleteById",new InvalidWorkspaceState(name, state));
 		}
-		TempRepositoryService.LOG.logExiting("deleteById");
+		LOG.logExiting("deleteById");
 	}
 
 	public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory) {
@@ -267,5 +276,9 @@ class WorkspaceImpl implements Workspace {
 	@Override
 	public JsonObject getMetadata() {
 		return metadata;
+	}
+
+	public void setMetadata(JsonObject metadata) {
+		this.metadata = metadata;
 	}
 }

@@ -110,7 +110,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 		assertEquals(1,repository.service.listWorkspaces(repository.ref2.id).count());
 		assertEquals(1,repository.service.listWorkspaces(repository.ref3.id).count());
 	}
-
+	
 	@Override
 	public RepositoryService service() {
 		return service;

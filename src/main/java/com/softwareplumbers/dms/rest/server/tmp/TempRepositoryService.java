@@ -121,10 +121,25 @@ public class TempRepositoryService implements RepositoryService {
 			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
 			updateWorkspace(workspaceId, new_reference, new_document, createWorkspace);
 			store.put(new_reference, new_document);
-			return LOG.logReturn("createDocument",new_reference);
 		} catch (IOException e) {
 			throw new RuntimeException(LOG.logRethrow("createDocument",e));
 		}
+		return LOG.logReturn("createDocument",new_reference);
+	}
+	
+	@Override
+	public Reference createDocumentByName(QualifiedName documentName, MediaType mediaType, InputStreamSupplier stream,
+			JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
+		WorkspaceImpl workspace = root.getOrCreateWorkspace(documentName.parent, createWorkspace);
+		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
+		try {
+			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
+			store.put(new_reference, new_document);
+			workspace.add(new_reference, documentName.part);
+		} catch (IOException e) {
+			throw new RuntimeException(LOG.logRethrow("createDocumentByName",e));	
+		}
+		return LOG.logReturn("createDocumentByName",new_reference);
 	}
 	
 	public static final String newVersion(String prev) {
@@ -306,11 +321,12 @@ public class TempRepositoryService implements RepositoryService {
 		} else {
 			if (workspace == null) throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(key.toString()));
 			workspace.setState(state);
+			workspace.setMetadata(MetadataMerge.merge(workspace.getMetadata(), metadata));
 			if (name != null && !name.equals(workspace.getName())) {
 				workspace.setName(root, name, createWorkspace);
 			}
 		}
-		return LOG.logReturn("updateWorkspaceByIndex", id.toString());
+		return LOG.logReturn("updateWorkspaceByIndex", id == null ? null : id.toString());
 	}
 	
 	public String updateWorkspaceById(String workspaceId, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
