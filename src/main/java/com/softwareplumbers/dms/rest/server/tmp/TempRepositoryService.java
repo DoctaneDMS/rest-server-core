@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -21,7 +20,6 @@ import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
-import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Info;
@@ -44,225 +42,24 @@ import com.softwareplumbers.dms.rest.server.util.Log;
  */
 public class TempRepositoryService implements RepositoryService {
 	
-	private class WorkspaceInfo {
-		public boolean deleted;
-		
-		public WorkspaceInfo(boolean deleted) {
-			this.deleted = deleted;
-		}
-	}
-	
-	private class WorkspaceImpl implements Workspace {
-		
-		private WorkspaceImpl parent;
-		private String name;
-		private UUID id;
-		private Map<Reference,WorkspaceInfo> docs;
-		private TreeMap<String, WorkspaceImpl> children;
-		private State state;
-		
-		public WorkspaceImpl(WorkspaceImpl parent, UUID id, String name, State state) {
-			this.id = id;
-			this.name = name;
-			this.state = state;
-			this.docs = new TreeMap<Reference, WorkspaceInfo>();
-			this.children = new TreeMap<String, WorkspaceImpl>();
-			this.parent = parent;
-		}
-
-		@Override
-		public QualifiedName getName() {
-			if (parent == null) return QualifiedName.ROOT;
-			return parent.getName().add(name);
-		}
-		
-		@Override
-		public State getState() {
-			return state;
-		}
-		
-		@Override
-		public String getId() {
-			return id.toString();
-		}
-				
-		public void setState(State state) {
-			
-			final Function<Map.Entry<Reference, WorkspaceInfo>, Reference> MAP_SPECIFIC = entry->store.floorKey(entry.getKey());
-			final Function<Map.Entry<Reference, WorkspaceInfo>, Reference> MAP_LATEST = entry->new Reference(entry.getKey().id);
-			
-			// Convert references to point to a specific version
-			// of a document when a workspace is closed or finalized
-			if (this.state == State.Open && state != State.Open)
-				docs = docs.entrySet().stream()
-					.collect(Collectors.toMap(MAP_SPECIFIC, entry->entry.getValue()));
-	
-			// Convert references to point to a the most recent version
-			// of a document when a workspace is opened
-			if (this.state != State.Open && state == State.Open)
-				docs = docs.entrySet().stream()
-					.collect(Collectors.toMap(MAP_LATEST, entry->entry.getValue()));
-					
-			this.state = state;
-		}
-				
-		public void setName(WorkspaceImpl root, QualifiedName name, boolean createWorkspace) throws InvalidWorkspace {
-			WorkspaceImpl newParent;
-			if (name.parent.isEmpty())
-				newParent = root;
-			else
-				newParent = root.getOrCreateWorkspace(name.parent, createWorkspace);
-
-			if (newParent == null) throw new InvalidWorkspace(name);
-			if (newParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
-			if (this.parent != null) this.parent.children.remove(this.name);
-			this.name = name.part;
-			this.parent = newParent;
-			newParent.children.put(this.name, this);
-		}
-		
-		public void add(Reference reference) throws InvalidWorkspaceState {
-			LOG.logEntering("add", reference);
-			if (state == State.Open)
-				this.docs.put(new Reference(reference.id), new WorkspaceInfo(false));
-			else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
-			LOG.logExiting("add");
-		}
-		
-		public void delete(String id) throws InvalidDocumentId, InvalidWorkspaceState {
-			LOG.logEntering("delete", id);
-			if (state == State.Open) {
-				Reference ref = new Reference(id);
-				WorkspaceInfo info = docs.get(ref);
-				if (info == null) throw LOG.logThrow("delete",new InvalidDocumentId(id));
-				info.deleted = true;
-			} else {
-				throw LOG.logThrow("delete",new InvalidWorkspaceState(name, state));
-			}
-			LOG.logExiting("delete");
-		}
-
-		public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory) {
-			
-			final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
-			Stream<Map.Entry<Reference, WorkspaceInfo>> entries = docs.entrySet().stream();
-
-			Stream<Info> docInfo = null;
-			QualifiedName path = getName();
-			
-			if (searchHistory) {
-				// Search all historical info, and return latest matching version
-				// of any document.
-				docInfo = latestVersionsOf(
-					entries
-						.flatMap(entry -> historicalInfo(path, entry.getKey(), filter))
-				);
-			} else {
-				docInfo = entries
-					.filter(entry -> !entry.getValue().deleted)
-					.map(entry -> info(path, entry.getKey()))
-					.filter(filterPredicate);
-			}
-			
-			Stream<Info> folderInfo = children.entrySet().stream()
-				.map(entry -> info(entry.getValue()))
-				.filter(filterPredicate);
-			
-			return Stream.concat(docInfo, folderInfo);
-		}
-		
-		public boolean doMatch(Map.Entry<String,WorkspaceImpl> entry, String template) {
-			return entry.getKey().matches(template);
-		}
-		
-		public Stream<Info> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) {
-			
-			if (workspaceName == QualifiedName.ROOT) return catalogue(filter, searchHistory);
-
-			String firstPart = workspaceName.get(0);
-			QualifiedName remainingName = workspaceName.rightFromStart(1);
-
-			int star = firstPart.indexOf('*'); 
-			int questionMark = firstPart.indexOf('?'); 
-			int firstWildcard = star < 0 || questionMark < 0 ? Math.max(star, questionMark) : Math.min(star, questionMark);
-
-			if (firstWildcard < 0) {
-				WorkspaceImpl child = children.get(firstPart);
-				return (child == null) 
-					? Stream.empty() 
-					: child.catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
-			}
-			
-			SortedMap<String,WorkspaceImpl> submap = children;
-				
-			if (firstWildcard > 0) {
-				String lowerBound = firstPart.substring(0, firstWildcard);
-				String upperBound = nextSeq(lowerBound);
-				submap = children.subMap(lowerBound, upperBound);
-			}
-				
-			String pattern = wildcardToRegex(firstPart);
-			
-			Stream<WorkspaceImpl> matchingChildren = submap.entrySet()
-				.stream()
-				.filter(e -> e.getKey().matches(pattern))
-				.map(e -> e.getValue());
-						
-			return (remainingName.isEmpty())
-				? matchingChildren.map(workspace -> info(workspace))
-				: matchingChildren.flatMap(workspace -> workspace.catalogue(remainingName, filter,  searchHistory));
-		}
-		
-		public WorkspaceImpl getOrCreateWorkspace(QualifiedName name, boolean createWorkspace) throws InvalidWorkspace {
-			
-			String firstPart = name.get(0);
-			QualifiedName remainingName = name.rightFromStart(1);
-
-			WorkspaceImpl child = children.get(firstPart);
-			if (child == null) {
-				if (createWorkspace) {
-					child = new WorkspaceImpl(this, UUID.randomUUID(), firstPart, State.Open);
-					children.put(firstPart, child);
-				} else 
-					throw new InvalidWorkspace(name);
-			}
-			
-			if (remainingName.isEmpty())
-				return child;
-			else			
-				return child.getOrCreateWorkspace(remainingName, createWorkspace);
-		}
-		
-		public WorkspaceImpl createWorkspace(UUID id, QualifiedName name, State state) throws InvalidWorkspace {
-			WorkspaceImpl parent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, true);
-			if (parent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
-			WorkspaceImpl child = new WorkspaceImpl(parent, id, name.part, state);
-			parent.children.put(name.part, child);
-			return child;
-		}
-		
-		public WorkspaceImpl getWorkspace(QualifiedName name) {
-			try {
-				return getOrCreateWorkspace(name, false);
-			} catch (InvalidWorkspace e) {
-				return null;
-			}
-		}
-
-		@Override
-		public JsonObject getMetadata() {
-			return Json.createObjectBuilder().build();
-		}
-	}
-	
 	///////////--------- Static member variables --------////////////
-	private static Log LOG = new Log(TempRepositoryService.class);
+	static Log LOG = new Log(TempRepositoryService.class);
+	static JsonObject EMPTY_METADATA = Json.createObjectBuilder().build();
 	
 	
-	private TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
+	TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
 	private TreeMap<UUID, WorkspaceImpl> workspacesById = new TreeMap<>();
 	private TreeMap<String, Set<UUID>> workspacesByDocument = new TreeMap<>();
-	private WorkspaceImpl root = new WorkspaceImpl(null, UUID.randomUUID(), null, State.Open);
+	private WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID(), null, State.Open, EMPTY_METADATA);
+	QualifiedName nameAttribute;
+	
+	public TempRepositoryService(QualifiedName nameAttribute) {
+		this.nameAttribute = nameAttribute;
+	}
+	
+	public TempRepositoryService(String nameAttribute) {
+		this.nameAttribute = QualifiedName.parse(nameAttribute, "/");
+	}
 
 	@Override
 	public Document getDocument(Reference reference) throws InvalidReference {
@@ -288,7 +85,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * @throws InvalidWorkspace
 	 * @throws InvalidWorkspaceState 
 	 */
-	private String updateWorkspace(String workspaceId, Reference ref, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
+	private String updateWorkspace(String workspaceId, Reference ref, Document document, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
 		LOG.logEntering("updateWorkspace", ref, createWorkspace);
 		
 		if (workspaceId == null) return null;
@@ -304,13 +101,13 @@ public class TempRepositoryService implements RepositoryService {
 		
 		if (workspace == null) {
 			if (id == null) id = UUID.randomUUID();
-			workspace = new WorkspaceImpl(null, id, null, State.Open);
+			workspace = new WorkspaceImpl(this, null, id, null, State.Open, EMPTY_METADATA);
 			workspacesById.put(id, workspace);
 		}
 		
 		if (workspace.getState() == State.Closed) throw LOG.logThrow("updateWorkspace", new InvalidWorkspaceState(workspaceId, State.Closed));
 		
-		workspace.add(ref);
+		workspace.add(ref, document);
 		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<UUID>()).add(id);
 	
 		return workspace.id.toString();
@@ -322,7 +119,7 @@ public class TempRepositoryService implements RepositoryService {
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
 		try {
 			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
-			updateWorkspace(workspaceId, new_reference, createWorkspace);
+			updateWorkspace(workspaceId, new_reference, new_document, createWorkspace);
 			store.put(new_reference, new_document);
 			return LOG.logReturn("createDocument",new_reference);
 		} catch (IOException e) {
@@ -350,7 +147,7 @@ public class TempRepositoryService implements RepositoryService {
 			try {
 				if (metadata != null) newDocument = newDocument.setMetadata(MetadataMerge.merge(newDocument.getMetadata(), metadata));
 				if (stream != null) newDocument = newDocument.setData(stream);			
-				updateWorkspace(workspaceId, new_reference, createWorkspace);
+				updateWorkspace(workspaceId, new_reference, newDocument, createWorkspace);
 				store.put(new_reference, newDocument);
 				return LOG.logReturn("updateDocument",new_reference);
 			} catch (IOException e) {
@@ -361,7 +158,7 @@ public class TempRepositoryService implements RepositoryService {
 		}
 	}
 
-	private Info info(QualifiedName name, Reference ref) {
+	Info info(QualifiedName name, Reference ref) {
 		try {
 			return new Info(name, ref, getDocument(ref));
 		} catch (InvalidReference err) {
@@ -369,7 +166,7 @@ public class TempRepositoryService implements RepositoryService {
 		}
 	}
 	
-	private Info info(Workspace ws) {
+	Info info(Workspace ws) {
 		return new Info(ws);
 	}
 	
@@ -377,7 +174,7 @@ public class TempRepositoryService implements RepositoryService {
 		return new Info(name, entry.getKey(), entry.getValue()); 
 	}
 	
-	private Stream<Info> historicalInfo(QualifiedName path, Reference ref, ObjectConstraint filter) {
+	Stream<Info> historicalInfo(QualifiedName path, Reference ref, ObjectConstraint filter) {
 		try {
 			return catalogueHistory(ref, filter);
 		} catch (InvalidReference err) {
@@ -385,7 +182,7 @@ public class TempRepositoryService implements RepositoryService {
 		}
 	}
 	
-	private static Stream<Info> latestVersionsOf(Stream<Info> infos) {
+	static Stream<Info> latestVersionsOf(Stream<Info> infos) {
 		Comparator<Info> COMPARE_REFS = Comparator.comparing(info->info.reference);
 		return infos
 			.collect(Collectors.groupingBy((Info info) -> info.reference.id, 
@@ -430,14 +227,14 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("catalogueById", workspace.catalogue(filter, searchHistory));
 	}
 
-	private static String nextSeq(String string) {
+	static String nextSeq(String string) {
 		int end = string.length() - 1;
 		StringBuffer buf = new StringBuffer(string);
 		buf.setCharAt(end, (char)(string.charAt(end) + 1));
 		return buf.toString();
 	}
 	
-	private static String wildcardToRegex(String string) {
+	static String wildcardToRegex(String string) {
 		StringBuffer buffer = new StringBuffer();
 		for (int i = 0; i < string.length(); i++) {
 			char c = string.charAt(i);
@@ -456,14 +253,7 @@ public class TempRepositoryService implements RepositoryService {
 		}
 		return buffer.toString();
 	}
-	
-	private static QualifiedName wildcardToRegex(QualifiedName name) {
-		QualifiedName result = QualifiedName.ROOT;
-		for (String part: name) result = result.add(wildcardToRegex(part));
-		return result;
 		
-	}
-	
 	/** Catalog a repository.
 	 * 
 	 */
@@ -480,7 +270,7 @@ public class TempRepositoryService implements RepositoryService {
 	
 	public void clear() {
 		store.clear();
-		root = new WorkspaceImpl(null, UUID.randomUUID(), null, State.Open);
+		root = new WorkspaceImpl(this, null, UUID.randomUUID(), null, State.Open, EMPTY_METADATA);
 		workspacesById.clear();
 		workspacesByDocument.clear();
 	}
@@ -501,16 +291,16 @@ public class TempRepositoryService implements RepositoryService {
 		return catalogueHistory(QualifiedName.ROOT, ref, filter);
 	}
 
-	private <T> String updateWorkspaceByIndex(Function<T,WorkspaceImpl> index, T key, UUID id, QualifiedName name, State state, boolean createWorkspace) throws InvalidWorkspace {
+	private <T> String updateWorkspaceByIndex(Function<T,WorkspaceImpl> index, T key, UUID id, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceByIndex", index, key, id, name, state, createWorkspace);
 		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspace("null"));
 		WorkspaceImpl workspace = index.apply(key);
 		if (workspace == null && createWorkspace) {
 			if (id == null) id = UUID.randomUUID();
 			if (name != null) {
-				workspace = root.createWorkspace(id, name, state);
+				workspace = root.createWorkspace(id, name, state, metadata);
 			} else {
-				workspace = new WorkspaceImpl(null, id, null, state);
+				workspace = new WorkspaceImpl(this, null, id, null, state, metadata);
 			}
 			workspacesById.put(id, workspace);
 		} else {
@@ -523,16 +313,16 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("updateWorkspaceByIndex", id.toString());
 	}
 	
-	public String updateWorkspaceById(String workspaceId, QualifiedName name, State state, boolean createWorkspace) throws InvalidWorkspace {
+	public String updateWorkspaceById(String workspaceId, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceById", workspaceId, name, state, createWorkspace);
 		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspace("null"));
 		UUID id = UUID.fromString(workspaceId);
-		return LOG.logReturn("updateWorkspaceById", updateWorkspaceByIndex(ws->workspacesById.get(ws), id, id, name, state, createWorkspace));
+		return LOG.logReturn("updateWorkspaceById", updateWorkspaceByIndex(ws->workspacesById.get(ws), id, id, name, state, metadata, createWorkspace));
 	}
 
-	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, State state, boolean createWorkspace) throws InvalidWorkspace {
+	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceById", name, newName, state, createWorkspace);
-		return LOG.logReturn("updateWorkspaceById",updateWorkspaceByIndex(ws->root.getWorkspace(ws), name, null, newName == null ? name : newName, state, createWorkspace));
+		return LOG.logReturn("updateWorkspaceById",updateWorkspaceByIndex(ws->root.getWorkspace(ws), name, null, newName == null ? name : newName, state, metadata, createWorkspace));
 	}
 
 	@Override
@@ -564,7 +354,7 @@ public class TempRepositoryService implements RepositoryService {
 		WorkspaceImpl result = workspacesById.get(id);
 		if (result == null) throw LOG.logThrow("deleteDocument", new InvalidWorkspace(workspaceId));
 
-		result.delete(docId);
+		result.deleteById(docId);
 		
 		Set<UUID> docWorkspaces = workspacesByDocument.getOrDefault(docId, Collections.emptySet());
 		docWorkspaces.remove(id);
@@ -587,9 +377,9 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public String createWorkspace(QualifiedName name, State state) throws InvalidWorkspace {
+	public String createWorkspace(QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
 		UUID id = UUID.randomUUID();
-		return updateWorkspaceByIndex(ws->workspacesById.get(ws), id, id, name, state, true);
+		return updateWorkspaceByIndex(ws->workspacesById.get(ws), id, id, name, state, metadata, true);
 	}
 
 }

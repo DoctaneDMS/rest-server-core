@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.rest.server.model.Document;
@@ -26,7 +27,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	
 	@Before
 	public void createService() {
-		service = new TempRepositoryService();
+		service = new TempRepositoryService(QualifiedName.of("filename"));
 	}
 	
 	public TestRepository getTestRepository() {

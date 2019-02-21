@@ -34,7 +34,7 @@ import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 /** Handle catalog operations on repositories and documents.
  * 
  * operations on a workspace all performed 
- * via this interface under the /workspace/{repository}/{workspace} path.
+ * via this interface under the /ws/{repository}/{workspace} path.
  * 
  * @author Jonathan Essex
  *
@@ -178,14 +178,15 @@ public class Workspaces {
     			QualifiedName updateQName = updateName == null ? null : QualifiedName.parse(workspaceName, "/");
     			String stateString = workspace.getString("state", null);
     			Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
+    			JsonObject metadata = workspace.getJsonObject("metadata");
     			
     			QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
     			
     			String wsId = null;
     			if (wsName.startsWith(QualifiedName.of("~"))) {    			
-    				wsId = service.updateWorkspaceById(wsName.get(1), wsName, state, createWorkspace);
+    				wsId = service.updateWorkspaceById(wsName.get(1), wsName, state, metadata, createWorkspace);
     			} else {
-    				wsId = service.updateWorkspaceByName(wsName, updateQName, state, createWorkspace);
+    				wsId = service.updateWorkspaceByName(wsName, updateQName, state, metadata, createWorkspace);
     			}
     			
     			JsonObjectBuilder result = Json.createObjectBuilder();

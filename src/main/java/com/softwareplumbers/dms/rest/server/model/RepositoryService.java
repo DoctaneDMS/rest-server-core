@@ -240,7 +240,7 @@ public interface RepositoryService {
 	 * return the id of the created workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
-	public String createWorkspace(QualifiedName name, Workspace.State state) throws InvalidWorkspace;
+	public String createWorkspace(QualifiedName name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
 	
 	/** Create or update a workspace 
 	 * 
@@ -260,11 +260,12 @@ public interface RepositoryService {
 	 * @param id id of workspace to create/update
 	 * @param name name of workspace to create/update
 	 * @param state Initial/Updated state of workspace
+	 * @param metadata workspace metadata
 	 * @param createWorkspace create workspace with given name if it does not already exist
 	 * @return the id of the created/updated workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceById(String id, QualifiedName name, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
+	public String updateWorkspaceById(String id, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Create or update a workspace 
 	 * 
@@ -284,11 +285,12 @@ public interface RepositoryService {
 	 * @param name name of workspace to create/update
 	 * @param newName new name for workspace
 	 * @param state Initial/Updated state of workspace
+	 * @param metadata workspace metadata
 	 * @param createWorkspace create workspace with given name if it does not already exist
 	 * @return the id of the created/updated workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, Workspace.State state, boolean createWorkspace) throws InvalidWorkspace;
+	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Get current state of workspace 
 	 * 

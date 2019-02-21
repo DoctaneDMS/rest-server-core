@@ -65,9 +65,9 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testAnonymousCreateWorkspace() throws InvalidWorkspace {
-		String workspace1 = service().createWorkspace(null, State.Open);
+		String workspace1 = service().createWorkspace(null, State.Open, null);
 		assertNotNull(workspace1);
-		String workspace2 = service().createWorkspace(null, State.Open);
+		String workspace2 = service().createWorkspace(null, State.Open, null);
 		assertNotNull(workspace1);
 		assertNotEquals(workspace1, workspace2);
 	}
@@ -75,7 +75,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		String workspace = service().createWorkspace(name, State.Open);
+		String workspace = service().createWorkspace(name, State.Open, null);
 		Workspace ws = service().getWorkspaceByName(name);
 		assertEquals(workspace, ws.getId());
 	}
@@ -100,7 +100,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test (expected = InvalidWorkspace.class)
 	public void testUpdateWorkspaceNotFoundError() throws InvalidWorkspace {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		service().updateWorkspaceByName(name, null, Workspace.State.Closed, false);
+		service().updateWorkspaceByName(name, null, Workspace.State.Closed, null, false);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
@@ -115,7 +115,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test (expected = InvalidDocumentId.class)
 	public void testDeleteDocumentInvalidDocumentError() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
-		String workspace = service().createWorkspace(null, State.Open);
+		String workspace = service().createWorkspace(null, State.Open, null);
 		service().deleteDocument(workspace, randomDocumentReference().getId());
 	}
 
@@ -145,9 +145,9 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testRenameWorkspace() throws InvalidWorkspace {
-		String wsId = service().createWorkspace(null, State.Open);
+		String wsId = service().createWorkspace(null, State.Open, null);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().updateWorkspaceById(wsId, wsName, null, true);
+		service().updateWorkspaceById(wsId, wsName, null, null, true);
 		Workspace ws = service().getWorkspaceByName(wsName);
 		assertEquals(wsId, ws.getId());
 	}
@@ -155,9 +155,9 @@ public abstract class BaseRepositoryServiceTest {
 	@Test  (expected = InvalidWorkspace.class)
 	public void testRenameFolderExistingName() throws InvalidWorkspace {
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().createWorkspace(wsName, State.Open);
-		String wsId = service().createWorkspace(null, State.Open);
-		service().updateWorkspaceById(wsId,wsName, null, false);
+		service().createWorkspace(wsName, State.Open, null);
+		String wsId = service().createWorkspace(null, State.Open, null);
+		service().updateWorkspaceById(wsId,wsName, null, null, false);
 	}
 	
 	@Test
@@ -169,10 +169,10 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName peter_carter = carter.add("peter");
 		QualifiedName pamela_jones = jones.add("pamela");
 		QualifiedName roger_carter = carter.add("roger");
-		service().createWorkspace(peter_jones, State.Open);
-		service().createWorkspace(peter_carter, State.Open);
-		service().createWorkspace(pamela_jones, State.Open);
-		service().createWorkspace(roger_carter, State.Open);
+		service().createWorkspace(peter_jones, State.Open, null);
+		service().createWorkspace(peter_carter, State.Open, null);
+		service().createWorkspace(pamela_jones, State.Open, null);
+		service().createWorkspace(roger_carter, State.Open, null);
 				
 		assertEquals(4, service().catalogueByName(base.addAll("*","*"), ObjectConstraint.UNBOUNDED, false).count());
 		assertEquals(2, service().catalogueByName(base.addAll("jones","*"), ObjectConstraint.UNBOUNDED, false).count());
