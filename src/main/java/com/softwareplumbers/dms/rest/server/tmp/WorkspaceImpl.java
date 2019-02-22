@@ -46,7 +46,7 @@ class WorkspaceImpl implements Workspace {
 	private final TempRepositoryService service;
 	private WorkspaceImpl parent;
 	private String name;
-	UUID id;
+	private UUID id;
 	private TreeMap<String,DocumentInfo> docs;
 	private TreeMap<String, WorkspaceImpl> children;
 	private State state;
@@ -91,14 +91,18 @@ class WorkspaceImpl implements Workspace {
 	public String getId() {
 		return id.toString();
 	}
-			
+		
+	public UUID getRawId() {
+		return id;
+	}
+	
 	public void setState(State state) {
 		
 		// Convert references to point to a specific version
 		// of a document when a workspace is closed or finalized
 		if (this.state == State.Open && state != State.Open)
 			for (DocumentInfo info : docs.values())
-				info.reference = service.store.floorKey(info.reference);
+				info.reference = service.getLatestVersion(info.reference);
 
 		// Convert references to point to a the most recent version
 		// of a document when a workspace is opened
@@ -138,7 +142,7 @@ class WorkspaceImpl implements Workspace {
 	
 	public String getContainmentName(Document doc) {
 		JsonObject metadata = doc.getMetadata(); 
-		JsonValue docName = metadata == null ? null : service.nameAttribute.apply(metadata);
+		JsonValue docName = metadata == null ? null : service.getNameAttribute().apply(metadata);
 		String baseName = (docName == null || docName == JsonValue.NULL) ? null : docName.toString() + "_" + docs.size();
 		String ext = "";
 		int separator = baseName.lastIndexOf('.');
@@ -373,7 +377,13 @@ class WorkspaceImpl implements Workspace {
 		RepositoryObject result = ws.children.get(name.part);
 		if (result != null) return result;
 		DocumentInfo info = ws.docs.get(name.part);
-		if (info != null) return service.store.get(info.reference);
+		if (info != null)
+			try {
+				return service.getDocument(info.reference);
+			} catch (InvalidReference e) {
+				// Shouldn't happen
+				throw new RuntimeException(e);
+			}
 		throw new InvalidObjectName(name);
 		
 	}

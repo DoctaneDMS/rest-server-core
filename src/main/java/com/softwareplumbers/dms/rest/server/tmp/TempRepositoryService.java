@@ -18,8 +18,6 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
-import org.bouncycastle.pqc.math.linearalgebra.GoppaCode.MaMaPe;
-
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
@@ -45,16 +43,20 @@ import com.softwareplumbers.dms.rest.server.util.Log;
  */
 public class TempRepositoryService implements RepositoryService {
 	
-	///////////--------- Static member variables --------////////////
-	static Log LOG = new Log(TempRepositoryService.class);
-	static JsonObject EMPTY_METADATA = Json.createObjectBuilder().build();
+	///////////--------- Private Static member variables --------////////////
+	private static final Log LOG = new Log(TempRepositoryService.class);
+
 	
+	///////////--------- Public Static member variables --------////////////
 	
-	TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
+	public static final JsonObject EMPTY_METADATA = Json.createObjectBuilder().build();
+	
+	///////////--------- Private member variables --------////////////
+	private TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
 	private TreeMap<UUID, WorkspaceImpl> workspacesById = new TreeMap<>();
 	private TreeMap<String, Set<UUID>> workspacesByDocument = new TreeMap<>();
 	private WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID(), null, State.Open, EMPTY_METADATA);
-	QualifiedName nameAttribute;
+	private QualifiedName nameAttribute;
 	
 	public TempRepositoryService(QualifiedName nameAttribute) {
 		this.nameAttribute = nameAttribute;
@@ -62,6 +64,18 @@ public class TempRepositoryService implements RepositoryService {
 	
 	public TempRepositoryService(String nameAttribute) {
 		this.nameAttribute = QualifiedName.parse(nameAttribute, "/");
+	}
+	
+	/** Return attribute value used as default name when adding a document to a workspace
+	 * 
+	 * @return A qualified name which can be used to access a name within documents in this store.
+	 */
+	public QualifiedName getNameAttribute() {
+		return nameAttribute;
+	}
+	
+	public Reference getLatestVersion(Reference ref) {
+		return store.floorKey(new Reference(ref.id));
 	}
 
 	@Override
@@ -81,28 +95,28 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	public void registerWorkspace(WorkspaceImpl workspace) {
-		workspacesById.put(workspace.id, workspace);
+		workspacesById.put(workspace.getRawId(), workspace);
 	}
 
 	public void deregisterWorkspace(WorkspaceImpl workspace) {
-		workspacesById.remove(workspace.id);
+		workspacesById.remove(workspace.getRawId());
 	}
 
 	public void registerWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
-		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<UUID>()).add(workspace.id);
+		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<UUID>()).add(workspace.getRawId());
 		
 	}
 	
 	public void deregisterWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
 		Set<UUID> wsids = workspacesByDocument.get(ref.id);
-		wsids.remove(workspace.id);
+		wsids.remove(workspace.getRawId());
 		if (wsids.isEmpty()) workspacesByDocument.remove(ref.id);
 	}
 	
 	public boolean referenceExists(WorkspaceImpl workspace, Reference ref) {
 		Set<UUID> wsids = workspacesByDocument.get(ref.id);
 		if (wsids == null) return false;
-		return wsids.contains(workspace.id);
+		return wsids.contains(workspace.getRawId());
 	}
 
 	/** Update a workspace with new or updated document
@@ -158,7 +172,7 @@ public class TempRepositoryService implements RepositoryService {
 		LOG.logEntering("updateDocumentByName", rootWorkspace, documentName, mediaType, stream, metadata, createWorkspace, createDocument);
 		WorkspaceImpl myRoot = root;
 		if (rootWorkspace != null) {
-			myRoot = workspacesById.get(rootWorkspace);
+			myRoot = workspacesById.get(UUID.fromString(rootWorkspace));
 			if (myRoot == null) throw new InvalidWorkspace(rootWorkspace);
 		}
 		WorkspaceImpl workspace = myRoot.getOrCreateWorkspace(documentName.parent, createWorkspace);
@@ -454,12 +468,12 @@ public class TempRepositoryService implements RepositoryService {
 		
 		WorkspaceImpl deleted = ws.deleteWorkspaceByName(objectName.part);
 		if (deleted != null) {
-			workspacesById.remove(deleted.id);
+			workspacesById.remove(deleted.getRawId());
 		} else {
 			Reference ref = ws.deleteDocumentByName(objectName.part);
 			if (ref != null) {
 				Set<UUID> docWorkspaces = workspacesByDocument.getOrDefault(ref.id, Collections.emptySet());
-				docWorkspaces.remove(ws.id);				
+				docWorkspaces.remove(ws.getRawId());				
 				if (docWorkspaces.isEmpty()) workspacesByDocument.remove(ref.id);
 				
 			}
@@ -485,5 +499,6 @@ public class TempRepositoryService implements RepositoryService {
 		UUID id = UUID.randomUUID();
 		return updateWorkspaceByIndex(ws->Optional.ofNullable(workspacesById.get(ws)), id, id, name, state, metadata, true);
 	}
+
 
 }
