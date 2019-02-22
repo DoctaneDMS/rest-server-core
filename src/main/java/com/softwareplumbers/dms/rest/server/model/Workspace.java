@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import javax.json.JsonObject;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type;
 
 import javax.json.Json;
 
@@ -16,7 +17,7 @@ import javax.json.Json;
  * | Closed 	| Any attempt to add or remove document will cause an error; workspace shows versions current when closed |
  * | Finalized 	| Documents may be added or removed; workspace shows versions current when closed |
  */
-public interface Workspace {
+public interface Workspace extends RepositoryObject {
 	
 	/** Possible states of a workspace */
 	enum State { Open, Closed, Finalized }
@@ -27,8 +28,9 @@ public interface Workspace {
 	State getState();
 	/** Get the id of a workspace */
 	String getId();
-	/** Get workspace metadata */
-	JsonObject getMetadata();
+
+	/** Default implementation returns Type.WORKSPACE */	
+	default Type getType() { return Type.WORKSPACE; }
 	
 	/** Get the default Json representation for a workspace */
 	default JsonObject toJson() {

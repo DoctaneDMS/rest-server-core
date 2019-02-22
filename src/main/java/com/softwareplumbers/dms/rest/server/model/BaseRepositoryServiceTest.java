@@ -16,6 +16,7 @@ import org.junit.Test;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
@@ -76,10 +77,10 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace {
+	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		String workspace = service().createWorkspace(name, State.Open, null);
-		Workspace ws = service().getWorkspaceByName(name);
+		Workspace ws = (Workspace)service().getObjectByName(name);
 		assertEquals(workspace, ws.getId());
 	}
 	
@@ -89,10 +90,10 @@ public abstract class BaseRepositoryServiceTest {
 		service().getDocument(ref1);
 	}
 	
-	@Test (expected = InvalidWorkspace.class)
-	public void testGetWorkspaceNotFoundByNameError() throws InvalidWorkspace {
+	@Test (expected = InvalidObjectName.class)
+	public void testGetWorkspaceNotFoundByNameError() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		Workspace test = service().getWorkspaceByName(name);
+		Workspace test = (Workspace)service().getObjectByName(name);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
@@ -147,11 +148,11 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testRenameWorkspace() throws InvalidWorkspace {
+	public void testRenameWorkspace() throws InvalidWorkspace, InvalidObjectName {
 		String wsId = service().createWorkspace(null, State.Open, null);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceById(wsId, wsName, null, null, true);
-		Workspace ws = service().getWorkspaceByName(wsName);
+		Workspace ws = (Workspace)service().getObjectByName(wsName);
 		assertEquals(wsId, ws.getId());
 	}
 	
@@ -185,38 +186,38 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testWorkspaceMetadataRoundtrip() throws InvalidWorkspace {
+	public void testWorkspaceMetadataRoundtrip() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		service().createWorkspace(base, State.Open, testMetadata);
-		Workspace fetched = service().getWorkspaceByName(base);
+		Workspace fetched =  (Workspace)service().getObjectByName(base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 	}
 	
 	@Test
-	public void testCatalogueWorkspaceWithMixedEntyTypes() throws InvalidWorkspace, InvalidWorkspaceState {
+	public void testCatalogueWorkspaceWithMixedEntyTypes() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		QualifiedName jones = base.add("jones");
 		QualifiedName carter = base.add("carter");
 		service().createWorkspace(base, State.Open, null);
 		service().createWorkspace(jones, State.Open, null);
-		service().createDocumentByName(carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
+		service().createDocumentByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
 		assertEquals(2,service().catalogueByName(base, ObjectConstraint.UNBOUNDED, false).count());
 	}
 	
 	@Test
-	public void testWorkspaceMetadataMerge() throws InvalidWorkspace {
+	public void testWorkspaceMetadataMerge() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
 		service().createWorkspace(base, State.Open, testMetadata1);
 		service().updateWorkspaceByName(base, null, null, testMetadata2, false);
-		Workspace fetched = service().getWorkspaceByName(base);
+		Workspace fetched = (Workspace) service().getObjectByName(base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 		assertEquals("alcatraz", fetched.getMetadata().getString("Team"));
 		JsonObject testMetadata3 = Json.createObjectBuilder().add("Branch", JsonValue.NULL).build();
 		service().updateWorkspaceByName(base, null, null, testMetadata3, false);
-		Workspace fetched2 = service().getWorkspaceByName(base);
+		Workspace fetched2 = (Workspace)service().getObjectByName(base);
 		assertEquals(null, fetched2.getMetadata().getString("Branch",null));
 		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
 	}

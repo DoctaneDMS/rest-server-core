@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
+import javax.json.JsonValue;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -105,12 +106,12 @@ public class TempRepositoryServerTest {
      * where the json file contains the metadata.
      * 
      * @param name Name of test document file (without extension)
-     * @param id Id of document to update
+     * @param path Path of document to update (including base, so /docs/tmp/id or /ws/tmp/workspace/docName)
      * @return The result of posting the document to the test server.
      * 
      */
-    public JsonObject putDocument(String name, String id) throws IOException {
-    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
+    public JsonObject putDocument(String name, String path) throws IOException {
+    	WebTarget target = client.target("http://localhost:" + port + path);
     	
     	MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
@@ -163,13 +164,13 @@ public class TempRepositoryServerTest {
 		}
     }
     
-    /** Utility function to put a workspace using the Jersey client API.
+    /** Utility function to get a workspace using the Jersey client API.
      * 
      * @param path Path of workspace
      * @return Json object containing data for the workspace
      * 
      */
-    public JsonObject getWorkspace(String path) throws IOException {
+    public <T extends JsonValue> T getWorkspace(String path, Class<T> resultType) throws IOException {
     	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
     	
     	Response response = target
@@ -177,7 +178,7 @@ public class TempRepositoryServerTest {
     			.get();
 			
 		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-			return response.readEntity(JsonObject.class);
+			return response.readEntity(resultType);
 		} else {
 			System.out.println(response.toString());
 			throw new RuntimeException("Bad get");
@@ -364,7 +365,7 @@ public class TempRepositoryServerTest {
 		
 		assertNotNull(response1.getString("id"));
 		
-		JsonObject response2 = putDocument("test2", response1.getString("id"));
+		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"));
 		
 		assertNotNull(response2.getString("id"));
 		
@@ -374,12 +375,27 @@ public class TempRepositoryServerTest {
 		
 	}
 	
+    /** Test that we can create a named document in a workspace by a put to a specific url
+     * 
+     * Puts to /ws/{repository}/path may either be multi-part content containing
+     * a document, or simple content containing an update to a workspace. The response contains a
+     * json object, with either id and version property or...?
+     */
+	@Test
+	public void putDocumentInWorkspaceTest() throws IllegalStateException, IOException, ParseException {
+		JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+		String wsId = response1.getString("id");
+		assertNotNull(wsId);
+		JsonArray response2 = getWorkspace("wsname/*", JsonArray.class);
+		assertEquals(1, response2.size());		
+	}
+	
 	@Test
 	public void searchDocumentTest() throws IllegalStateException, IOException, ParseException {
 
 		List<Info> catalog0 = getCatalog("/",null);
 		JsonObject response1 = postDocument("test1", null);
-		JsonObject response2 = putDocument("test2", response1.getString("id"));
+		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"));
 		JsonObject response3 = postDocument("test3", null);
 		List<Info> catalog1 = getCatalog("/",null);
 		assertEquals(2, catalog1.size() - catalog0.size());
@@ -414,7 +430,7 @@ public class TempRepositoryServerTest {
 		
 		assertTrue(result.containsKey("id"));
 		
-		JsonObject result2 = getWorkspace("test4/test5");
+		JsonObject result2 = getWorkspace("test4/test5", JsonObject.class);
 		
 		assertEquals("test4/test5", result2.getString("name"));
 		assertEquals("Open", result2.getString("state"));
@@ -430,7 +446,7 @@ public class TempRepositoryServerTest {
 			
 			assertTrue(result.containsKey("id"));
 			
-			JsonObject result2 = getWorkspace("~/"+result.getString("id"));
+			JsonObject result2 = getWorkspace("~/"+result.getString("id"), JsonObject.class);
 			
 			assertEquals("test4/test5", result2.getString("name"));
 			assertEquals("Open", result2.getString("state"));		

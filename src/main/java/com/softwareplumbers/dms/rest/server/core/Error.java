@@ -5,7 +5,9 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
@@ -42,6 +44,14 @@ public class Error {
 				.build();		
 	}
 	
+	public static JsonObject mapServiceError(InvalidObjectName err) {
+		return Json.createObjectBuilder()
+				.add("error", "Object name " + err.name + " is not valid")
+				.add("name", err.name.toString())
+				.build();		
+	}
+	
+	
 	public static JsonObject mapServiceError(InvalidDocumentId err) {
 		return Json.createObjectBuilder()
 				.add("error", "Document " + err.id + " is not found")
@@ -62,8 +72,21 @@ public class Error {
 		return builder.build();
 	}
 
+	public static JsonObject objectNotFound(String repository, QualifiedName name) {
+		JsonObjectBuilder builder = Json.createObjectBuilder()
+				.add("error", "Object " + name + " does not exist in repository " + repository)
+				.add("name", name.toString())
+				.add("repository", repository);
+				
+		return builder.build();
+	}
+
 	public static JsonObject reportException(Throwable e) {
 		return Json.createObjectBuilder().add("error", "Exception " + e.toString()).build();		
+	}
+	
+	public static JsonObject missingResourcePath() {
+		return Json.createObjectBuilder().add("error", "resource path missing from request").build();						
 	}
 	
 	public static JsonObject missingFile() {

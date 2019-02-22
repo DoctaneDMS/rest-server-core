@@ -18,6 +18,8 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
+import org.bouncycastle.pqc.math.linearalgebra.GoppaCode.MaMaPe;
+
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
@@ -27,6 +29,7 @@ import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
 import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
 import com.softwareplumbers.dms.rest.server.model.Reference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
@@ -77,6 +80,31 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("getDocument", result);
 	}
 
+	public void registerWorkspace(WorkspaceImpl workspace) {
+		workspacesById.put(workspace.id, workspace);
+	}
+
+	public void deregisterWorkspace(WorkspaceImpl workspace) {
+		workspacesById.remove(workspace.id);
+	}
+
+	public void registerWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
+		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<UUID>()).add(workspace.id);
+		
+	}
+	
+	public void deregisterWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
+		Set<UUID> wsids = workspacesByDocument.get(ref.id);
+		wsids.remove(workspace.id);
+		if (wsids.isEmpty()) workspacesByDocument.remove(ref.id);
+	}
+	
+	public boolean referenceExists(WorkspaceImpl workspace, Reference ref) {
+		Set<UUID> wsids = workspacesByDocument.get(ref.id);
+		if (wsids == null) return false;
+		return wsids.contains(workspace.id);
+	}
+
 	/** Update a workspace with new or updated document
 	 * 
 	 * @param workspaceId
@@ -105,12 +133,9 @@ public class TempRepositoryService implements RepositoryService {
 			workspacesById.put(id, workspace);
 		}
 		
-		if (workspace.getState() == State.Closed) throw LOG.logThrow("updateWorkspace", new InvalidWorkspaceState(workspaceId, State.Closed));
-		
 		workspace.add(ref, document);
-		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<UUID>()).add(id);
-	
-		return workspace.id.toString();
+		
+		return LOG.logReturn("updateWorkspace", workspace.getId());
 	}
 	
 	@Override
@@ -128,23 +153,79 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public Reference createDocumentByName(QualifiedName documentName, MediaType mediaType, InputStreamSupplier stream,
-			JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
-		WorkspaceImpl workspace = root.getOrCreateWorkspace(documentName.parent, createWorkspace);
-		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
+	public Reference updateDocumentByName(String rootWorkspace, QualifiedName documentName, MediaType mediaType, InputStreamSupplier stream,
+			JsonObject metadata, boolean createWorkspace, boolean createDocument) throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName {
+		LOG.logEntering("updateDocumentByName", rootWorkspace, documentName, mediaType, stream, metadata, createWorkspace, createDocument);
+		WorkspaceImpl myRoot = root;
+		if (rootWorkspace != null) {
+			myRoot = workspacesById.get(rootWorkspace);
+			if (myRoot == null) throw new InvalidWorkspace(rootWorkspace);
+		}
+		WorkspaceImpl workspace = myRoot.getOrCreateWorkspace(documentName.parent, createWorkspace);
+		Reference new_reference;
 		try {
-			DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
-			store.put(new_reference, new_document);
-			workspace.add(new_reference, documentName.part);
+			Optional<Reference> ref = workspace.getDocument(documentName.part);
+			if (ref.isPresent()) {
+				new_reference = newVersionReference(ref.get().id);
+				workspace.update(new_reference, documentName.part);
+				try {
+					updateDocument(new_reference, mediaType, stream, metadata);
+				} catch (InvalidReference e) {
+					// Should only happen if new_reference isn't valid; which it shouldn't be because we just looked it up
+					throw LOG.logRethrow("updateDocumentByName", new RuntimeException(e));
+				}
+			} else {
+				if (createDocument) {
+					new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
+					DocumentImpl new_document = new DocumentImpl(mediaType, stream, metadata);
+					workspace.add(new_reference, documentName.part);
+					store.put(new_reference, new_document);
+				} else 
+					throw new InvalidObjectName(documentName);
+			}
 		} catch (IOException e) {
-			throw new RuntimeException(LOG.logRethrow("createDocumentByName",e));	
+			throw new RuntimeException(LOG.logRethrow("updateDocumentByName",e));	
 		}
 		return LOG.logReturn("createDocumentByName",new_reference);
+	}
+	
+	@Override
+	public Reference createDocumentByName(String rootWorkspace, QualifiedName documentName, MediaType mediaType, InputStreamSupplier stream,
+			JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName {
+		return updateDocumentByName(rootWorkspace, documentName, mediaType, stream, metadata, createWorkspace, true);
+	
 	}
 	
 	public static final String newVersion(String prev) {
 		String result = Integer.toString(1 + Integer.parseInt(prev));
 		return "0000000".substring(result.length()) + result;
+	}
+	
+	private Reference newVersionReference(String id) {
+		Reference old_reference = store.floorKey(new Reference(id));
+		return new Reference(id, newVersion(old_reference.version));	
+	}
+	
+	private DocumentImpl updateDocument(
+			Reference new_reference, 
+			MediaType mediaType, 
+			InputStreamSupplier stream, 
+			JsonObject metadata) throws InvalidReference {
+		LOG.logEntering("updateDocument", new_reference, mediaType, metadata);
+		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(new_reference.id));
+		if (previous != null && previous.getKey().id.equals(new_reference.id)) {
+			DocumentImpl newDocument = previous.getValue();
+			try {
+				if (metadata != null) newDocument = newDocument.setMetadata(MetadataMerge.merge(newDocument.getMetadata(), metadata));
+				if (stream != null) newDocument = newDocument.setData(stream);			
+				store.put(new_reference, newDocument);
+				return LOG.logReturn("updateDocument",newDocument);
+			} catch (IOException e) {
+				throw new RuntimeException(LOG.logRethrow("updateDocument", e));
+			}
+		} else {
+			throw LOG.logThrow("updateDocument", new InvalidReference(new_reference));
+		}
 	}
 	
 	@Override
@@ -155,34 +236,14 @@ public class TempRepositoryService implements RepositoryService {
 			String workspaceId, 
 			boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
 		LOG.logEntering("updateDocument", id, mediaType, metadata, workspaceId, createWorkspace);
-		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(id));
-		if (previous != null && previous.getKey().id.equals(id)) {
-			Reference new_reference = new Reference(id, newVersion(previous.getKey().version));
-			DocumentImpl newDocument = previous.getValue();
-			try {
-				if (metadata != null) newDocument = newDocument.setMetadata(MetadataMerge.merge(newDocument.getMetadata(), metadata));
-				if (stream != null) newDocument = newDocument.setData(stream);			
-				updateWorkspace(workspaceId, new_reference, newDocument, createWorkspace);
-				store.put(new_reference, newDocument);
-				return LOG.logReturn("updateDocument",new_reference);
-			} catch (IOException e) {
-				throw new RuntimeException(LOG.logRethrow("updateDocument", e));
-			}
-		} else {
-			throw LOG.logThrow("updateDocument", new InvalidDocumentId(id));
-		}
-	}
-
-	Info info(QualifiedName name, Reference ref) {
 		try {
-			return new Info(name, ref, getDocument(ref));
-		} catch (InvalidReference err) {
-			throw new RuntimeException(err);
+			Reference new_reference = newVersionReference(id);
+			DocumentImpl newDocument = updateDocument(new_reference, mediaType, stream, metadata);
+			updateWorkspace(workspaceId, new_reference, newDocument, createWorkspace);
+			return LOG.logReturn("updateDocument", new_reference);
+		} catch (InvalidReference ref) {
+			throw LOG.logRethrow("updateDocument", new InvalidDocumentId(id));
 		}
-	}
-	
-	Info info(Workspace ws) {
-		return new Info(ws);
 	}
 	
 	private Info info(QualifiedName name, Map.Entry<Reference, DocumentImpl> entry) {
@@ -306,24 +367,26 @@ public class TempRepositoryService implements RepositoryService {
 		return catalogueHistory(QualifiedName.ROOT, ref, filter);
 	}
 
-	private <T> String updateWorkspaceByIndex(Function<T,WorkspaceImpl> index, T key, UUID id, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
+	private <T> String updateWorkspaceByIndex(Function<T,Optional<WorkspaceImpl>> index, T key, UUID id, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceByIndex", index, key, id, name, state, createWorkspace);
 		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspace("null"));
-		WorkspaceImpl workspace = index.apply(key);
-		if (workspace == null && createWorkspace) {
+		Optional<WorkspaceImpl> workspace = index.apply(key);
+		WorkspaceImpl ws;
+		if (!workspace.isPresent() && createWorkspace) {
 			if (id == null) id = UUID.randomUUID();
 			if (name != null) {
-				workspace = root.createWorkspace(id, name, state, metadata);
+				ws = root.createWorkspace(id, name, state, metadata);
 			} else {
-				workspace = new WorkspaceImpl(this, null, id, null, state, metadata);
+				ws = new WorkspaceImpl(this, null, id, null, state, metadata);
+				registerWorkspace(ws);
 			}
-			workspacesById.put(id, workspace);
 		} else {
-			if (workspace == null) throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(key.toString()));
-			workspace.setState(state);
-			workspace.setMetadata(MetadataMerge.merge(workspace.getMetadata(), metadata));
-			if (name != null && !name.equals(workspace.getName())) {
-				workspace.setName(root, name, createWorkspace);
+			if (!workspace.isPresent()) throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(key.toString()));
+			ws = workspace.get();
+			ws.setState(state);
+			ws.setMetadata(MetadataMerge.merge(ws.getMetadata(), metadata));
+			if (name != null && !name.equals(ws.getName())) {
+				ws.setName(root, name, createWorkspace);
 			}
 		}
 		return LOG.logReturn("updateWorkspaceByIndex", id == null ? null : id.toString());
@@ -333,7 +396,7 @@ public class TempRepositoryService implements RepositoryService {
 		LOG.logEntering("updateWorkspaceById", workspaceId, name, state, createWorkspace);
 		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspace("null"));
 		UUID id = UUID.fromString(workspaceId);
-		return LOG.logReturn("updateWorkspaceById", updateWorkspaceByIndex(ws->workspacesById.get(ws), id, id, name, state, metadata, createWorkspace));
+		return LOG.logReturn("updateWorkspaceById", updateWorkspaceByIndex(ws->Optional.ofNullable(workspacesById.get(ws)), id, id, name, state, metadata, createWorkspace));
 	}
 
 	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
@@ -352,11 +415,11 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Workspace getWorkspaceByName(QualifiedName workspaceName) throws InvalidWorkspace {
-		LOG.logEntering("getWorkspaceByName", workspaceName);
-		if (workspaceName == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace("null"));
-		Workspace result = root.getWorkspace(workspaceName);
-		if (result == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace(workspaceName));
+	public RepositoryObject getObjectByName(QualifiedName objectName) throws InvalidObjectName, InvalidWorkspace {
+		LOG.logEntering("getWorkspaceByName", objectName);
+		if (objectName == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace("null"));
+		RepositoryObject result = root.getObject(objectName);
+		if (result == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace(objectName));
 		return LOG.logReturn("getWorkspaceByName",result);
 	}
 	
@@ -378,6 +441,31 @@ public class TempRepositoryService implements RepositoryService {
 		if (docWorkspaces.isEmpty()) workspacesByDocument.remove(docId);
 		LOG.logExiting("deleteDocument");
 	}
+	
+	@Override
+	public void deleteObjectByName(QualifiedName objectName)
+			throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
+		LOG.logEntering("deleteObjectByName", objectName);
+		if (objectName == null) throw LOG.logThrow("deleteObjectByName", new InvalidObjectName(QualifiedName.ROOT));
+
+		WorkspaceImpl ws = root
+			.getWorkspace(objectName.parent)
+			.orElseThrow(()->LOG.logThrow("deleteObjectByName", new InvalidWorkspace(objectName.parent)));
+		
+		WorkspaceImpl deleted = ws.deleteWorkspaceByName(objectName.part);
+		if (deleted != null) {
+			workspacesById.remove(deleted.id);
+		} else {
+			Reference ref = ws.deleteDocumentByName(objectName.part);
+			if (ref != null) {
+				Set<UUID> docWorkspaces = workspacesByDocument.getOrDefault(ref.id, Collections.emptySet());
+				docWorkspaces.remove(ws.id);				
+				if (docWorkspaces.isEmpty()) workspacesByDocument.remove(ref.id);
+				
+			}
+		}
+		LOG.logExiting("deleteDocument");
+	}
 
 	@Override
 	public Stream<Info> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference {
@@ -395,7 +483,7 @@ public class TempRepositoryService implements RepositoryService {
 	@Override
 	public String createWorkspace(QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
 		UUID id = UUID.randomUUID();
-		return updateWorkspaceByIndex(ws->workspacesById.get(ws), id, id, name, state, metadata, true);
+		return updateWorkspaceByIndex(ws->Optional.ofNullable(workspacesById.get(ws)), id, id, name, state, metadata, true);
 	}
 
 }

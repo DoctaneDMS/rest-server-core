@@ -16,7 +16,7 @@ public class Info {
 	/** The qualified name of the resource */
 	public final QualifiedName name;
 	/** The resource type */
-	public final ResourceType type;
+	public final RepositoryObject.Type type;
 	/** A reference to a document */
 	public final Reference reference;
 	/** Metadata about the referenced document */
@@ -25,7 +25,7 @@ public class Info {
 	public final String mimeType;
 	
 	/** Create an Info object*/
-	public Info(ResourceType type, QualifiedName name, Reference reference, String mimeType, JsonObject metadata) {
+	public Info(RepositoryObject.Type type, QualifiedName name, Reference reference, String mimeType, JsonObject metadata) {
 		this.reference = reference;
 		this.mimeType = mimeType;
 		this.metadata = metadata;
@@ -35,7 +35,7 @@ public class Info {
 	
 	/** Create an Info object from a workspace */
 	public Info(Workspace workspace) {
-		this.type = ResourceType.FOLDER;
+		this.type = RepositoryObject.Type.WORKSPACE;
 		this.name = workspace.getName();
 		this.reference = null;
 		this.mimeType = null;
@@ -44,7 +44,7 @@ public class Info {
 	
 	/** Create an Info object from a document */
 	public Info(QualifiedName name, Reference reference, Document document) {
-		this.type = ResourceType.FILE;
+		this.type = RepositoryObject.Type.DOCUMENT;
 		this.name = name;
 		this.reference = reference;
 		this.mimeType = document.getMediaType().toString();
@@ -65,7 +65,7 @@ public class Info {
 		JsonObject reference = obj.getJsonObject("reference");
 		
 		return new Info(
-				ResourceType.valueOf(obj.getString("type")),
+				RepositoryObject.Type.valueOf(obj.getString("type")),
 				name == null ? null : QualifiedName.parse(name, "/"),
 				reference == null ? null : Reference.fromJson(reference),
 				obj.getString("mimeType",null),
