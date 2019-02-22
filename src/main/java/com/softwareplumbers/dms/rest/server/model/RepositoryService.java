@@ -308,12 +308,32 @@ public interface RepositoryService {
 	 * new versions of the document but will not change the workspace; attempting such operations
 	 * on a closed workspace will throw an error.
 	 * 
-	 * @param name name of workspace to create (optional)
+	 * @param rootId base location id
+	 * @param name name of workspace to create relative to base
 	 * @param state Initial/Updated state of workspace (optional)
+	 * @param metadata additional info describing the workspace
+	 * @return the id of the created workspace
+	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
+	 */
+	public String createWorkspaceByName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
+	
+	/** Create a workspace 
+	 * 
+	 * Workspaces may be open, finalized or closed; catalog operations on a closed or finalized
+	 * workspace work on the versions of documents that were current at the time the workspace
+	 * was closed. Operations that create or update documents in a finalized workspace will create
+	 * new versions of the document but will not change the workspace; attempting such operations
+	 * on a closed workspace will throw an error.
+	 * 
+	 * @param id Id of workspace to create (optional - id will be generated if not supplied)
+	 * @param name (optional) folder to file workspace in
+	 * @param state Initial/Updated state of workspace (optional)
+	 * @param metadata additional info describing the workspace
 	 * return the id of the created workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
-	public String createWorkspace(QualifiedName name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
+	public String createWorkspaceById(String id, QualifiedName name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
+
 	
 	/** Create or update a workspace 
 	 * 

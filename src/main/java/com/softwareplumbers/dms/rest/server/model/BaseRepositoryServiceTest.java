@@ -71,9 +71,9 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testAnonymousCreateWorkspace() throws InvalidWorkspace {
-		String workspace1 = service().createWorkspace(null, State.Open, null);
+		String workspace1 = service().createWorkspaceById(null, null, State.Open, null);
 		assertNotNull(workspace1);
-		String workspace2 = service().createWorkspace(null, State.Open, null);
+		String workspace2 = service().createWorkspaceById(null, null, State.Open, null);
 		assertNotNull(workspace1);
 		assertNotEquals(workspace1, workspace2);
 	}
@@ -81,7 +81,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		String workspace = service().createWorkspace(name, State.Open, null);
+		String workspace = service().createWorkspaceByName(ROOT_WORKSPACE_ID, name, State.Open, null);
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID, name);
 		assertEquals(workspace, ws.getId());
 	}
@@ -121,7 +121,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test (expected = InvalidDocumentId.class)
 	public void testDeleteDocumentInvalidDocumentError() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
-		String workspace = service().createWorkspace(null, State.Open, null);
+		String workspace = service().createWorkspaceById(null, null, State.Open, null);
 		service().deleteDocument(workspace, randomDocumentReference().getId());
 	}
 
@@ -151,7 +151,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testRenameWorkspace() throws InvalidWorkspace, InvalidObjectName {
-		String wsId = service().createWorkspace(null, State.Open, null);
+		String wsId = service().createWorkspaceById(null, null, State.Open, null);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceById(wsId, wsName, null, null, true);
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID, wsName);
@@ -161,8 +161,8 @@ public abstract class BaseRepositoryServiceTest {
 	@Test  (expected = InvalidWorkspace.class)
 	public void testRenameFolderExistingName() throws InvalidWorkspace {
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().createWorkspace(wsName, State.Open, null);
-		String wsId = service().createWorkspace(null, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID,wsName, State.Open, null);
+		String wsId = service().createWorkspaceById(null, null, State.Open, null);
 		service().updateWorkspaceById(wsId,wsName, null, null, false);
 	}
 	
@@ -175,10 +175,10 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName peter_carter = carter.add("peter");
 		QualifiedName pamela_jones = jones.add("pamela");
 		QualifiedName roger_carter = carter.add("roger");
-		service().createWorkspace(peter_jones, State.Open, null);
-		service().createWorkspace(peter_carter, State.Open, null);
-		service().createWorkspace(pamela_jones, State.Open, null);
-		service().createWorkspace(roger_carter, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, peter_jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, peter_carter, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, pamela_jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, roger_carter, State.Open, null);
 				
 		assertEquals(4, service().catalogueByName(ROOT_WORKSPACE_ID, base.addAll("*","*"), ObjectConstraint.UNBOUNDED, false).count());
 		assertEquals(2, service().catalogueByName(ROOT_WORKSPACE_ID,base.addAll("jones","*"), ObjectConstraint.UNBOUNDED, false).count());
@@ -191,7 +191,7 @@ public abstract class BaseRepositoryServiceTest {
 	public void testWorkspaceMetadataRoundtrip() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
-		service().createWorkspace(base, State.Open, testMetadata);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, base, State.Open, testMetadata);
 		Workspace fetched =  (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 	}
@@ -201,8 +201,8 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		QualifiedName jones = base.add("jones");
 		QualifiedName carter = base.add("carter");
-		service().createWorkspace(base, State.Open, null);
-		service().createWorkspace(jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, base, State.Open, null);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, jones, State.Open, null);
 		service().createDocumentByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
 		assertEquals(2,service().catalogueByName(ROOT_WORKSPACE_ID,base, ObjectConstraint.UNBOUNDED, false).count());
 	}
@@ -212,7 +212,7 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
-		service().createWorkspace(base, State.Open, testMetadata1);
+		service().createWorkspaceByName(ROOT_WORKSPACE_ID, base, State.Open, testMetadata1);
 		service().updateWorkspaceByName(ROOT_WORKSPACE_ID,base, null, null, testMetadata2, false);
 		Workspace fetched = (Workspace) service().getObjectByName(ROOT_WORKSPACE_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));

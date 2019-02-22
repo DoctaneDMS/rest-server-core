@@ -390,47 +390,41 @@ public class TempRepositoryService implements RepositoryService {
 		return catalogueHistory(QualifiedName.ROOT, ref, filter);
 	}
 	
-	@FunctionalInterface
-	private interface Index<T> { Optional<WorkspaceImpl> lookup(T key) throws InvalidWorkspace; }
+	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
+		LOG.logEntering("updateWorkspaceByName", rootId, name, newName, state, createWorkspace);
+		
+		WorkspaceImpl myRoot = getRoot(rootId);
+		
+		Optional<WorkspaceImpl> workspace = myRoot.getWorkspace(name);
 
-	private <T> String updateWorkspaceByIndex(Index<T> index, T key, UUID id, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
-		LOG.logEntering("updateWorkspaceByIndex", index, key, id, name, state, createWorkspace);
-		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspace("null"));
-		Optional<WorkspaceImpl> workspace = index.lookup(key);
 		WorkspaceImpl ws;
-		if (!workspace.isPresent() && createWorkspace) {
-			if (id == null) id = UUID.randomUUID();
-			if (name != null) {
-				ws = root.createWorkspace(id, name, state, metadata);
-			} else {
-				ws = new WorkspaceImpl(this, null, id, null, state, metadata);
-				registerWorkspace(ws);
-			}
-		} else {
-			if (!workspace.isPresent()) throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(key.toString()));
+		if (!workspace.isPresent()) {
+			if (createWorkspace)
+				ws = myRoot.createWorkspace(UUID.randomUUID(), name, state, metadata);
+			else
+				throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(myRoot.getName().addAll(name)));
+		} else { 
 			ws = workspace.get();
 			ws.setState(state);
 			ws.setMetadata(MetadataMerge.merge(ws.getMetadata(), metadata));
-			if (name != null && !name.equals(ws.getName())) {
-				ws.setName(root, name, createWorkspace);
+			if (newName != null && !newName.equals(ws.getName())) {
+				ws.setName(root, newName, createWorkspace);
 			}
 		}
-		return LOG.logReturn("updateWorkspaceByIndex", id == null ? null : id.toString());
+		return LOG.logReturn("updateWorkspaceByIndex", ws.getId());
 	}
 	
-	@Override
-	public String updateWorkspaceById(String workspaceId, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
-		LOG.logEntering("updateWorkspaceById", workspaceId, name, state, createWorkspace);
-		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspace("null"));
-		UUID id = UUID.fromString(workspaceId);
-		return LOG.logReturn("updateWorkspaceById", updateWorkspaceByIndex(ws->Optional.ofNullable(workspacesById.get(ws)), id, id, name, state, metadata, createWorkspace));
+	public String updateWorkspaceById(String id, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
+		UUID uuid = UUID.fromString(id);
+		if (!workspacesById.containsKey(uuid)) {
+			if (createWorkspace)
+				workspacesById.put(uuid, new WorkspaceImpl(this, null, uuid, null, state, metadata));
+			else
+				throw new InvalidWorkspace(id);
+		}
+		return updateWorkspaceByName(id, QualifiedName.ROOT, newName, state, metadata, createWorkspace);
 	}
 
-	@Override
-	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
-		LOG.logEntering("updateWorkspaceById", name, newName, state, createWorkspace);
-		return LOG.logReturn("updateWorkspaceById",updateWorkspaceByIndex(ws->getRoot(rootId).getWorkspace(ws), name, null, newName == null ? name : newName, state, metadata, createWorkspace));
-	}
 
 	@Override
 	public Workspace getWorkspaceById(String workspaceId) throws InvalidWorkspace {
@@ -509,9 +503,14 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public String createWorkspace(QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
-		UUID id = UUID.randomUUID();
-		return updateWorkspaceByIndex(ws->Optional.ofNullable(workspacesById.get(ws)), id, id, name, state, metadata, true);
+	public String createWorkspaceByName(String rootId, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
+		return updateWorkspaceByName(rootId, name, name, state, metadata, true);
+	}
+	
+	@Override
+	public String createWorkspaceById(String Id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
+		if (Id == null) Id = UUID.randomUUID().toString();
+		return updateWorkspaceById(Id, name, state, metadata, true);
 	}
 
 
