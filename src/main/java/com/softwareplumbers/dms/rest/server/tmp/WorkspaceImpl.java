@@ -30,11 +30,11 @@ class WorkspaceImpl implements Workspace {
 	
 	static Log LOG = new Log(WorkspaceImpl.class);
 	
-	private static class WorkspaceInfo {
+	private static class DocumentInfo {
 		public boolean deleted;
 		public Reference reference;
 		
-		public WorkspaceInfo(Reference reference, boolean deleted) {
+		public DocumentInfo(Reference reference, boolean deleted) {
 			this.deleted = deleted;
 			this.reference = reference;
 		}
@@ -47,7 +47,7 @@ class WorkspaceImpl implements Workspace {
 	private WorkspaceImpl parent;
 	private String name;
 	UUID id;
-	private TreeMap<String,WorkspaceInfo> docs;
+	private TreeMap<String,DocumentInfo> docs;
 	private TreeMap<String, WorkspaceImpl> children;
 	private State state;
 	private JsonObject metadata;
@@ -70,7 +70,7 @@ class WorkspaceImpl implements Workspace {
 		this.id = id;
 		this.name = name;
 		this.state = state;
-		this.docs = new TreeMap<String, WorkspaceInfo>();
+		this.docs = new TreeMap<String, DocumentInfo>();
 		this.children = new TreeMap<String, WorkspaceImpl>();
 		this.parent = parent;
 		this.metadata = metadata == null ? TempRepositoryService.EMPTY_METADATA : metadata;
@@ -97,13 +97,13 @@ class WorkspaceImpl implements Workspace {
 		// Convert references to point to a specific version
 		// of a document when a workspace is closed or finalized
 		if (this.state == State.Open && state != State.Open)
-			for (WorkspaceInfo info : docs.values())
+			for (DocumentInfo info : docs.values())
 				info.reference = service.store.floorKey(info.reference);
 
 		// Convert references to point to a the most recent version
 		// of a document when a workspace is opened
 		if (this.state != State.Open && state == State.Open)
-			for (WorkspaceInfo info : docs.values())
+			for (DocumentInfo info : docs.values())
 				info.reference = new Reference(info.reference.id);
 			
 				
@@ -166,7 +166,7 @@ class WorkspaceImpl implements Workspace {
 		if (state == State.Open) {
 			if (!service.referenceExists(this, reference)) {
 				Reference latest = new Reference(reference.id);
-				this.docs.put(docName, new WorkspaceInfo(latest,false));
+				this.docs.put(docName, new DocumentInfo(latest,false));
 				service.registerWorkspaceReference(this, latest);
 			}
 		}
@@ -176,7 +176,7 @@ class WorkspaceImpl implements Workspace {
 	
 	public void update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
 		LOG.logEntering("add", reference, docName);
-		WorkspaceInfo docRef = docs.get(docName);
+		DocumentInfo docRef = docs.get(docName);
 		if (docRef== null) throw new InvalidObjectName(getName().add(docName));
 		if (state == State.Open) {
 			if (docRef.reference.id != reference.id) {
@@ -193,7 +193,7 @@ class WorkspaceImpl implements Workspace {
 	public Reference deleteDocumentByName(String docName) throws InvalidWorkspaceState {
 		LOG.logEntering("deleteDocumentByName", docName);
 		if (state == State.Open) {
-			WorkspaceInfo info = docs.get(docName);
+			DocumentInfo info = docs.get(docName);
 			if (info == null) return LOG.logReturn("deleteDocumentByName", null);
 			info.deleted = true;
 			service.deregisterWorkspaceReference(this, info.reference);
@@ -223,7 +223,7 @@ class WorkspaceImpl implements Workspace {
 	public void deleteById(String id) throws InvalidDocumentId, InvalidWorkspaceState {
 		LOG.logEntering("deleteById", id);
 		if (state == State.Open) {
-			WorkspaceInfo info = docs.values()
+			DocumentInfo info = docs.values()
 				.stream()
 				.filter(i -> i.reference.id.equals(id))
 				.findFirst()
@@ -239,7 +239,7 @@ class WorkspaceImpl implements Workspace {
 	public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory) {
 		
 		final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
-		Stream<Map.Entry<String, WorkspaceInfo>> entries = docs.entrySet().stream();
+		Stream<Map.Entry<String, DocumentInfo>> entries = docs.entrySet().stream();
 
 		Stream<Info> docInfo = null;
 		QualifiedName path = getName();
@@ -356,7 +356,7 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public Optional<Reference> getDocument(String name) {
-		WorkspaceInfo info = docs.get(name);
+		DocumentInfo info = docs.get(name);
 		if (info != null && !info.deleted) 
 			return Optional.of(info.reference);
 		else
@@ -372,7 +372,7 @@ class WorkspaceImpl implements Workspace {
 		WorkspaceImpl ws = getOrCreateWorkspace(name.parent, false);
 		RepositoryObject result = ws.children.get(name.part);
 		if (result != null) return result;
-		WorkspaceInfo info = ws.docs.get(name.part);
+		DocumentInfo info = ws.docs.get(name.part);
 		if (info != null) return service.store.get(info.reference);
 		throw new InvalidObjectName(name);
 		
