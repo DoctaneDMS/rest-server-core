@@ -98,43 +98,44 @@ public class Workspaces {
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
     		QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
+    		String rootId = RepositoryService.ROOT_WORKSPACE_ID;
 
     		if (wsName.startsWith(QualifiedName.of("~"))) {
-    			JsonValue result = service.getWorkspaceById(wsName.get(1)).toJson();
-    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result).build();
+    			rootId = wsName.get(1);
+    			wsName = wsName.rightFromStart(2);
+    		} 
+    		
+    		if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
+    			JsonArrayBuilder results = Json.createArrayBuilder();
+    			service.catalogueByName(rootId, wsName, ObjectConstraint.UNBOUNDED, false)
+    			.forEach(item -> results.add(item.toJson()));;
+    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
     		} else {
-    			if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
-    				JsonArrayBuilder results = Json.createArrayBuilder();
-    				service.catalogueByName(wsName, ObjectConstraint.UNBOUNDED, false)
-    				.forEach(item -> results.add(item.toJson()));;
-    				return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
-    			} else {
-    				RepositoryObject result = service.getObjectByName(wsName);
-    				if (result != null) {    					
-    					if (result.getType() == RepositoryObject.Type.DOCUMENT) {
-    						Document document = (Document)result;
-    						FormDataBodyPart metadata = new FormDataBodyPart();
-    						metadata.setName("metadata");
-    						metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-    						metadata.setEntity(document.getMetadata());
-    						FormDataBodyPart file = new FormDataBodyPart();
-    						file.setName("file");
-    						file.setMediaType(document.getMediaType());
-    						file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-    						file.setEntity(new DocumentOutput(document));
+    			RepositoryObject result = service.getObjectByName(rootId, wsName);
+    			if (result != null) {    					
+    				if (result.getType() == RepositoryObject.Type.DOCUMENT) {
+    					Document document = (Document)result;
+    					FormDataBodyPart metadata = new FormDataBodyPart();
+    					metadata.setName("metadata");
+    					metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+    					metadata.setEntity(document.getMetadata());
+    					FormDataBodyPart file = new FormDataBodyPart();
+    					file.setName("file");
+    					file.setMediaType(document.getMediaType());
+    					file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+    					file.setEntity(new DocumentOutput(document));
 
-    						MultiPart response = new MultiPart()
-    								.bodyPart(metadata)
-    								.bodyPart(file);
+    					MultiPart response = new MultiPart()
+    							.bodyPart(metadata)
+    							.bodyPart(file);
 
-    						return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
-    					} else {
-    						Workspace workspace = (Workspace)result;
-    						return Response.ok().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build();
-    					}
+    					return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
     				} else {
-    					return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
+    					Workspace workspace = (Workspace)result;
+    					return Response.ok().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build();
     				}
+    			} else {
+    				return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
     			}
     		}
 
@@ -217,13 +218,14 @@ public class Workspaces {
     			JsonObject metadata = workspace.getJsonObject("metadata");
     			
     			QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
+    			String rootId = RepositoryService.ROOT_WORKSPACE_ID;
     					
-    			String wsId = null;
     			if (wsName.startsWith(QualifiedName.of("~"))) {    			
-    				wsId = service.updateWorkspaceById(wsName.get(1), wsName, state, metadata, createWorkspace);
-    			} else {
-    				wsId = service.updateWorkspaceByName(wsName, updateQName, state, metadata, createWorkspace);
-    			}
+    				rootId = wsName.get(1);
+    				wsName = wsName.rightFromStart(2);
+    			} 
+    			
+    			String wsId = service.updateWorkspaceByName(rootId, wsName, updateQName, state, metadata, createWorkspace);
     			
     			JsonObjectBuilder result = Json.createObjectBuilder();
     			result.add("id", wsId);
@@ -319,17 +321,19 @@ public class Workspaces {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     			
     			QualifiedName wsName = QualifiedName.parse(path, "/");
+    			String rootId = RepositoryService.ROOT_WORKSPACE_ID;
     			
     			if (wsName.startsWith(QualifiedName.of("~"))) {    			
-        			service.deleteDocument(wsName.get(1), wsName.get(2));
-    			} else {
-        			service.deleteObjectByName(wsName);
-    			}    			
+        			rootId = wsName.get(1);
+        			wsName = wsName.rightFromStart(2);
+    			}
+    			
+        		service.deleteObjectByName(rootId, wsName);
     			
     			return Response.status(Status.NO_CONTENT).build();
     	} catch (InvalidWorkspace err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
-    	} catch (InvalidDocumentId err) {
+    	} catch (InvalidObjectName err) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
     	} catch (InvalidWorkspaceState err) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();

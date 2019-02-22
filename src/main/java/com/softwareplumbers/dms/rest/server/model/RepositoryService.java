@@ -62,6 +62,8 @@ public interface RepositoryService {
 	
 	/** Exception type for an invalid name (for either document or workspace) */
 	public static class InvalidObjectName extends Exception {
+
+		private static final long serialVersionUID = 7176066099090799797L;
 		public final QualifiedName name;
 		public InvalidObjectName(QualifiedName name) {
 			super("Invalid name: " + name);
@@ -96,6 +98,7 @@ public interface RepositoryService {
 		}
 	}
 	
+	/** Generic ID for root workspace */
 	public static final String ROOT_WORKSPACE_ID = null;
 
 	/** Get a document from a Reference.
@@ -261,13 +264,14 @@ public interface RepositoryService {
 	 * will be searched and a reference to the most recent version of the document matching the filter 
 	 * will be returned.
 	 * </p>
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param filter filter object to match meta-data
-	 * @param path search path.
+	 * @param path search path from root workspace id
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueByName(QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<Info> catalogueByName(String rootId, QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 
@@ -351,6 +355,7 @@ public interface RepositoryService {
 	 * new versions of the document but will not change the workspace; attempting such operations
 	 * on a closed workspace will throw an error.
 	 * 
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param name name of workspace to create/update
 	 * @param newName new name for workspace
 	 * @param state Initial/Updated state of workspace
@@ -359,15 +364,16 @@ public interface RepositoryService {
 	 * @return the id of the created/updated workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
 	 */
-	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
+	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
 
 	/** Get current state of workspace or document 
 	 * 
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param name the name of the workspace
 	 * @return a Workspace object containing current workspace state
 	 * @throws InvalidWorkspace if workspace does not already exist
 	 */
-	public RepositoryObject getObjectByName(QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
+	public RepositoryObject getObjectByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
 	
 	/** Get current state of workspace 
 	 * 
@@ -397,12 +403,13 @@ public interface RepositoryService {
 	 *  from a catalog search of the workspace, unless the searchHistory option
 	 *  is set.
 	 *  
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param objectName Object id to remove from its parent workspace
 	 * @throws InvalidWorkspace if workspace does not exist
 	 * @throws InvalidDocumentId if document is not in workspace
 	 * @throws InvalidWorkspaceState if workspace is not open
 	 */
-	public void deleteObjectByName(QualifiedName objectName) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
+	public void deleteObjectByName(String rootId, QualifiedName objectName) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
 
 	/** List all the workspaces of which the given document is a member.
 	 * 

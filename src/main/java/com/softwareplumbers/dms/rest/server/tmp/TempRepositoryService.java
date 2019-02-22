@@ -58,6 +58,15 @@ public class TempRepositoryService implements RepositoryService {
 	private WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID(), null, State.Open, EMPTY_METADATA);
 	private QualifiedName nameAttribute;
 	
+	private WorkspaceImpl getRoot(String rootId) throws InvalidWorkspace {
+		WorkspaceImpl myRoot = root;
+		if (rootId != null) {
+			myRoot = workspacesById.get(UUID.fromString(rootId));
+			if (myRoot == null) throw new InvalidWorkspace(rootId);
+		}
+		return myRoot;
+	}
+	
 	public TempRepositoryService(QualifiedName nameAttribute) {
 		this.nameAttribute = nameAttribute;
 	}
@@ -348,13 +357,13 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Info> catalogueByName(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<Info> catalogueByName(String rootId, QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueByName", filter, searchHistory);
 
 		if (workspaceName == null) LOG.logThrow("catalogueByName", new InvalidWorkspace("null"));
 		
-		return LOG.logReturn("catalogueByName", root.catalogue(workspaceName, filter, searchHistory));
+		return LOG.logReturn("catalogueByName", getRoot(rootId).catalogue(workspaceName, filter, searchHistory));
 	}
 
 	
@@ -380,11 +389,14 @@ public class TempRepositoryService implements RepositoryService {
 	public Stream<Info> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference {
 		return catalogueHistory(QualifiedName.ROOT, ref, filter);
 	}
+	
+	@FunctionalInterface
+	private interface Index<T> { Optional<WorkspaceImpl> lookup(T key) throws InvalidWorkspace; }
 
-	private <T> String updateWorkspaceByIndex(Function<T,Optional<WorkspaceImpl>> index, T key, UUID id, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
+	private <T> String updateWorkspaceByIndex(Index<T> index, T key, UUID id, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceByIndex", index, key, id, name, state, createWorkspace);
 		if (key == null) throw LOG.logThrow("updateWorkspaceByIndex",new InvalidWorkspace("null"));
-		Optional<WorkspaceImpl> workspace = index.apply(key);
+		Optional<WorkspaceImpl> workspace = index.lookup(key);
 		WorkspaceImpl ws;
 		if (!workspace.isPresent() && createWorkspace) {
 			if (id == null) id = UUID.randomUUID();
@@ -406,6 +418,7 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("updateWorkspaceByIndex", id == null ? null : id.toString());
 	}
 	
+	@Override
 	public String updateWorkspaceById(String workspaceId, QualifiedName name, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceById", workspaceId, name, state, createWorkspace);
 		if (workspaceId == null) throw LOG.logThrow("updateWorkspaceById",new InvalidWorkspace("null"));
@@ -413,9 +426,10 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("updateWorkspaceById", updateWorkspaceByIndex(ws->Optional.ofNullable(workspacesById.get(ws)), id, id, name, state, metadata, createWorkspace));
 	}
 
-	public String updateWorkspaceByName(QualifiedName name, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
+	@Override
+	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 		LOG.logEntering("updateWorkspaceById", name, newName, state, createWorkspace);
-		return LOG.logReturn("updateWorkspaceById",updateWorkspaceByIndex(ws->root.getWorkspace(ws), name, null, newName == null ? name : newName, state, metadata, createWorkspace));
+		return LOG.logReturn("updateWorkspaceById",updateWorkspaceByIndex(ws->getRoot(rootId).getWorkspace(ws), name, null, newName == null ? name : newName, state, metadata, createWorkspace));
 	}
 
 	@Override
@@ -429,12 +443,12 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public RepositoryObject getObjectByName(QualifiedName objectName) throws InvalidObjectName, InvalidWorkspace {
-		LOG.logEntering("getWorkspaceByName", objectName);
-		if (objectName == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace("null"));
-		RepositoryObject result = root.getObject(objectName);
-		if (result == null) throw LOG.logThrow("getWorkspaceByName", new InvalidWorkspace(objectName));
-		return LOG.logReturn("getWorkspaceByName",result);
+	public RepositoryObject getObjectByName(String rootId, QualifiedName objectName) throws InvalidObjectName, InvalidWorkspace {
+		LOG.logEntering("getObjectByName", objectName);
+		if (objectName == null) throw LOG.logThrow("getObjectByName", new InvalidObjectName(objectName));
+		RepositoryObject result = getRoot(rootId).getObject(objectName);
+		if (result == null) throw LOG.logThrow("getObjectByName", new InvalidWorkspace(objectName));
+		return LOG.logReturn("getObjectByName",result);
 	}
 	
 	@Override
@@ -457,12 +471,12 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public void deleteObjectByName(QualifiedName objectName)
+	public void deleteObjectByName(String rootId, QualifiedName objectName)
 			throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
 		LOG.logEntering("deleteObjectByName", objectName);
-		if (objectName == null) throw LOG.logThrow("deleteObjectByName", new InvalidObjectName(QualifiedName.ROOT));
+		if (objectName == null) throw LOG.logThrow("deleteObjectByName", new InvalidObjectName(objectName));
 
-		WorkspaceImpl ws = root
+		WorkspaceImpl ws = getRoot(rootId)
 			.getWorkspace(objectName.parent)
 			.orElseThrow(()->LOG.logThrow("deleteObjectByName", new InvalidWorkspace(objectName.parent)));
 		
