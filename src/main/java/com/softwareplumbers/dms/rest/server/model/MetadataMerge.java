@@ -7,6 +7,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.json.JsonObjectBuilder;
+import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
 /** Define how we merge metadata.
  * 
@@ -17,11 +18,9 @@ import javax.json.JsonObjectBuilder;
  *
  */
 public class MetadataMerge {
-	
-	private static final JsonObject EMPTY = Json.createObjectBuilder().build();
-	
+		
 	public static JsonObject merge(JsonObject original, JsonObject update) {
-		if (original == null && update == null) return EMPTY;
+		if (original == null && update == null) return EMPTY_METADATA;
 		if (original == null) return update;
 		if (update == null) return original;
 		Map<String, JsonValue> map = new HashMap<String, JsonValue>(original);

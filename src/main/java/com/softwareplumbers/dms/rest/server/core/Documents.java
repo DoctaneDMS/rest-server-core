@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+
 import java.io.InputStream;
 import java.util.logging.Logger;
 
@@ -47,9 +49,6 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 @Path("/docs")
 public class Documents {
 	
-	private static final JsonObject EMPTY_JSON_OBJECT = Json.createObjectBuilder().build();
-	
-
 	///////////--------- Static member variables --------////////////
 
 	private static Logger LOG = Logger.getLogger("docs");
@@ -294,7 +293,7 @@ public class Documents {
     				.createDocument(
     					MediaType.valueOf(request.getContentType()),
     					() -> request.getInputStream(),
-						EMPTY_JSON_OBJECT,
+						EMPTY_METADATA,
 						workspace,
 						createWorkspace
 					);

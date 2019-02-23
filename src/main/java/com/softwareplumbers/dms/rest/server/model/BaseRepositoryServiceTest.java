@@ -22,7 +22,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 
-import static com.softwareplumbers.dms.rest.server.model.RepositoryService.ROOT_WORKSPACE_ID;
+import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
 /** Unit tests that should pass for all implementations of RepositoryService. 
  * 
@@ -81,8 +81,8 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		String workspace = service().createWorkspaceByName(ROOT_WORKSPACE_ID, name, State.Open, null);
-		Workspace ws = (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID, name);
+		String workspace = service().createWorkspaceByName(ROOT_ID, name, State.Open, null);
+		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, name);
 		assertEquals(workspace, ws.getId());
 	}
 	
@@ -95,7 +95,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test (expected = InvalidObjectName.class)
 	public void testGetWorkspaceNotFoundByNameError() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		Workspace test = (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID,name);
+		Workspace test = (Workspace)service().getObjectByName(ROOT_ID,name);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
@@ -106,7 +106,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test (expected = InvalidWorkspace.class)
 	public void testUpdateWorkspaceNotFoundError() throws InvalidWorkspace {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		service().updateWorkspaceByName(ROOT_WORKSPACE_ID, name, null, Workspace.State.Closed, null, false);
+		service().updateWorkspaceByName(ROOT_ID, name, null, Workspace.State.Closed, null, false);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
@@ -154,14 +154,14 @@ public abstract class BaseRepositoryServiceTest {
 		String wsId = service().createWorkspaceById(null, null, State.Open, null);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceById(wsId, wsName, null, null, true);
-		Workspace ws = (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID, wsName);
+		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, wsName);
 		assertEquals(wsId, ws.getId());
 	}
 	
 	@Test  (expected = InvalidWorkspace.class)
 	public void testRenameFolderExistingName() throws InvalidWorkspace {
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID,wsName, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID,wsName, State.Open, null);
 		String wsId = service().createWorkspaceById(null, null, State.Open, null);
 		service().updateWorkspaceById(wsId,wsName, null, null, false);
 	}
@@ -175,24 +175,24 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName peter_carter = carter.add("peter");
 		QualifiedName pamela_jones = jones.add("pamela");
 		QualifiedName roger_carter = carter.add("roger");
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, peter_jones, State.Open, null);
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, peter_carter, State.Open, null);
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, pamela_jones, State.Open, null);
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, roger_carter, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, peter_jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, peter_carter, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, pamela_jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, roger_carter, State.Open, null);
 				
-		assertEquals(4, service().catalogueByName(ROOT_WORKSPACE_ID, base.addAll("*","*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(2, service().catalogueByName(ROOT_WORKSPACE_ID,base.addAll("jones","*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(2, service().catalogueByName(ROOT_WORKSPACE_ID,base.addAll("carter","*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(3, service().catalogueByName(ROOT_WORKSPACE_ID,base.addAll("*","p*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(3, service().catalogueByName(ROOT_WORKSPACE_ID,base.addAll("*","*r"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(4, service().catalogueByName(ROOT_ID, base.addAll("*","*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("jones","*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("carter","*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(3, service().catalogueByName(ROOT_ID,base.addAll("*","p*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(3, service().catalogueByName(ROOT_ID,base.addAll("*","*r"), ObjectConstraint.UNBOUNDED, false).count());
 	}
 	
 	@Test
 	public void testWorkspaceMetadataRoundtrip() throws InvalidWorkspace, InvalidObjectName {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, base, State.Open, testMetadata);
-		Workspace fetched =  (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID,base);
+		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata);
+		Workspace fetched =  (Workspace)service().getObjectByName(ROOT_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 	}
 	
@@ -201,10 +201,10 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		QualifiedName jones = base.add("jones");
 		QualifiedName carter = base.add("carter");
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, base, State.Open, null);
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, base, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, jones, State.Open, null);
 		service().createDocumentByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
-		assertEquals(2,service().catalogueByName(ROOT_WORKSPACE_ID,base, ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2,service().catalogueByName(ROOT_ID,base, ObjectConstraint.UNBOUNDED, false).count());
 	}
 	
 	@Test
@@ -212,14 +212,14 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
-		service().createWorkspaceByName(ROOT_WORKSPACE_ID, base, State.Open, testMetadata1);
-		service().updateWorkspaceByName(ROOT_WORKSPACE_ID,base, null, null, testMetadata2, false);
-		Workspace fetched = (Workspace) service().getObjectByName(ROOT_WORKSPACE_ID,base);
+		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata1);
+		service().updateWorkspaceByName(ROOT_ID,base, null, null, testMetadata2, false);
+		Workspace fetched = (Workspace) service().getObjectByName(ROOT_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 		assertEquals("alcatraz", fetched.getMetadata().getString("Team"));
 		JsonObject testMetadata3 = Json.createObjectBuilder().add("Branch", JsonValue.NULL).build();
-		service().updateWorkspaceByName(ROOT_WORKSPACE_ID,base, null, null, testMetadata3, false);
-		Workspace fetched2 = (Workspace)service().getObjectByName(ROOT_WORKSPACE_ID,base);
+		service().updateWorkspaceByName(ROOT_ID,base, null, null, testMetadata3, false);
+		Workspace fetched2 = (Workspace)service().getObjectByName(ROOT_ID,base);
 		assertEquals(null, fetched2.getMetadata().getString("Branch",null));
 		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
 	}

@@ -6,7 +6,6 @@ import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-import javax.json.JsonValue;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -31,15 +30,16 @@ import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
-import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+
+import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+
 
 /** Handle catalog operations on repositories and documents.
  * 
@@ -98,7 +98,7 @@ public class Workspaces {
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
     		QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
-    		String rootId = RepositoryService.ROOT_WORKSPACE_ID;
+    		String rootId = ROOT_ID;
 
     		if (wsName.startsWith(QualifiedName.of("~"))) {
     			rootId = wsName.get(1);
@@ -218,7 +218,7 @@ public class Workspaces {
     			JsonObject metadata = workspace.getJsonObject("metadata");
     			
     			QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
-    			String rootId = RepositoryService.ROOT_WORKSPACE_ID;
+    			String rootId = ROOT_ID;
     					
     			if (wsName.startsWith(QualifiedName.of("~"))) {    			
     				rootId = wsName.get(1);
@@ -321,7 +321,7 @@ public class Workspaces {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     			
     			QualifiedName wsName = QualifiedName.parse(path, "/");
-    			String rootId = RepositoryService.ROOT_WORKSPACE_ID;
+    			String rootId = ROOT_ID;
     			
     			if (wsName.startsWith(QualifiedName.of("~"))) {    			
         			rootId = wsName.get(1);

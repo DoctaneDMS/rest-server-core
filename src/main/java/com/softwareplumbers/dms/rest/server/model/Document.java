@@ -1,5 +1,4 @@
 package com.softwareplumbers.dms.rest.server.model;
-import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
 import java.io.IOException;

@@ -98,9 +98,6 @@ public interface RepositoryService {
 		}
 	}
 	
-	/** Generic ID for root workspace */
-	public static final String ROOT_WORKSPACE_ID = null;
-
 	/** Get a document from a Reference.
  	 * 
 	 * @param reference

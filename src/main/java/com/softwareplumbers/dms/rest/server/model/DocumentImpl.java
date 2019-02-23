@@ -4,11 +4,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.json.Json;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.IOUtils;
+
+import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
 /** Generic implementation of Document interface.
  * 
@@ -18,9 +19,7 @@ import org.apache.commons.io.IOUtils;
  * @author Jonathan Essex
  */
 public class DocumentImpl implements Document {
-	
-	private static final JsonObject EMPTY_JSON_OBJECT = Json.createObjectBuilder().build();
-	
+		
 	private final byte[] data;
 	private final MediaType mediaType;
 	private final JsonObject metadata;
@@ -75,7 +74,7 @@ public class DocumentImpl implements Document {
 	 * @param doc_src Supplies an input stream containing the file data
 	 */
 	public DocumentImpl(String mediaType, InputStreamSupplier doc_src) throws IOException {
-		this(MediaType.valueOf(mediaType), doc_src, EMPTY_JSON_OBJECT);
+		this(MediaType.valueOf(mediaType), doc_src, EMPTY_METADATA);
 	}
 	
 	/** Create a new document with updated meta-data and same data. 
