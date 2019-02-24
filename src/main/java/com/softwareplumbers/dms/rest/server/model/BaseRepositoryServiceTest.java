@@ -204,7 +204,7 @@ public abstract class BaseRepositoryServiceTest {
 		service().createWorkspaceByName(ROOT_ID, base, State.Open, null);
 		service().createWorkspaceByName(ROOT_ID, jones, State.Open, null);
 		service().createDocumentByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
-		assertEquals(2,service().catalogueByName(ROOT_ID,base, ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2,service().catalogueByName(ROOT_ID, base.add("*"), ObjectConstraint.UNBOUNDED, false).count());
 	}
 	
 	@Test
