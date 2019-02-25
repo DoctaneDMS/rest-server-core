@@ -104,4 +104,8 @@ public class Error {
 	public static JsonObject unexpectedFailure() {
 		return Json.createObjectBuilder().add("error", "Request failed for unknown reason").build();				
 	}
+	
+	public static JsonObject bothVersionAndWorkspacePresent() {
+		return Json.createObjectBuilder().add("error", "Cannot specify both version and workspace when getting a document").build();				
+	}
 }

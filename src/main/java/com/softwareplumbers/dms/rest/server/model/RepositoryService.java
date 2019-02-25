@@ -105,7 +105,18 @@ public interface RepositoryService {
 	 * @throws InvalidReference if there is no document matching the reference in the repository 
 	 */
 	public Document getDocument(Reference reference) throws InvalidReference;
-	
+
+	/** Get a document from an Id and a workspace Id.
+	 * 
+	 * Gets the most recent version of a document in the given workspace.
+ 	 * 
+	 * @param id the Id of the requested document
+	 * @param workspaceId workspace to get the document from
+	 * @return the requested document
+	 * @throws InvalidReference if there is no document matching the reference in the repository 
+	 */
+	public Document getDocument(String id, String workspaceId) throws InvalidWorkspace, InvalidDocumentId;
+
 	/** Create a new document in the repository
 	 * 
 	 * @param mediaType the type of document
