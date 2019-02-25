@@ -400,4 +400,12 @@ class WorkspaceImpl implements Workspace {
 	public boolean isEmpty() {
 		return children.size() == 0 && !docs.values().stream().anyMatch(wsinfo -> !wsinfo.deleted);
 	}
+
+	public Reference getById(String documentId) throws InvalidDocumentId {
+		return docs.values().stream()
+				.map(info->info.reference)
+				.filter(reference->reference.id.equals(documentId))
+				.findFirst()
+				.orElseThrow(()->new InvalidDocumentId(documentId)); 
+	}
 }

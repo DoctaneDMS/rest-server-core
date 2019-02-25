@@ -103,6 +103,17 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("getDocument", result);
 	}
 
+	@Override
+	public Document getDocument(String documentId, String workspaceId) throws InvalidWorkspace, InvalidDocumentId {
+		LOG.logEntering("getDocument", documentId, workspaceId);
+		UUID wsid = UUID.fromString(workspaceId);
+		WorkspaceImpl workspace = workspacesById.get(wsid);
+		if (workspace == null) throw LOG.logThrow("getDocument", new InvalidWorkspace(workspaceId));
+		Reference result = workspace.getById(documentId);
+		if (result == null) throw LOG.logThrow("getDocument",new InvalidDocumentId(documentId));
+		return LOG.logReturn("getDocument", store.get(result));
+	}
+	
 	public void registerWorkspace(WorkspaceImpl workspace) {
 		workspacesById.put(workspace.getRawId(), workspace);
 	}

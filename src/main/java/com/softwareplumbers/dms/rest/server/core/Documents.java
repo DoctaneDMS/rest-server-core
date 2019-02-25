@@ -74,9 +74,15 @@ public class Documents {
      * Retrieves a specific document by its unique identifier. On success, a multipart
      * response contains the document in binary format and metadata as a Json object.
      * 
+     * Without any query parameters, requests the most recent version of the document.
+     * 
+     * May specify a specific version, or request the most recent version in the given workspace.
+     * It is not valid to specify both workspace and version.
+     * 
      * @param repository string identifier of a document repository
      * @param id string document id
-     * @param version (optional) integer version number of document
+     * @param version (optional) string version id of document
+     * @param workspaceId (optional) workspace Id 
      * @return Normally a multipart response.
      */
     @GET
@@ -85,14 +91,23 @@ public class Documents {
     public Response get(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") String version) {
+    	@QueryParam("version") String version,
+    	@QueryParam("workspaceId") String workspaceId) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    		
+    		if (version != null && workspaceId != null)
+    			return Response.status(Status.BAD_REQUEST).entity(Error.bothVersionAndWorkspacePresent()).build();
 
-    		Document document = service.getDocument(new Reference(id, version));        
+    		Document document;
+    		if (workspaceId == null)
+    			document = service.getDocument(new Reference(id, version));
+    		else
+    			document = service.getDocument(id, workspaceId);
+    		
     		if (document != null) { 
     			FormDataBodyPart metadata = new FormDataBodyPart();
     			metadata.setName("metadata");

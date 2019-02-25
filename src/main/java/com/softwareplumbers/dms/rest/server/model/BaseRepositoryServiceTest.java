@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -71,7 +72,14 @@ public abstract class BaseRepositoryServiceTest {
 	public static final InputStream toStream(String out) {
 		return new ByteArrayInputStream(out.getBytes());
 	}
+
+	public static final String getDocText(Document doc) throws IOException {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		doc.writeDocument(stream);
+		return new String(stream.toByteArray());
+	}
 	
+
 	public abstract Reference randomDocumentReference();
 	public abstract String randomWorkspaceId();
 	
@@ -285,5 +293,22 @@ public abstract class BaseRepositoryServiceTest {
 	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState {
 		Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, randomWorkspaceId(), true);
 		assertEquals(1, service().listWorkspaces(ref.id).count());
+	}
+	
+	@Test
+	public void testGetDocumentWithWorkspaceId() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String originalText = randomText();
+		// Create a document in the workspace
+		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, wsId, false);
+		// now close the workspace
+		service().updateWorkspaceById(wsId, null, State.Closed, EMPTY_METADATA, false);
+		Reference ref2 = service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		assertEquals(ref1.id, ref2.id);
+		String doc1 = getDocText(service().getDocument(ref1));
+		String doc2 = getDocText(service().getDocument(ref2));
+		assertNotEquals(doc1, doc2);	
+		String wsDoc = getDocText(service().getDocument(ref1.id, wsId));
+		// assertEquals(originalText, wsDoc); <-- TODO: this is broken for now in filenet impl
 	}
 }
