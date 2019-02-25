@@ -61,23 +61,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 		Reference ref3 = new Reference(repository.ref3.id);
 		assertTrue(TestRepository.docEquals("test3", repository.service.getDocument(ref3)));
 	}
-	
-	@Test
-	public void testRepositoryCatalog() throws IOException, InvalidWorkspace {
-		TestRepository repository = getTestRepository();
-		Info[] result = repository.service.catalogue(ObjectConstraint.UNBOUNDED, false).toArray(Info[]::new);
-		assertEquals(result.length, 3);
-	}
-	
-	@Test
-	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
-		TestRepository repository = getTestRepository();
-		Reference ref4 = repository.service.updateDocument(repository.ref2.id, repository.doc3.getMediaType(), null, repository.doc3.getMetadata(), null, false );
-		assertEquals("0000002", ref4.version);
-		Info[] result = repository.service.catalogue(ObjectConstraint.UNBOUNDED, false).toArray(Info[]::new);
-		assertEquals(result.length, 3);
-	}
-	
+		
 	@Test
 	public void testRepositorySearch() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();

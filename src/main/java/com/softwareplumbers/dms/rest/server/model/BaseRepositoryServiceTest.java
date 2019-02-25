@@ -53,6 +53,12 @@ public abstract class BaseRepositoryServiceTest {
 		return buffer.toString();
 	}
 	
+	public QualifiedName randomQualifiedName() {
+		QualifiedName result = QualifiedName.ROOT;
+		for (int i = 0; i < 3; i++) result = result.add(randomUrlSafeName());
+		return result;
+	}
+	
 	public static final String randomText() {
 		StringBuffer buffer = new StringBuffer();
 		for (int i = 1; i < 10; i++) {
@@ -222,5 +228,62 @@ public abstract class BaseRepositoryServiceTest {
 		Workspace fetched2 = (Workspace)service().getObjectByName(ROOT_ID,base);
 		assertEquals(null, fetched2.getMetadata().getString("Branch",null));
 		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
+	}
+
+	/** Important - what should be returned when we have multiple versions of a document matching criteria.
+	 * 
+	 * Definiton is that we return the latest version which matches the criteria.
+	 * 
+	 */
+	@Test
+	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+		long count1 = service().catalogue(ObjectConstraint.UNBOUNDED, true).count();
+		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		long count2 = service().catalogue(ObjectConstraint.UNBOUNDED, true).count();
+		assertEquals(3, count2 - count1);
+	}
+	
+	@Test
+	public void testRepositoryCatalog() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId {
+		long count1 = service().catalogue(ObjectConstraint.UNBOUNDED, false).count();
+		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		long count2 = service().catalogue(ObjectConstraint.UNBOUNDED, false).count();
+		assertEquals(3, count2 - count1);
+	}
+
+		@Test
+	public void testWorkspaceNameRoundtrip() throws InvalidWorkspace {
+		QualifiedName name = QualifiedName.of(randomUrlSafeName());
+		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
+		Workspace workspace = service().getWorkspaceById(wsid);
+		assertEquals(name, workspace.getName());
+	}
+	
+	@Test
+	public void testCreateAndFindWorkspaceWithPath() throws InvalidWorkspace, InvalidObjectName {
+		QualifiedName name = randomQualifiedName();
+		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
+		Workspace workspace = (Workspace)service().getObjectByName(ROOT_ID, name);
+		assertEquals(wsid, workspace.getId());
+	}
+
+	@Test
+	public void testWorkspacePathRoundtrip() throws InvalidWorkspace {
+		QualifiedName name = randomQualifiedName();
+		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
+		Workspace workspace = service().getWorkspaceById(wsid);
+		assertEquals(name, workspace.getName());
+	}
+	
+	@Test
+	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState {
+		Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, randomWorkspaceId(), true);
+		assertEquals(1, service().listWorkspaces(ref.id).count());
 	}
 }
