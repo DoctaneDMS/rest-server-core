@@ -164,6 +164,7 @@ public class Workspaces {
     public Response getWorkspaces(
     	@PathParam("repository") String repository,
     	@QueryParam("id") String documentId) {
+    	LOG.logEntering("get", repository);
     	try {
     			RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -202,6 +203,7 @@ public class Workspaces {
     	@PathParam("workspace") String workspaceName,
     	@QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
     	JsonObject workspace) {
+    	LOG.logEntering("put", repository, workspace, createWorkspace);
     	try {
     			RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -232,14 +234,12 @@ public class Workspaces {
     			
     			return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
     	} catch (InvalidWorkspace err) {
+    		LOG.log.severe(err.getMessage());
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
-    	} 
-    	
-    	/*catch (Throwable e) {
+    	} catch (Throwable e) {
     		LOG.log.severe(e.getMessage());
-    		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
-    	} */
+    	} 
     }
 
     /** PUT document on path /ws/{repository}/{workspace}/{documentName}
@@ -264,6 +264,7 @@ public class Workspaces {
     	@FormDataParam("file") FormDataBodyPart file_part,
     	@QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
     	@QueryParam("createDocument") @DefaultValue("true") boolean createDocument)	{
+    	LOG.logEntering("putDocument", repository, path, metadata_part, Log.fmt(file_part), createWorkspace, createDocument);
     	try {
     			RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -314,6 +315,7 @@ public class Workspaces {
     public Response deleteDocument(
     	@PathParam("repository") String repository,
     	@PathParam("path") String path) {
+    	LOG.logEntering("deleteDocument", repository, path);
     	try {
     			RepositoryService service = repositoryServiceFactory.getService(repository);
 
