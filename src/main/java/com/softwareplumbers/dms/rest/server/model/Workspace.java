@@ -1,6 +1,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type;
@@ -34,12 +35,18 @@ public interface Workspace extends RepositoryObject {
 	
 	/** Get the default Json representation for a workspace */
 	default JsonObject toJson() {
-		return Json.createObjectBuilder()
-			.add("name", getName().join("/"))
-			.add("state", getState().toString())
-			.add("id", getId())
-			.add("metadata", getMetadata())
-			.build();
+		
+		QualifiedName name = getName();
+		State state = getState();
+		String id = getId();
+		JsonObject metadata =getMetadata();
+		
+		JsonObjectBuilder builder = Json.createObjectBuilder();	
+		if (name != null) builder.add("name", name.join("/"));
+		if (state != null) builder.add("state", state.toString());
+		if (id != null) builder.add("id", id);
+		if (id != null) builder.add("metadata", metadata);
+		return builder.build();
 
 	}
 }

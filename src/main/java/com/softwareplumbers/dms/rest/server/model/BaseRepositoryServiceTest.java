@@ -311,4 +311,11 @@ public abstract class BaseRepositoryServiceTest {
 		String wsDoc = getDocText(service().getDocument(ref1.id, wsId));
 		// assertEquals(originalText, wsDoc); <-- TODO: this is broken for now in filenet impl
 	}
+	
+	@Test
+	public void testGetObjectById() throws InvalidWorkspace, InvalidObjectName {
+		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
+		assertEquals(RepositoryObject.Type.WORKSPACE, ro.getType());
+	}
 }
