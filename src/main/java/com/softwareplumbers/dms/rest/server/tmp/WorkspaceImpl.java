@@ -63,12 +63,17 @@ class WorkspaceImpl implements Workspace {
 	private Info info(Workspace ws) {
 		return new Info(ws);
 	}
+	
+	
+	private static String generateName() {
+		return UUID.randomUUID().toString();
+	}
 
 	
 	public WorkspaceImpl(TempRepositoryService service, WorkspaceImpl parent, UUID id, String name, State state, JsonObject metadata) {
 		this.service = service;
 		this.id = id;
-		this.name = name;
+		this.name = name == null ? generateName() : name;
 		this.state = state;
 		this.docs = new TreeMap<String, DocumentInfo>();
 		this.children = new TreeMap<String, WorkspaceImpl>();
@@ -343,11 +348,21 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public WorkspaceImpl createWorkspace(UUID id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
-		WorkspaceImpl parent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, true);
-		if (parent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
-		WorkspaceImpl child = new WorkspaceImpl(service, parent, id, name.part, state, metadata);
+		String localName;
+		WorkspaceImpl localParent;
+		if (name == null) {
+			localParent = this;
+			localName = generateName();
+		} else {
+			localName = name.part;
+			localParent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, true);
+			if (name != null && localParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
+		}
+
+		WorkspaceImpl child = new WorkspaceImpl(service, localParent, id, localName, state, metadata);
+		
+		localParent.children.put(localName, child);
 		service.registerWorkspace(child);
-		parent.children.put(name.part, child);
 		return child;
 	}
 	

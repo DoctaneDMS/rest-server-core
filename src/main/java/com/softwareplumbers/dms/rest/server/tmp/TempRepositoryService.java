@@ -406,7 +406,7 @@ public class TempRepositoryService implements RepositoryService {
 		
 		WorkspaceImpl myRoot = getRoot(rootId);
 		
-		Optional<WorkspaceImpl> workspace = myRoot.getWorkspace(name);
+		Optional<WorkspaceImpl> workspace = name == null ? Optional.empty() : myRoot.getWorkspace(name);
 
 		WorkspaceImpl ws;
 		if (!workspace.isPresent()) {

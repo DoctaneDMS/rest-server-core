@@ -318,4 +318,28 @@ public abstract class BaseRepositoryServiceTest {
 		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
 		assertEquals(RepositoryObject.Type.WORKSPACE, ro.getType());
 	}
+	
+	// TODO: move to base test suite
+	@Test
+	public void testGeneratedWorkspaceName() throws InvalidWorkspace, InvalidObjectName {
+		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String wsId2 = service().createWorkspaceByName(wsId, null, State.Open, EMPTY_METADATA);
+		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
+		assertTrue("Name of root object should be empty", 0 == ((Workspace)ro).getName().size());
+		RepositoryObject ro2 = service().getObjectByName(wsId2, QualifiedName.ROOT);
+		assertTrue("Name should have a nonzero size", 0 < ((Workspace)ro2).getName().size());
+	}
+
+	// TODO: move to base test suite
+	@Test
+	public void testUpdateWorkspaceReturnsSameId() throws InvalidWorkspace, InvalidObjectName {
+		JsonObject DUMMY_METADATA = Json.createObjectBuilder()
+				.add("Branch", "XYZABC")
+				.add("Team", "TEAM1")
+				.build();
+		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		QualifiedName name = randomQualifiedName();
+		String resultId = service().updateWorkspaceByName(wsId, QualifiedName.ROOT, name, null, DUMMY_METADATA, true);
+		assertEquals(wsId, resultId);
+	}
 }
