@@ -83,7 +83,8 @@ class WorkspaceImpl implements Workspace {
 
 	@Override
 	public QualifiedName getName() {
-		if (parent == null) return QualifiedName.ROOT;
+		if (this == service.root) return QualifiedName.ROOT;
+		if (parent == null) return QualifiedName.of("~", id.toString());
 		return parent.getName().add(name);
 	}
 	

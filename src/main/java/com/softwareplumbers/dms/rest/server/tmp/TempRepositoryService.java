@@ -55,7 +55,7 @@ public class TempRepositoryService implements RepositoryService {
 	private TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
 	private TreeMap<UUID, WorkspaceImpl> workspacesById = new TreeMap<>();
 	private TreeMap<String, Set<UUID>> workspacesByDocument = new TreeMap<>();
-	private WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID(), null, State.Open, EMPTY_METADATA);
+	WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID(), null, State.Open, EMPTY_METADATA);
 	private QualifiedName nameAttribute;
 	
 	private WorkspaceImpl getRoot(String rootId) throws InvalidWorkspace {

@@ -23,7 +23,12 @@ public interface Workspace extends RepositoryObject {
 	/** Possible states of a workspace */
 	enum State { Open, Closed, Finalized }
 	
-	/** Get the name of a workspace */
+	/** Get the name of a workspace. 
+	 * 
+	 * Returns the name of the workspace relative to the root. In the case of an anonymous workspace,
+	 * this should return '~/<workspace id>'. This enables the children of an anonyomous workspace to
+	 * be consistently referenced via the APIs.
+	 */
 	QualifiedName getName();
 	/** Get the state of a workspace */
 	State getState();
