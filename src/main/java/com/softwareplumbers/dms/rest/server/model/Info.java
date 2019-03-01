@@ -6,9 +6,11 @@ import javax.json.JsonObjectBuilder;
 
 import com.softwareplumbers.common.QualifiedName;
 
-/** Information about a Document returned by search APIs.
+/** Information about a Document or Workspace returned by search APIs.
  * 
- * @author SWPNET\jonessex
+ * This object has a standard JSON representation - @see {@link Info#toJson()}
+ * 
+ * @author jonathan.essex@softwareplumbers.com
  *
  */
 public class Info {
@@ -73,7 +75,20 @@ public class Info {
 			);
 	}
 	
-	/** Output an Info object in Json format */
+	/** Output an Info object in Json format 
+	 * 
+	 * The object has the following field names: 
+	 * 
+	 * | Field name | Description |
+	 * |------------|-------------|
+	 * | type       | type, @see {@link RepositoryObject#Type} |
+	 * | reference  | reference @see {@link Reference#toJson()} |
+	 * | mimeType   | mime type in standard format |
+	 * | name       | qualified name of document or folder joined by '/' @see {@link QualifiedName#join(String)} |
+	 * | metadata   | a json object  |
+	 * 
+	 * @return a Json representation of this object. 
+	 */
 	public JsonObject toJson() {
 		JsonObjectBuilder builder = Json.createObjectBuilder();		
 		if (reference !=null) builder.add("reference", reference.toJson());

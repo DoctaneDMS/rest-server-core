@@ -250,7 +250,7 @@ public class Workspaces {
      * element is a '~', what follows is assumed to be a workspace id. If not, we assume it 
      * is a workspace name and call the service accordingly. The final element of the path is in
      * this case the name of the document in the workspace. Note that a document may be filed under
-     * different names in serveral workspaces.
+     * different names in several workspaces.
      * 
      * @param repository string identifier of a document repository
      * @param path to document

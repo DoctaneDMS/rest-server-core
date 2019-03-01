@@ -75,7 +75,8 @@ public class Catalogue {
     	@PathParam("repository") String repository,
     	@QueryParam("workspace") String workspace,
     	@QueryParam("searchHistory") @DefaultValue("false") boolean searchHistory,
-    	@QueryParam("query") String query) {
+    	@QueryParam("query") String query
+    ) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
