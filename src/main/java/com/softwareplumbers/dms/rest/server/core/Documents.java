@@ -5,7 +5,6 @@ import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import java.io.InputStream;
 import java.util.logging.Logger;
 
-import javax.json.Json;
 import javax.json.JsonObject;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -92,7 +91,8 @@ public class Documents {
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
-    	@QueryParam("workspaceId") String workspaceId) {
+    	@QueryParam("workspaceId") String workspaceId
+    ) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -151,7 +151,8 @@ public class Documents {
     public Response getFile(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") String version) {
+    	@QueryParam("version") String version
+    ) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -396,7 +397,9 @@ public class Documents {
      * response contains the new version is identifier for the document.
      * 
      * @param repository string identifier of a document repository
-     * @param id string document id
+     * @param id unique identifier of document to update
+     * @param workspace (optional) id of workspace in which to put document
+     * @param createWorkspace if true, the workspace will be created if id does not already exist 
      * @return A JSON response including the document id and new version id
      */
     @PUT

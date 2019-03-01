@@ -9,20 +9,20 @@ import javax.ws.rs.core.MediaType;
 
 
 /**  Represents a DMS repository.
- * <p>
+ * 
  * A DMS repository stores documents by reference. A Reference is a pointer 
  * to a particular version of a document. In principle a given reference will
  * only ever return the same document.
- * </p><p>
+ * 
  * Arbitrary meta-data can be stored alongside the document in the form of a Json
  * object; again, the DMS will only ever return the same meta-data for a given reference.
- * </p><p>
+ * 
  * The DMS also implements the concept of a workspace; cataloging a workspace will
  * typically return the most recent version of each document inside it. Documents may
  * also be removed from a workspace. Thus a workspace behaves very like a directory,
  * with the notable exception that documents may exist in multiple workspaces at the 
  * same time.
- * </p>
+ * 
  */
 public interface RepositoryService {
 
@@ -405,7 +405,7 @@ public interface RepositoryService {
 	
 	/** Get current state of workspace 
 	 * 
-	 * @param workspace the id of the workspace
+	 * @param id the id of the requested workspace
 	 * @return a Workspace object containing current workspace state
 	 * @throws InvalidWorkspace if workspace does not already exist
 	 */
