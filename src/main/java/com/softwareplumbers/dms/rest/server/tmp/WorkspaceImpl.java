@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.tmp;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
@@ -10,14 +12,18 @@ import java.util.stream.Stream;
 
 import javax.json.JsonObject;
 import javax.json.JsonValue;
+import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.Info;
+import com.softwareplumbers.dms.rest.server.model.DocumentLink;
+import com.softwareplumbers.dms.rest.server.model.DocumentLinkImpl;
+import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
@@ -30,14 +36,16 @@ class WorkspaceImpl implements Workspace {
 	
 	static Log LOG = new Log(WorkspaceImpl.class);
 	
-	private static class DocumentInfo {
+	private static class DocumentInfo extends DocumentLinkImpl {
 		public boolean deleted;
-		public Reference reference;
 		
-		public DocumentInfo(Reference reference, boolean deleted) {
-			this.deleted = deleted;
-			this.reference = reference;
-		}
+		public DocumentInfo(RepositoryService service, QualifiedName name, Reference link, boolean deleted) {
+		    super(service, name, link);
+		    this.deleted = deleted;
+		}	
+		
+		public DocumentLinkImpl toDynamic() { return new DocumentInfo(this.service, this.name, new Reference(ref.id), deleted); }
+        public DocumentLinkImpl toStatic() { return new DocumentInfo(this.service, this.name, getReference(), deleted); }
 	}
 	
 	/**
@@ -47,22 +55,10 @@ class WorkspaceImpl implements Workspace {
 	private WorkspaceImpl parent;
 	private String name;
 	private UUID id;
-	private TreeMap<String,DocumentInfo> docs;
-	private TreeMap<String, WorkspaceImpl> children;
+	private TreeMap<String, NamedRepositoryObject> children;
 	private State state;
 	private JsonObject metadata;
 	
-	private Info info(QualifiedName name, Reference ref) {
-		try {
-			return new Info(name, ref, service.getDocument(ref));
-		} catch (InvalidReference err) {
-			throw new RuntimeException(err);
-		}
-	}
-	
-	private Info info(Workspace ws) {
-		return new Info(ws);
-	}
 	
 	
 	private static String generateName() {
@@ -75,8 +71,7 @@ class WorkspaceImpl implements Workspace {
 		this.id = id;
 		this.name = name == null ? generateName() : name;
 		this.state = state;
-		this.docs = new TreeMap<String, DocumentInfo>();
-		this.children = new TreeMap<String, WorkspaceImpl>();
+		this.children = new TreeMap<String, NamedRepositoryObject>();
 		this.parent = parent;
 		this.metadata = metadata == null ? TempRepositoryService.EMPTY_METADATA : metadata;
 	}
@@ -107,15 +102,17 @@ class WorkspaceImpl implements Workspace {
 		// Convert references to point to a specific version
 		// of a document when a workspace is closed or finalized
 		if (this.state == State.Open && state != State.Open)
-			for (DocumentInfo info : docs.values())
-				info.reference = service.getLatestVersion(info.reference);
+		    children.entrySet().stream()
+		        .filter(entry -> entry.getValue().getType() == Type.DOCUMENT_LINK)
+		        .forEach(entry -> entry.setValue(((DocumentLinkImpl)entry.getValue()).toStatic()));
 
 		// Convert references to point to a the most recent version
 		// of a document when a workspace is opened
 		if (this.state != State.Open && state == State.Open)
-			for (DocumentInfo info : docs.values())
-				info.reference = new Reference(info.reference.id);
-			
+            children.entrySet().stream()
+            .filter(entry -> entry.getValue().getType() == Type.DOCUMENT_LINK)
+            .forEach(entry -> entry.setValue(((DocumentLinkImpl)entry.getValue()).toDynamic()));
+		
 				
 		this.state = state;
 	}
@@ -149,7 +146,7 @@ class WorkspaceImpl implements Workspace {
 	public String getContainmentName(Document doc) {
 		JsonObject metadata = doc.getMetadata(); 
 		JsonValue docName = metadata == null ? null : service.getNameAttribute().apply(metadata);
-		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document" : docName.toString() + "_" + docs.size();
+		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document" : docName.toString() + "_" + children.size();
 		String ext = "";
 		int separator = baseName.lastIndexOf('.');
 		if (separator >= 0) {
@@ -158,7 +155,7 @@ class WorkspaceImpl implements Workspace {
 		}
 		String containmentName = baseName + ext;
 		int count = 1;
-		while (docs.containsKey(containmentName)) {
+		while (children.containsKey(containmentName)) {
 			containmentName = baseName + "." + count + ext;
 		}
 		return containmentName;
@@ -176,7 +173,7 @@ class WorkspaceImpl implements Workspace {
 		if (state == State.Open) {
 			if (!service.referenceExists(this, reference)) {
 				Reference latest = new Reference(reference.id);
-				this.docs.put(docName, new DocumentInfo(latest,false));
+				this.children.put(docName, new DocumentInfo(service,getName().add(docName),latest,false));
 				service.registerWorkspaceReference(this, latest);
 			}
 		}
@@ -186,13 +183,14 @@ class WorkspaceImpl implements Workspace {
 	
 	public void update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
 		LOG.logEntering("add", reference, docName);
-		DocumentInfo docRef = docs.get(docName);
-		if (docRef== null) throw new InvalidObjectName(getName().add(docName));
+		NamedRepositoryObject objRef = children.get(docName);
+		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw new InvalidObjectName(getName().add(docName));
+		DocumentLink docRef = (DocumentLink)objRef;
 		if (state == State.Open) {
-			if (docRef.reference.id != reference.id) {
-				service.deregisterWorkspaceReference(this, docRef.reference);
+			if (docRef.getId() != reference.id) {
+				service.deregisterWorkspaceReference(this, docRef.getReference());
 				service.registerWorkspaceReference(this, reference);
-				docRef.reference = new Reference(reference.id);
+				children.put(docName, new DocumentInfo(service, docRef.getName(), new Reference(reference.id), false));
 			} 
 			// else really nothing to do
 		}
@@ -200,82 +198,88 @@ class WorkspaceImpl implements Workspace {
 		LOG.logExiting("add");		
 	}
 	
-	public Reference deleteDocumentByName(String docName) throws InvalidWorkspaceState {
-		LOG.logEntering("deleteDocumentByName", docName);
+	public NamedRepositoryObject deleteObjectByName(String docName) throws InvalidWorkspaceState {
+		LOG.logEntering("deleteObjectByName", docName);
 		if (state == State.Open) {
-			DocumentInfo info = docs.get(docName);
-			if (info == null) return LOG.logReturn("deleteDocumentByName", null);
-			info.deleted = true;
-			service.deregisterWorkspaceReference(this, info.reference);
-			return LOG.logReturn("deleteDocumentByName", info.reference);
-		} else {
-			throw LOG.logThrow("deleteDocumentByName",new InvalidWorkspaceState(docName, state));
-		}
-	}
-	
-	public WorkspaceImpl deleteWorkspaceByName(String docName) throws InvalidWorkspaceState {
-		LOG.logEntering("deleteWorkspaceByName", docName);
-		if (state == State.Open) {
-			WorkspaceImpl child = children.get(docName);
-			if (child == null) return null;
-			if (child.isEmpty()) {
-				children.remove(docName);
-				service.deregisterWorkspace(child);
-				return LOG.logReturn("deleteWorkspaceByName", child);
+			NamedRepositoryObject obj = children.get(docName);
+			if (obj == null) return LOG.logReturn("deleteDocumentByName", null);
+			if (obj.getType() == Type.DOCUMENT_LINK) {
+			    DocumentInfo info = (DocumentInfo)obj;
+			    info.deleted = true;
+			    service.deregisterWorkspaceReference(this, info.getReference());
 			} else {
-				throw new InvalidWorkspaceState(docName, "Not empty");
+                WorkspaceImpl child = (WorkspaceImpl)obj;
+	            if (child.isEmpty()) {
+	                children.remove(docName);
+	                service.deregisterWorkspace(child);
+	                return LOG.logReturn("deleteWorkspaceByName", child);
+	            } else {
+	                throw new InvalidWorkspaceState(docName, "Not empty");
+	            }
+			    
 			}
+			return LOG.logReturn("deleteObjectByName", obj);
 		} else {
-			throw LOG.logThrow("deleteWorkspaceByName",new InvalidWorkspaceState(docName, state));
+			throw LOG.logThrow("deleteObjectByName",new InvalidWorkspaceState(docName, state));
 		}
 	}
-	
+		
 	public void deleteById(String id) throws InvalidDocumentId, InvalidWorkspaceState {
 		LOG.logEntering("deleteById", id);
 		if (state == State.Open) {
-			DocumentInfo info = docs.values()
+			DocumentInfo info = children.values()
 				.stream()
-				.filter(i -> i.reference.id.equals(id))
+				.filter(obj -> obj.getType()==Type.DOCUMENT_LINK)
+				.map(obj -> (DocumentInfo)obj)
+				.filter(i -> i.getId().equals(id))
 				.findFirst()
 				.orElseThrow(()->LOG.logThrow("deleteById",new InvalidDocumentId(id)));
 			info.deleted = true;
-			service.deregisterWorkspaceReference(this, info.reference);
+			service.deregisterWorkspaceReference(this, info.getReference());
 		} else {
 			throw LOG.logThrow("deleteById",new InvalidWorkspaceState(name, state));
 		}
 		LOG.logExiting("deleteById");
 	}
 
-	public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory) {
+	private Stream<DocumentInfo> getHistory(DocumentInfo doc, ObjectConstraint filter) {
+	    try {
+            return service.catalogueHistory(doc.getReference(), filter)
+                .map(histDoc->new DocumentInfo(service, doc.getName(), histDoc.getReference(), false));
+        } catch (InvalidReference e) {
+            throw new RuntimeException(e);
+        }
+	}
+	
+	public Stream<NamedRepositoryObject> catalogue(ObjectConstraint filter, boolean searchHistory) {
 		
-		final Predicate<Info> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.metadata));
-		Stream<Map.Entry<String, DocumentInfo>> entries = docs.entrySet().stream();
+		final Predicate<NamedRepositoryObject> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.getMetadata()));
 
-		Stream<Info> docInfo = null;
-		QualifiedName path = getName();
+		Stream<DocumentInfo> docInfo = children.values().stream()
+		        .filter(child -> child.getType() == Type.DOCUMENT_LINK)
+		        .map(child -> (DocumentInfo)child);
 		
 		if (searchHistory) {
 			// Search all historical info, and return latest matching version
 			// of any document.
-			docInfo = TempRepositoryService.latestVersionsOf(
-				entries
-					.flatMap(entry -> service.historicalInfo(path, entry.getValue().reference, filter))
-			);
+		    Stream<DocumentInfo> history = docInfo
+		            .flatMap(doc -> getHistory(doc, filter));
+
+			docInfo = TempRepositoryService.latestVersionsOf(history);
 		} else {
-			docInfo = entries
-				.filter(entry -> !entry.getValue().deleted)
-				.map(entry -> info(path.add(entry.getKey()), entry.getValue().reference))
+			docInfo = docInfo
+				.filter(doc -> !doc.deleted)
 				.filter(filterPredicate);
 		}
 		
-		Stream<Info> folderInfo = children.entrySet().stream()
-			.map(entry -> info(entry.getValue()))
-			.filter(filterPredicate);
+		Stream<NamedRepositoryObject> folderInfo = children.values().stream()
+		    .filter(item -> item.getType()==Type.WORKSPACE)
+	        .filter(filterPredicate);
 		
 		return Stream.concat(docInfo, folderInfo);
 	}
 	
-	public Stream<Info> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) {
+	public Stream<NamedRepositoryObject> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) {
 		
 		if (workspaceName == QualifiedName.ROOT) return catalogue(filter, searchHistory);
 
@@ -287,13 +291,13 @@ class WorkspaceImpl implements Workspace {
 		int firstWildcard = star < 0 || questionMark < 0 ? Math.max(star, questionMark) : Math.min(star, questionMark);
 
 		if (firstWildcard < 0) {
-			WorkspaceImpl child = children.get(firstPart);
-			return (child == null) 
+			NamedRepositoryObject child = children.get(firstPart);
+			return (child == null || child.getType() != Type.WORKSPACE) 
 				? Stream.empty() 
-				: child.catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
+				: ((WorkspaceImpl)child).catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
 		}
 		
-		SortedMap<String,WorkspaceImpl> submap = children;
+		SortedMap<String,NamedRepositoryObject> submap = children;
 			
 		if (firstWildcard > 0) {
 			String lowerBound = firstPart.substring(0, firstWildcard);
@@ -303,26 +307,18 @@ class WorkspaceImpl implements Workspace {
 			
 		String pattern = TempRepositoryService.wildcardToRegex(firstPart);
 		
-		Stream<WorkspaceImpl> matchingChildren = submap.entrySet()
+		Stream<NamedRepositoryObject> matchingChildren = submap.entrySet()
 			.stream()
 			.filter(e -> e.getKey().matches(pattern))
 			.map(e -> e.getValue());
 		
-		
 		if (remainingName.isEmpty()) {
-			QualifiedName fullPath = this.getName();
-			Stream<Info> matchingDocuments = docs.entrySet()
-				.stream()
-				.filter(e -> e.getKey().matches(pattern))
-				.map(e -> info(fullPath.add(e.getKey()), e.getValue().reference));
-	
-			return Stream.concat(
-				matchingChildren.map(workspace -> info(workspace)),
-				matchingDocuments
-			);
-			
+		    return matchingChildren;
 		} else {
-			return matchingChildren.flatMap(workspace -> workspace.catalogue(remainingName, filter,  searchHistory));
+			return matchingChildren
+			    .filter(child -> child.getType() == Type.WORKSPACE)
+			    .map(child -> (WorkspaceImpl)child)
+			    .flatMap(workspace -> workspace.catalogue(remainingName, filter,  searchHistory));
 		}
 	}
 	
@@ -332,20 +328,27 @@ class WorkspaceImpl implements Workspace {
 		String firstPart = name.get(0);
 		QualifiedName remainingName = name.rightFromStart(1);
 
-		WorkspaceImpl child = children.get(firstPart);
+		NamedRepositoryObject child = children.get(firstPart);
+		WorkspaceImpl childWorkspace = null;
 		if (child == null) {
 			if (createWorkspace) {
-				child = new WorkspaceImpl(service, this, UUID.randomUUID(), firstPart, State.Open, TempRepositoryService.EMPTY_METADATA);
-				children.put(firstPart, child);
-				service.registerWorkspace(child);
+				childWorkspace = new WorkspaceImpl(service, this, UUID.randomUUID(), firstPart, State.Open, TempRepositoryService.EMPTY_METADATA);
+				children.put(firstPart, childWorkspace);
+				service.registerWorkspace(childWorkspace);
 			} else 
 				throw new InvalidWorkspace(name);
+		} else {
+		    if (child.getType() == Type.WORKSPACE) 
+		        childWorkspace = (WorkspaceImpl)child;
+		    else
+		        throw new InvalidWorkspace(name);
 		}
 		
+		
 		if (remainingName.isEmpty())
-			return child;
+			return childWorkspace;
 		else			
-			return child.getOrCreateWorkspace(remainingName, createWorkspace);
+			return childWorkspace.getOrCreateWorkspace(remainingName, createWorkspace);
 	}
 	
 	public WorkspaceImpl createWorkspace(UUID id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
@@ -375,33 +378,28 @@ class WorkspaceImpl implements Workspace {
 		}
 	}
 	
-	public Optional<Reference> getDocument(String name) {
-		DocumentInfo info = docs.get(name);
-		if (info != null && !info.deleted) 
-			return Optional.of(info.reference);
+	public Optional<DocumentLink> getDocument(String name) {
+		NamedRepositoryObject obj = children.get(name);
+		if (obj == null || obj.getType() != Type.DOCUMENT_LINK) return Optional.empty();
+		DocumentInfo doc = (DocumentInfo)obj;
+		if (!doc.deleted) 
+			return Optional.of(doc);
 		else
 			return Optional.empty();
 	}
 
 	public Optional<WorkspaceImpl> getWorkspace(String name) {
-		return Optional.ofNullable(children.get(name));
+        NamedRepositoryObject obj = children.get(name);
+        if (obj == null || obj.getType() != Type.WORKSPACE) return Optional.empty();
+        return Optional.of((WorkspaceImpl)obj);
 	}
 	
-	public RepositoryObject getObject(QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
+	public NamedRepositoryObject getObject(QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
 		if (name.isEmpty()) return this;
 		WorkspaceImpl ws = getOrCreateWorkspace(name.parent, false);
-		RepositoryObject result = ws.children.get(name.part);
-		if (result != null) return result;
-		DocumentInfo info = ws.docs.get(name.part);
-		if (info != null)
-			try {
-				return service.getDocument(info.reference);
-			} catch (InvalidReference e) {
-				// Shouldn't happen
-				throw new RuntimeException(e);
-			}
-		throw new InvalidObjectName(name);
-		
+		NamedRepositoryObject result = ws.children.get(name.part);
+		if (result == null) throw new InvalidObjectName(name);
+		return result;	
 	}
 
 	@Override
@@ -414,13 +412,19 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public boolean isEmpty() {
-		return children.size() == 0 && !docs.values().stream().anyMatch(wsinfo -> !wsinfo.deleted);
+		if (children.size() == 0) return true;
+		return children.values().stream()
+		    .filter(child->child.getType() == Type.DOCUMENT_LINK)
+		    .map(child->(DocumentInfo)child)
+		    .anyMatch(doc -> !doc.deleted);
 	}
+	
 
-	public Reference getById(String documentId) throws InvalidDocumentId {
-		return docs.values().stream()
-				.map(info->info.reference)
-				.filter(reference->reference.id.equals(documentId))
+	public DocumentLinkImpl getById(String documentId) throws InvalidDocumentId {
+		return children.values().stream()
+	            .filter(child->child.getType() == Type.DOCUMENT_LINK)
+	            .map(child->(DocumentInfo)child)
+				.filter(doc->doc.getId().equals(documentId))
 				.findFirst()
 				.orElseThrow(()->new InvalidDocumentId(documentId)); 
 	}

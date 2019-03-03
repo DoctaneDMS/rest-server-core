@@ -18,22 +18,14 @@ import javax.json.Json;
  * | Closed 	| Any attempt to add or remove document will cause an error; workspace shows versions current when closed |
  * | Finalized 	| Documents may be added or removed; workspace shows versions current when closed |
  */
-public interface Workspace extends RepositoryObject {
+public interface Workspace extends NamedRepositoryObject {
 	
 	/** Possible states of a workspace */
 	enum State { Open, Closed, Finalized }
 	
-	/** Get the name of a workspace. 
-	 * 
-	 * Returns the name of the workspace relative to the root. In the case of an anonymous workspace,
-	 * this should return '~/<workspace id>'. This enables the children of an anonyomous workspace to
-	 * be consistently referenced via the APIs.
-	 */
-	QualifiedName getName();
+
 	/** Get the state of a workspace */
 	State getState();
-	/** Get the id of a workspace */
-	String getId();
 
 	/** Default implementation returns Type.WORKSPACE */	
 	default Type getType() { return Type.WORKSPACE; }
@@ -45,12 +37,18 @@ public interface Workspace extends RepositoryObject {
 		State state = getState();
 		String id = getId();
 		JsonObject metadata =getMetadata();
-		
-		JsonObjectBuilder builder = Json.createObjectBuilder();	
+		Type type = getType();
+
+	    JsonObjectBuilder builder = Json.createObjectBuilder(); 
+
+	    // Base fields  
+	    if (id != null) builder.add("id", id);
+	    if (metadata != null) builder.add("metadata", metadata);
+	    if (type != null) builder.add("type", type.toString());
+	    // Named Repository Item fields
 		if (name != null) builder.add("name", name.join("/"));
+		// Workspace fields
 		if (state != null) builder.add("state", state.toString());
-		if (id != null) builder.add("id", id);
-		if (id != null) builder.add("metadata", metadata);
 		return builder.build();
 
 	}

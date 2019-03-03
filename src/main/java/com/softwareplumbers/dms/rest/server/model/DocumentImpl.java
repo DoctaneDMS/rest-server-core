@@ -23,6 +23,8 @@ public class DocumentImpl implements Document {
 	private final byte[] data;
 	private final MediaType mediaType;
 	private final JsonObject metadata;
+	private final String id;
+	private final String version;
 
 	/** get metadata object */
 	@Override
@@ -35,6 +37,14 @@ public class DocumentImpl implements Document {
 	/** get length of file */
 	@Override
 	public long getLength() { return data.length; }
+	
+	/** get the document id */
+	@Override
+	public String getId() { return id; }
+	
+	/** get the document version */
+    @Override
+    public String getVersion() { return version; }
 
 	/** Write document to an output stream */
 	@Override
@@ -44,37 +54,45 @@ public class DocumentImpl implements Document {
 	
 	/** Private constructor creates a document from a byte array and meta-data object
 	 * 
+	 * @param id id for document
+     * @param version version for document
 	 * @param mediaType mime type of file
 	 * @param data byte array for underlying file
 	 * @param metadata associated meta-data in JSON format
 	 */
-	private DocumentImpl(MediaType mediaType, byte[] data, JsonObject metadata) {
+	private DocumentImpl(String id, String version, MediaType mediaType, byte[] data, JsonObject metadata) {
 		this.data = data;
 		this.mediaType = mediaType;
 		this.metadata = metadata;
+		this.id = id;
+		this.version = version;
 	}
 	
 	/** Private constructor creates a document from a byte array and meta-data object
 	 * 
+     * @param reference Reference for document
 	 * @param mediaType mime type of file
 	 * @param doc_src Supplies an input stream containing the file data
 	 * @param metadata associated meta-data in JSON format
 	 */
-	public DocumentImpl(MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
+	public DocumentImpl(Reference reference, MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
 		try (InputStream stream = doc_src.get()) {
 			this.data = IOUtils.toByteArray(stream);
 		} 
 		this.mediaType = mediaType;
 		this.metadata = metadata;
+		this.id = reference.id;
+		this.version = reference.version;
 	}
 	
-	/** Private constructor creates a document from a byte array with empty meta-data
+	/** constructor creates a document from a byte array with empty meta-data
 	 * 
+	 * @param reference Reference for document
 	 * @param mediaType mime type of file
 	 * @param doc_src Supplies an input stream containing the file data
 	 */
-	public DocumentImpl(String mediaType, InputStreamSupplier doc_src) throws IOException {
-		this(MediaType.valueOf(mediaType), doc_src, EMPTY_METADATA);
+	public DocumentImpl(Reference reference, String mediaType, InputStreamSupplier doc_src) throws IOException {
+		this(reference, MediaType.valueOf(mediaType), doc_src, EMPTY_METADATA);
 	}
 	
 	/** Create a new document with updated meta-data and same data. 
@@ -83,7 +101,7 @@ public class DocumentImpl implements Document {
 	 * @return A new document
 	 */
 	public DocumentImpl setMetadata(JsonObject metadata) {
-		return new DocumentImpl(this.mediaType, this.data, metadata);
+		return new DocumentImpl(this.id, this.version, this.mediaType, this.data, metadata);
 	}
 	
 	/** Create a new document with same meta-data new data. 
@@ -92,6 +110,33 @@ public class DocumentImpl implements Document {
 	 * @return A new document
 	 */
 	public DocumentImpl setData(InputStreamSupplier doc_src) throws IOException {
-		return new DocumentImpl(this.mediaType, doc_src, this.metadata);
+		return new DocumentImpl(new Reference(this.id, this.version), this.mediaType, doc_src, this.metadata);
 	}
+	
+	/** Create a new document with the same underlying data but a new Id 
+	 * 
+	 * @param id
+	 * @return a new document
+	 */
+	public DocumentImpl setId(String id) {
+	    return new DocumentImpl(id, this.version, this.mediaType, this.data, this.metadata);
+	}
+	
+	/** Create a new document with the same underlying data but a new version 
+     * 
+     * @param version
+     * @return a new document
+     */
+    public DocumentImpl setVersion(String version) {
+        return new DocumentImpl(this.id, version, this.mediaType, this.data, this.metadata);
+    }
+    
+    /** Create a new document with the same underlying data but a new id and version 
+     * 
+     * @param reference
+     * @return a new document
+     */
+    public DocumentImpl setReference(Reference reference) {        
+        return new DocumentImpl(reference.id, reference.version, this.mediaType, this.data, this.metadata);
+    }
 }

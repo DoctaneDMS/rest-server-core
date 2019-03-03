@@ -112,7 +112,9 @@ public class Documents {
     			FormDataBodyPart metadata = new FormDataBodyPart();
     			metadata.setName("metadata");
     			metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-    			metadata.setEntity(document.getMetadata());
+    			// Breaking change 20190303 - returned Json includes id, version, as well as metadata 
+                // Old metadata is in 'metadata' property of returned object
+    			metadata.setEntity(document.toJson());
     			FormDataBodyPart file = new FormDataBodyPart();
     			file.setName("file");
     			file.setMediaType(document.getMediaType());
@@ -204,8 +206,10 @@ public class Documents {
         
     		if (document != null) { 
     			return Response
-    				.status(Status.OK)
-    				.entity(document.getMetadata())
+    				.status(Status.OK) 
+    				// Breaking change 20190303 - returned Json includes id, version, as well as metadata 
+    				// Old metadata is in 'metadata' property of returned object
+    				.entity(document.toJson())
     				.build();
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			

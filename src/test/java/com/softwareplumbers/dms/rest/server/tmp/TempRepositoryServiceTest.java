@@ -12,8 +12,8 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Reference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -65,9 +65,9 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	@Test
 	public void testRepositorySearch() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();
-		Info[] result = repository.service.catalogue(ObjectConstraint.fromJson("{ 'filename': 'partiphuckborlz'}"), false).toArray(Info[]::new);
+		RepositoryObject[] result = repository.service.catalogue(ObjectConstraint.fromJson("{ 'filename': 'partiphuckborlz'}"), false).toArray(RepositoryObject[]::new);
 		assertEquals(result.length, 1);
-		assertEquals(result[0].reference, repository.ref2);
+		assertEquals(((Document)result[0]).getReference(), repository.ref2);
 	}
 	
 	

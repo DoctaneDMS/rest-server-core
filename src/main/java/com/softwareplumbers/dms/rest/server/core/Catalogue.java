@@ -1,13 +1,10 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -21,8 +18,10 @@ import javax.ws.rs.core.Response.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.softwareplumbers.dms.rest.server.model.Info;
+import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.DocumentPart;
 import com.softwareplumbers.dms.rest.server.model.Reference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
@@ -84,7 +83,7 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			Stream<Info> infos = null;
+    			Stream<? extends RepositoryObject> infos = null;
     			ObjectConstraint queryObjectConstraint = query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query);
     			
     			if (workspace != null)
@@ -93,7 +92,7 @@ public class Catalogue {
     				infos = service.catalogue(queryObjectConstraint, searchHistory);
     			
     			infos
-    				.map(Info::toJson)
+    				.map(RepositoryObject::toJson)
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.
@@ -133,7 +132,7 @@ public class Catalogue {
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			service.catalogueHistory(new Reference(id,version), query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query))
-    				.map(Info::toJson)
+    				.map(Document::toJson)
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.
@@ -173,7 +172,7 @@ public class Catalogue {
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			service.catalogueParts(new Reference(id,version), query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query))
-    				.map(Info::toJson)
+    				.map(DocumentPart::toJson)
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.

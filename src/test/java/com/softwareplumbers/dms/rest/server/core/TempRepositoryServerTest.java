@@ -36,7 +36,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
-import com.softwareplumbers.dms.rest.server.model.Info;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
@@ -205,6 +204,7 @@ public class TempRepositoryServerTest {
 		JsonObject metadata = null;
 		InputStream is = null;
 		MediaType mediaType = null;
+		Reference reference = null;
     	
 		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
 			MultiPart entity = response.readEntity(MultiPart.class);
@@ -212,7 +212,9 @@ public class TempRepositoryServerTest {
 				String cd = part.getHeaders().getFirst("Content-Disposition");
 				String name = new FormDataContentDisposition(cd).getName();
 				if (name.equals("metadata")) {
-					metadata = part.getEntityAs(JsonObject.class);
+					JsonObject data = part.getEntityAs(JsonObject.class);
+					metadata = data.getJsonObject("metadata");
+					reference = new Reference(data.getString("id"), data.getString("version"));
 				}
 				if (name.equals("file")) {
 					mediaType = part.getMediaType();
@@ -221,7 +223,7 @@ public class TempRepositoryServerTest {
 			}
 			if (metadata != null && is != null) {
 				InputStream doc_source = is;
-				return new DocumentImpl(mediaType, ()->doc_source, metadata);
+				return new DocumentImpl(reference, mediaType, ()->doc_source, metadata);
 			}
 		} 
 
@@ -236,7 +238,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public List<Info> getCatalog(String id, String workspace) throws IOException, ParseException {
+    public JsonArray getCatalog(String id, String workspace) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/cat/tmp" + id);
 
@@ -248,10 +250,7 @@ public class TempRepositoryServerTest {
     	
 		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
 			JsonArray result = response.readEntity(JsonArray.class);
-			return result
-				.stream()
-				.map(value -> Info.fromJson((JsonObject)value))
-				.collect(Collectors.toList());
+			return result;
 		} 
 
 		System.out.println(response.getEntity().toString());
@@ -390,18 +389,23 @@ public class TempRepositoryServerTest {
 		assertEquals(1, response2.size());		
 	}
 	
+	private static Reference getRef(JsonValue value) {
+	    JsonObject obj = (JsonObject)value;
+	    return new Reference(obj.getString("id", null), obj.getString("version", null));
+	}
+	
 	@Test
 	public void searchDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		List<Info> catalog0 = getCatalog("/",null);
+		JsonArray catalog0 = getCatalog("/",null);
 		JsonObject response1 = postDocument("test1", null);
 		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"));
 		JsonObject response3 = postDocument("test3", null);
-		List<Info> catalog1 = getCatalog("/",null);
+		JsonArray catalog1 = getCatalog("/",null);
 		assertEquals(2, catalog1.size() - catalog0.size());
-		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response2))));
-		assertTrue(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response3))));
-		assertFalse(catalog1.stream().anyMatch(item->item.reference.equals(Reference.fromJson(response1))));
+		assertTrue(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response2))));
+		assertTrue(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response3))));
+		assertFalse(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response1))));
 	}
 	
 	@Test
@@ -414,9 +418,9 @@ public class TempRepositoryServerTest {
 		postDocument("test1", workspaceA);
 		postDocument("test2", workspaceA);
 		postDocument("test3", workspaceB);
-		List<Info> catalog0 = getCatalog("/", workspaceA);
+		JsonArray catalog0 = getCatalog("/", workspaceA);
 		assertEquals(2, catalog0.size());
-		List<Info> catalog1 = getCatalog("/", workspaceB);
+		JsonArray catalog1 = getCatalog("/", workspaceB);
 		assertEquals(1, catalog1.size());
 	}
 	

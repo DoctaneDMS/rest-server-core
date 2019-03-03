@@ -234,7 +234,7 @@ public interface RepositoryService {
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
 	 */
-	public Stream<Info> catalogue(ObjectConstraint filter, boolean searchHistory);
+	public Stream<Document> catalogue(ObjectConstraint filter, boolean searchHistory);
 	
 	/** Catalog a workspace.
 	 * <p>
@@ -256,7 +256,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueById(String workspaceId, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog a workspace.
 	 * <p>
@@ -279,7 +279,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<Info> catalogueByName(String rootId, QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 
@@ -291,7 +291,7 @@ public interface RepositoryService {
 	 * @return a Stream of Info objects with the results of the search
 	 * @throws InvalidReference no document exists with the given id
 	 */
-	public Stream<Info> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference;
+	public Stream<Document> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference;
 	
 	/** Catalog all the parts of a document.
 	 * 
@@ -305,7 +305,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects relating to the selected parts of the document
 	 * @throws InvalidReference
 	 */
-	public Stream<Info> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference;
+	public Stream<DocumentPart> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference;
 	
 	
 	/** Create a workspace 
