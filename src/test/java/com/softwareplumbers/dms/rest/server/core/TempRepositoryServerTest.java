@@ -169,7 +169,7 @@ public class TempRepositoryServerTest {
      * @return Json object containing data for the workspace
      * 
      */
-    public <T extends JsonValue> T getWorkspace(String path, Class<T> resultType) throws IOException {
+    public <T extends JsonValue> T getWorkspaceJson(String path, Class<T> resultType) throws IOException {
     	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
     	
     	Response response = target
@@ -197,39 +197,66 @@ public class TempRepositoryServerTest {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
 
-    	Response response = target
-    			.request(MediaType.APPLICATION_JSON, MediaType.MULTIPART_FORM_DATA)
-    			.get();
-    	
-		JsonObject metadata = null;
-		InputStream is = null;
-		MediaType mediaType = null;
-		Reference reference = null;
-    	
-		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-			MultiPart entity = response.readEntity(MultiPart.class);
-			for (BodyPart part : entity.getBodyParts()) {
-				String cd = part.getHeaders().getFirst("Content-Disposition");
-				String name = new FormDataContentDisposition(cd).getName();
-				if (name.equals("metadata")) {
-					JsonObject data = part.getEntityAs(JsonObject.class);
-					metadata = data.getJsonObject("metadata");
-					reference = new Reference(data.getString("id"), data.getString("version"));
-				}
-				if (name.equals("file")) {
-					mediaType = part.getMediaType();
-					is = part.getEntityAs(InputStream.class);
-				}
-			}
-			if (metadata != null && is != null) {
-				InputStream doc_source = is;
-				return new DocumentImpl(reference, mediaType, ()->doc_source, metadata);
-			}
-		} 
-
-		System.out.println(response.getEntity().toString());
-		throw new RuntimeException("Bad post");
+    	return getDocumentFromTarget(target);
     } 
+    
+    /** Utility function to get a document from the local test server
+     * 
+     * @param path The workspace path of the document to get
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public DocumentImpl getDocumentFromWorkspace(String path) throws IOException, ParseException {
+        
+        WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
+
+        return getDocumentFromTarget(target);
+    } 
+
+    /** Utility function to get a document from the local test server
+     * 
+     * @param target The target url
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public DocumentImpl getDocumentFromTarget(WebTarget target) throws IOException, ParseException {
+        
+        Response response = target
+                .request(MediaType.MULTIPART_FORM_DATA)
+                .get();
+        
+        JsonObject metadata = null;
+        InputStream is = null;
+        MediaType mediaType = null;
+        Reference reference = null;
+        
+        if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+            MultiPart entity = response.readEntity(MultiPart.class);
+            for (BodyPart part : entity.getBodyParts()) {
+                String cd = part.getHeaders().getFirst("Content-Disposition");
+                String name = new FormDataContentDisposition(cd).getName();
+                if (name.equals("metadata")) {
+                    JsonObject data = part.getEntityAs(JsonObject.class);
+                    metadata = data.getJsonObject("metadata");
+                    reference = new Reference(data.getString("id"), data.getString("version"));
+                }
+                if (name.equals("file")) {
+                    mediaType = part.getMediaType();
+                    is = part.getEntityAs(InputStream.class);
+                }
+            }
+            if (metadata != null && is != null) {
+                InputStream doc_source = is;
+                return new DocumentImpl(reference, mediaType, ()->doc_source, metadata);
+            }
+        } 
+
+        System.out.println(response.getEntity().toString());
+        throw new RuntimeException("Bad post");
+    } 
+
 
     /** Utility function to get a catalog from the local test server
      * 
@@ -385,7 +412,7 @@ public class TempRepositoryServerTest {
 		JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
 		String wsId = response1.getString("id");
 		assertNotNull(wsId);
-		JsonArray response2 = getWorkspace("wsname/*", JsonArray.class);
+		JsonArray response2 = getWorkspaceJson("wsname/*", JsonArray.class);
 		assertEquals(1, response2.size());		
 	}
 	
@@ -434,7 +461,7 @@ public class TempRepositoryServerTest {
 		
 		assertTrue(result.containsKey("id"));
 		
-		JsonObject result2 = getWorkspace("test4/test5", JsonObject.class);
+		JsonObject result2 = getWorkspaceJson("test4/test5", JsonObject.class);
 		
 		assertEquals("test4/test5", result2.getString("name"));
 		assertEquals("Open", result2.getString("state"));
@@ -450,10 +477,25 @@ public class TempRepositoryServerTest {
 			
 			assertTrue(result.containsKey("id"));
 			
-			JsonObject result2 = getWorkspace("~/"+result.getString("id"), JsonObject.class);
+			JsonObject result2 = getWorkspaceJson("~/"+result.getString("id"), JsonObject.class);
 			
 			assertEquals("test4/test5", result2.getString("name"));
 			assertEquals("Open", result2.getString("state"));		
 	}
+	
+    /** Test that we can get a document from a workspace either as json or a full multipart response
+     * 
+     */
+    @Test
+    public void getDocumentFromWorkspaceTest() throws IllegalStateException, IOException, ParseException {
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        String wsId = response1.getString("id");
+        assertNotNull(wsId);
+        JsonObject response2 = getWorkspaceJson("wsname/doc1", JsonObject.class);
+        assertEquals(wsId, response2.getString("id"));      
+        DocumentImpl doc = getDocumentFromWorkspace("wsname/doc1");
+        assertEquals(wsId, doc.getId());
+    }
+    
 }
 

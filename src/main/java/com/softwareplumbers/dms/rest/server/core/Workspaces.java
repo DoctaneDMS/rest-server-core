@@ -15,6 +15,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -88,9 +90,10 @@ public class Workspaces {
     @Produces({ MediaType.APPLICATION_JSON, MediaType.MULTIPART_FORM_DATA })
     public Response get(
         @PathParam("repository") String repository,
-        @PathParam("workspace") String workspaceName
+        @PathParam("workspace") String workspaceName,
+        @Context HttpHeaders headers
     ) {
-        LOG.logEntering("get", repository, workspaceName);
+        LOG.logEntering("get", repository, workspaceName, headers.getAcceptableMediaTypes());
 
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
@@ -114,12 +117,12 @@ public class Workspaces {
             } else {
                 RepositoryObject result = service.getObjectByName(rootId, wsName);
                 if (result != null) {    					
-                    if (result.getType() == RepositoryObject.Type.DOCUMENT) {
+                    if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE) && result.getType() != RepositoryObject.Type.WORKSPACE) {
                         Document document = (Document)result;
                         FormDataBodyPart metadata = new FormDataBodyPart();
                         metadata.setName("metadata");
                         metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                        metadata.setEntity(document.getMetadata());
+                        metadata.setEntity(document.toJson());
                         FormDataBodyPart file = new FormDataBodyPart();
                         file.setName("file");
                         file.setMediaType(document.getMediaType());
@@ -132,8 +135,7 @@ public class Workspaces {
 
                         return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
                     } else {
-                        Workspace workspace = (Workspace)result;
-                        return Response.ok().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build();
+                        return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
                     }
                 } else {
                     return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
