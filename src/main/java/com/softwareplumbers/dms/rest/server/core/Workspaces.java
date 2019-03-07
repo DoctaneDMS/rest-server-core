@@ -218,7 +218,7 @@ public class Workspaces {
                 return Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build();
 
             String updateName = workspace.getString("name",null);
-            QualifiedName updateQName = updateName == null ? null : QualifiedName.parse(workspaceName, "/");
+            QualifiedName updateQName = updateName == null ? null : QualifiedName.parse(updateName, "/");
             String stateString = workspace.getString("state", null);
             Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
             JsonObject metadata = workspace.getJsonObject("metadata");
