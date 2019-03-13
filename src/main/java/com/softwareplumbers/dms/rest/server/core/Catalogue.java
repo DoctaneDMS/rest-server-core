@@ -7,6 +7,7 @@ import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -57,7 +58,7 @@ public class Catalogue {
     public void setRepositoryServiceFactory(RepositoryServiceFactory serviceFactory) {
         this.repositoryServiceFactory = serviceFactory;
     }
-
+    
     /** GET a catalog on path /cat/{repository}
      * 
      * Retrieves the catalog for a given repository or workspace. Documents may be filtered

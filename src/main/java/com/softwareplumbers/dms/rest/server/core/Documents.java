@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.OPTIONS;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -57,7 +58,7 @@ public class Documents {
 	private RepositoryServiceFactory repositoryServiceFactory;
     
 	///////////---------  methods --------////////////
-    
+	    
 	/**
 	 * Use by Spring to inject a service factory for retrieval of a named repository service.
 	 * 
@@ -67,7 +68,7 @@ public class Documents {
     public void setRepositoryServiceFactory(RepositoryServiceFactory serviceFactory) {
         this.repositoryServiceFactory = serviceFactory;
     }
-
+    
     /** GET a document on path /docs/{repository}/{id}
      * 
      * Retrieves a specific document by its unique identifier. On success, a multipart
