@@ -497,5 +497,17 @@ public class TempRepositoryServerTest {
         assertEquals(wsId, doc.getId());
     }
     
+    @Test
+    public void testOptionsHasCORSHeaders() {
+        WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/");
+        
+        Response response = target
+                .request()
+                .options();
+            
+        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
+        assertNotNull(response.getHeaderString("Access-Control-Allow-Origin"));
+    }
+    
 }
 

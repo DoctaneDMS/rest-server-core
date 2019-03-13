@@ -9,7 +9,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
 
 @Provider
-public class CORSFilter implements ContainerResponseFilter {
+public class CORSResponseFilter implements ContainerResponseFilter {
     
     private void addHeaders(MultivaluedMap<String,Object> headers) {
         headers.add("Access-Control-Allow-Origin", "*");
@@ -26,13 +26,6 @@ public class CORSFilter implements ContainerResponseFilter {
     public void filter(ContainerRequestContext request,
             ContainerResponseContext response) throws IOException {
         
-        if (request.getMethod().equals("OPTIONS")) {
-            Response optionsResponse = Response.noContent().build();
-            addHeaders(optionsResponse.getHeaders());
-            request.abortWith(optionsResponse);
-        } else {
             addHeaders(response.getHeaders());
-        }
-
     }
 }
