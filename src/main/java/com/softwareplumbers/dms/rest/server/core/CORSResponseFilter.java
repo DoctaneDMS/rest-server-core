@@ -22,7 +22,7 @@ public class CORSResponseFilter implements ContainerResponseFilter {
     @Override
     public void filter(ContainerRequestContext request,
             ContainerResponseContext response) throws IOException {
-            String origin = request.getHeaderString("origin");
+            String origin = request.getHeaderString("Origin");
             addHeaders(response.getHeaders(), origin);
     }
 }
