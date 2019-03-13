@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
 
@@ -17,7 +16,6 @@ public class CORSRequestFilter implements ContainerRequestFilter {
     public void filter(ContainerRequestContext request) throws IOException {
         if (request.getMethod().equals("OPTIONS")) {
             Response optionsResponse = Response.ok()
-                    .cacheControl(CacheControl.valueOf("max-age=300"))
                     .build();
             request.abortWith(optionsResponse);
         }
