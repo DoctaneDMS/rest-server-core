@@ -16,7 +16,7 @@ public class CORSRequestFilter implements ContainerRequestFilter {
     @Override
     public void filter(ContainerRequestContext request) throws IOException {
         if (request.getMethod().equals("OPTIONS")) {
-            Response optionsResponse = Response.noContent()
+            Response optionsResponse = Response.ok()
                     .cacheControl(CacheControl.valueOf("max-age=300"))
                     .build();
             request.abortWith(optionsResponse);
