@@ -505,7 +505,7 @@ public class TempRepositoryServerTest {
                 .request()
                 .options();
             
-        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertNotNull(response.getHeaderString("Access-Control-Allow-Origin"));
     }
     
