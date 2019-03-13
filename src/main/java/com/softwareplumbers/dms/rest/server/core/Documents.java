@@ -3,7 +3,6 @@ package com.softwareplumbers.dms.rest.server.core;
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
 import java.io.InputStream;
-import java.util.logging.Logger;
 
 import javax.json.JsonObject;
 import javax.servlet.http.HttpServletRequest;
@@ -35,6 +34,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocum
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.rest.server.util.Log;
 
 /** Handle CRUD operations on documents.
  * 
@@ -50,7 +50,7 @@ public class Documents {
 	
 	///////////--------- Static member variables --------////////////
 
-	private static Logger LOG = Logger.getLogger("docs");
+	private static Log LOG = new Log(Documents.class);
 
 	///////////---------  member variables --------////////////
 
@@ -93,6 +93,7 @@ public class Documents {
     	@QueryParam("version") String version,
     	@QueryParam("workspaceId") String workspaceId
     ) {
+        LOG.logEntering("get", repository, id, version, workspaceId);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -125,16 +126,16 @@ public class Documents {
     				.bodyPart(metadata)
     				.bodyPart(file);
     			
-    			return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
+    			return LOG.logReturn("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());
     		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
+    			return LOG.logReturn("get", Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build());    			
     		}
     	} catch(InvalidReference e) { 
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
     	} catch (Throwable e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return LOG.logReturn("get", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
     	}
     }
     
@@ -155,6 +156,7 @@ public class Documents {
     	@PathParam("id") String id,
     	@QueryParam("version") String version
     ) {
+        LOG.logEntering("getFile", repository, id, version);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -173,7 +175,7 @@ public class Documents {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}
     	} catch (Throwable e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
@@ -196,6 +198,7 @@ public class Documents {
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
     	@QueryParam("version") String version) {
+        LOG.logEntering("getMetadata", repository, id, version);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -215,7 +218,7 @@ public class Documents {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}
     	} catch (Throwable e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
@@ -243,6 +246,7 @@ public class Documents {
     	@QueryParam("workspace") String workspace,
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace
     	) {
+        LOG.logEntering("post", repository, Log.fmt(metadata_part), Log.fmt(file_part), workspace, createWorkspace);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -278,7 +282,7 @@ public class Documents {
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
@@ -302,6 +306,7 @@ public class Documents {
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	@Context HttpServletRequest request
     	) {
+        LOG.logEntering("postFile", repository, workspace, createWorkspace, Log.fmt(request));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -328,7 +333,7 @@ public class Documents {
     	} catch (InvalidWorkspaceState e) {
     		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
@@ -354,6 +359,7 @@ public class Documents {
     	@QueryParam("workspace") String workspace,
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace
     	) {
+        LOG.logEntering("put", repository, id, Log.fmt(metadata_part), Log.fmt(file_part), workspace, createWorkspace);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -389,7 +395,7 @@ public class Documents {
     	} catch (InvalidDocumentId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
@@ -416,6 +422,7 @@ public class Documents {
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	@Context HttpServletRequest request
     	) {
+        LOG.logEntering("updateFile", repository, id, workspace, createWorkspace, Log.fmt(request));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -445,7 +452,7 @@ public class Documents {
     	} catch (InvalidDocumentId e) {
     		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
     	}catch (Exception e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
@@ -471,6 +478,7 @@ public class Documents {
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	JsonObject metadata
     	) {
+        LOG.logEntering("updateMetadata", repository, id, workspace, createWorkspace, metadata);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -489,20 +497,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return Response.status(Status.ACCEPTED).entity(reference).build();
+    			return LOG.logReturn("updateMetadata", Response.status(Status.ACCEPTED).entity(reference).build());
     		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
+    			return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build());    			
     		}
     	}  catch (InvalidWorkspace e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    		return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build());
     	} catch (InvalidWorkspaceState e) {
-    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    		return LOG.logReturn("updateMetadata", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build());    		
     	} catch (InvalidDocumentId e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
+    		return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build());    		
     	}catch (Exception e) {
-    		LOG.severe(e.getMessage());
+    		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return LOG.logReturn("updateMetadata", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
     	}
     }
 }
