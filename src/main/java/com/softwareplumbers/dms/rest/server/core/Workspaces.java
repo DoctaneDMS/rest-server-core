@@ -1,6 +1,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import java.io.InputStream;
+import java.util.Base64;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -92,11 +93,13 @@ public class Workspaces {
     public Response get(
         @PathParam("repository") String repository,
         @PathParam("workspace") String workspaceName,
+        @QueryParam("filter") String filter,
         @Context HttpHeaders headers
     ) {
-        LOG.logEntering("get", repository, workspaceName, headers.getAcceptableMediaTypes());
+        LOG.logEntering("get", repository, workspaceName, filter, headers.getAcceptableMediaTypes());
 
         try {
+            ObjectConstraint filterConstraint = filter != null && filter.length() > 0 ? ObjectConstraint.urlDecode(filter) : ObjectConstraint.UNBOUNDED;
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
@@ -112,7 +115,7 @@ public class Workspaces {
 
             if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
                 JsonArrayBuilder results = Json.createArrayBuilder();
-                service.catalogueByName(rootId, wsName, ObjectConstraint.UNBOUNDED, false)
+                service.catalogueByName(rootId, wsName, filterConstraint, false)
                 .forEach(item -> results.add(item.toJson()));;
                 return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
             } else {
