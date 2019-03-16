@@ -83,7 +83,8 @@ public class Workspaces {
      * 
      * @param repository string identifier of a document repository
      * @param workspaceName string identifier of a workspace
-     * @return Information about the workspace in json format
+     * @param filter AbstractQuery filter (in Base64 encoded Json) to fine down results of wildcard searches
+     * @return Information about the workspace or file in json format, or the file itself, depending on the requested content type
      */
     @GET
     @Path("/{repository}/{workspace:.+}")
