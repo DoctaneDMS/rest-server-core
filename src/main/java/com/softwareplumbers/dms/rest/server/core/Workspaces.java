@@ -1,6 +1,8 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -29,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
@@ -88,7 +91,6 @@ public class Workspaces {
      */
     @GET
     @Path("/{repository}/{workspace:.+}")
-    @Produces({ MediaType.APPLICATION_JSON, MediaType.MULTIPART_FORM_DATA })
     public Response get(
         @PathParam("repository") String repository,
         @PathParam("workspace") String workspaceName,
@@ -133,12 +135,18 @@ public class Workspaces {
                         file.setEntity(new DocumentOutput(document));
 
                         MultiPart response = new MultiPart()
-                                .bodyPart(metadata)
-                                .bodyPart(file);
+                            .bodyPart(metadata)
+                            .bodyPart(file);
 
                         return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
-                    } else {
+                    } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
                         return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
+                    } else {
+                        DocumentLink document = (DocumentLink)result;
+                        return Response.ok()
+                            .header("content-disposition", "attachment; filename=" + URLEncoder.encode(document.getName().part, StandardCharsets.UTF_8.name()))
+                            .type(document.getMediaType())
+                            .entity(new DocumentOutput(document)).build();
                     }
                 } else {
                     return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
