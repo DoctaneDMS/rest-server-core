@@ -6,6 +6,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -16,6 +17,8 @@ import org.junit.Test;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Range;
+import com.softwareplumbers.common.abstractquery.Value;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -59,7 +62,7 @@ public abstract class BaseRepositoryServiceTest {
 		for (int i = 0; i < 3; i++) result = result.add(randomUrlSafeName());
 		return result;
 	}
-	
+		
 	public static final String randomText() {
 		StringBuffer buffer = new StringBuffer();
 		for (int i = 1; i < 10; i++) {
@@ -339,5 +342,32 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName name = randomQualifiedName();
 		String resultId = service().updateWorkspaceByName(wsId, QualifiedName.ROOT, name, null, DUMMY_METADATA, true);
 		assertEquals(wsId, resultId);
+	}
+	
+	@Test
+	public void testCreateDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName docName = name1.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(ref1, doc1.getReference());
+	}
+	
+	@Test 
+	public void testSearchByDocumentId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId, InvalidObjectName, InvalidReference  {
+	    QualifiedName name1 = randomQualifiedName();
+	    String wsId1 = service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+	    QualifiedName name2 = randomQualifiedName();
+	    String wsId2 = service().createWorkspaceByName(ROOT_ID, name2, State.Open, EMPTY_METADATA);
+	    String originalText = randomText();
+	    Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+	    service().createDocumentLinkByName(ROOT_ID, name1.add("one"), ref1, true);
+	    service().createDocumentLinkByName(ROOT_ID, name2.add("two"), ref1, true);
+	    ObjectConstraint filterId = ObjectConstraint.from("Id", Range.equals(Value.from(ref1.id)));
+	    Stream<NamedRepositoryObject> result = service().catalogueByName(ROOT_ID, QualifiedName.of("*","*", "*","*"), filterId, false);
+	    assertEquals(2, result.count());
 	}
 }

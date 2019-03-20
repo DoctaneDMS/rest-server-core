@@ -36,12 +36,16 @@ import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Range;
+import com.softwareplumbers.common.abstractquery.Value;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
@@ -109,10 +113,17 @@ public class Workspaces {
             QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
             String rootId = ROOT_ID;
 
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repository
             if (wsName.startsWith(QualifiedName.of("~"))) {
                 rootId = wsName.get(1);
                 wsName = wsName.rightFromStart(2);
             } 
+            
+            if (wsName.size() > 1 && wsName.right(2).startsWith(QualifiedName.of("!"))) {
+                String documentId = wsName.part;
+                wsName = wsName.parent.add("*");
+                filterConstraint = ObjectConstraint.from("Id", Range.equals(Value.from(documentId)));
+            }
 
             if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
                 JsonArrayBuilder results = Json.createArrayBuilder();
@@ -207,7 +218,7 @@ public class Workspaces {
      * and to create a new workspace.
      * 
      * @param repository string identifier of a document repository
-     * @param workspaceName string identifier of a workspace
+     * @param objectName string identifier of a workspace
      * @param createWorkspace string identifier of a workspace
      */
     @PUT
@@ -215,43 +226,71 @@ public class Workspaces {
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
             @PathParam("repository") String repository,
-            @PathParam("workspace") String workspaceName,
-            @QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
-            JsonObject workspace) {
-        LOG.logEntering("put", repository, workspace, createWorkspace);
+            @PathParam("workspace") String objectName,
+            @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+            @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
+            JsonObject object) {
+        LOG.logEntering("put", repository, object, updateType);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
                 return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
-            if (workspaceName == null || workspaceName.isEmpty())
+            if (objectName == null || objectName.isEmpty())
                 return Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build();
 
-            String updateName = workspace.getString("name",null);
-            QualifiedName updateQName = updateName == null ? null : QualifiedName.parse(updateName, "/");
-            String stateString = workspace.getString("state", null);
-            Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
-            JsonObject metadata = workspace.getJsonObject("metadata");
-
-            QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
+            QualifiedName wsName = QualifiedName.parse(objectName, "/");
             String rootId = ROOT_ID;
 
-            if (wsName.startsWith(QualifiedName.of("~"))) {    			
+            if (wsName.startsWith(QualifiedName.of("~"))) {             
                 rootId = wsName.get(1);
                 wsName = wsName.rightFromStart(2);
             } 
 
-            String wsId = service.updateWorkspaceByName(rootId, wsName, updateQName, state, metadata, createWorkspace);
-
-            JsonObjectBuilder result = Json.createObjectBuilder();
-            result.add("id", wsId);
-
-            return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+            RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
+            
+            if (type == RepositoryObject.Type.WORKSPACE) {
+                String updateName = object.getString("name",null);
+                QualifiedName updateQName = updateName == null ? null : QualifiedName.parse(updateName, "/");
+                String stateString = object.getString("state", null);
+                Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
+                JsonObject metadata = object.getJsonObject("metadata");
+    
+                String wsId;
+                
+                if (updateType == UpdateType.CREATE)
+                    wsId = service.createWorkspaceByName(rootId, wsName, state, metadata);
+                else 
+                    wsId = service.updateWorkspaceByName(rootId, wsName, updateQName, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
+    
+                JsonObjectBuilder result = Json.createObjectBuilder();
+                result.add("id", wsId);
+    
+                return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+            } else {
+                Reference reference = Reference.fromJson(object.getJsonObject("reference"));
+                
+                if (updateType == UpdateType.CREATE)
+                    service.createDocumentLinkByName(rootId, wsName, reference, createWorkspace);
+                else
+                    service.updateDocumentLinkByName(rootId, wsName, reference, updateType == UpdateType.CREATE_OR_UPDATE);
+                
+                return Response.accepted().build();
+            }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
             return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
-        } catch (Throwable e) {
+        } catch (InvalidObjectName err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+        } catch (InvalidReference err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build();
+        } catch (InvalidWorkspaceState err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();
+        } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
         } 

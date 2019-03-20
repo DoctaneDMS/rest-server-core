@@ -140,6 +140,7 @@ public interface RepositoryService {
 	 * name of the workspace. The last part of the given name is used as the name of the document
 	 * within the workspace.
 	 * 
+	 * @param rootId the Id of the 'root' workspace
 	 * @param documentName the fully qualified name of the document in a workspace
 	 * @param mediaType the type of document
 	 * @param stream a supplier function that produces a stream of binary data representing the document
@@ -156,6 +157,26 @@ public interface RepositoryService {
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
+	
+	/** Create a link to an existing document by reference.
+	 * 
+	 * Creates a link to an existing document with a new name inside a given workspace.
+	 * 
+     * @param rootId the Id of the 'root' workspace
+     * @param documentName the fully qualified name of the document in a workspace
+	 * @param reference Reference of document to link to
+	 * @param createWorkspace controls if parent workspace will be created (if it doesn't exist)
+	 * @throws InvalidObject name if replaceExisting is false and an object with the given name already exists
+     * @throws InvalidWorkspace if workspace does not exist
+     * @throws InvalidWorkspaceState if workspace is already closed
+	 * @throws InvalidReference 
+	 */
+	public void createDocumentLinkByName(
+	        String rootId,
+	        QualifiedName documentName,
+	        Reference reference,
+	        boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
+	
 	
 	/** Update a document in the repository.
 	 * 
@@ -216,7 +237,26 @@ public interface RepositoryService {
 		String workspaceId,
 		boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState;
 	
-	
+    /** Update or create a link to an existing document by reference.
+     * 
+     * Creates a link to an existing document with a new name inside a given workspace.
+     * 
+     * @param rootId the Id of the 'root' workspace
+     * @param documentName the fully qualified name of the document in a workspace
+     * @param reference Reference of document to link to
+     * @param create Allow object creation if object (or workspaces in path) do not exist
+     * @throws InvalidObject name if replaceExisting is false and an object with the given name already exists
+     * @throws InvalidWorkspace if document link or workspace does not exist and create is false
+     * @throws InvalidWorkspaceState if workspace is already closed
+     * @throws InvalidReference 
+     */
+    public void updateDocumentLinkByName(
+            String rootId,
+            QualifiedName documentName,
+            Reference reference,
+            boolean create) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
+
+    
 	/** Catalog a repository.
 	 * 
 	 * Returns information (including reference and meta-data) about documents in the repository 
@@ -276,7 +316,7 @@ public interface RepositoryService {
 	 * @param filter filter object to match meta-data
 	 * @param path search path from root workspace id
 	 * @param searchHistory indicate whether to search document history for a match
-	 * @return a stream of Info objects with the results of the search
+	 * @return a stream of objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
 	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;

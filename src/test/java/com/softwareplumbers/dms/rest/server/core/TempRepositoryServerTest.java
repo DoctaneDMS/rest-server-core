@@ -38,6 +38,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
+import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -139,6 +140,37 @@ public class TempRepositoryServerTest {
 			System.out.println(response.toString());
 			throw new RuntimeException("Bad put");
 		}
+    }
+    
+    /** Utility function to put a document using the Jersey client API.
+     * 
+     * Test documents are held in src/test/resources in this project. Two files
+     * <I>name</I>.txt and <I>name</I>.json make up a single test document, 
+     * where the json file contains the metadata.
+     * 
+     * @param name Name of test document file (without extension)
+     * @param path Path of document to update (including base, so /docs/tmp/id or /ws/tmp/workspace/docName)
+     * @return The result of posting the document to the test server.
+     * 
+     */
+    public void putDocumentLink(String path, String id, UpdateType type) throws IOException {
+        WebTarget target = client.target("http://localhost:" + port + path + "?createWorkspace=true&updateType=" + type);
+        
+        JsonObject link = Json.createObjectBuilder()
+            .add("type", "DOCUMENT_LINK")
+            .add("reference", Json.createObjectBuilder()
+                 .add("id", id)
+                 .build())
+            .build();
+        
+        Response response = target
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.entity(link, MediaType.APPLICATION_JSON_TYPE));
+        
+        if (response.getStatus() != Response.Status.ACCEPTED.getStatusCode()) {
+            System.out.println(response.toString());
+            throw new RuntimeException("Bad put");
+        }
     }
     
     /** Utility function to put a workspace using the Jersey client API.
@@ -254,7 +286,7 @@ public class TempRepositoryServerTest {
         } 
 
         System.out.println(response.getEntity().toString());
-        throw new RuntimeException("Bad post");
+        throw new RuntimeException("Bad get");
     } 
 
 
@@ -510,5 +542,15 @@ public class TempRepositoryServerTest {
         assertNotNull(response.getHeaderString("Access-Control-Allow-Headers"));
     }
     
+    @Test
+    public void testCreateDocumentLink() throws IOException, ParseException {
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        String wsId = response1.getString("id");
+        assertNotNull(wsId);
+        putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
+        DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
+        assertEquals(wsId, doc.getId());
+        
+    }
 }
 

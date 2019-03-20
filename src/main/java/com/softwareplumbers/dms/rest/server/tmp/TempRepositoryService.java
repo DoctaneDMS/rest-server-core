@@ -399,7 +399,7 @@ public class TempRepositoryService implements RepositoryService {
 			if (createWorkspace)
 				ws = myRoot.createWorkspace(UUID.randomUUID(), name, state, metadata);
 			else
-				throw LOG.logThrow("updateWorkspaceByIndex", new InvalidWorkspace(myRoot.getName().addAll(name)));
+				throw LOG.logThrow("updateWorkspaceByName", new InvalidWorkspace(myRoot.getName().addAll(name)));
 		} else { 
 			ws = workspace.get();
 			ws.setState(state);
@@ -408,7 +408,7 @@ public class TempRepositoryService implements RepositoryService {
 				ws.setName(root, newName, createWorkspace);
 			}
 		}
-		return LOG.logReturn("updateWorkspaceByIndex", ws.getId());
+		return LOG.logReturn("updateWorkspaceByName", ws.getId());
 	}
 	
 	public String updateWorkspaceById(String id, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
@@ -498,6 +498,55 @@ public class TempRepositoryService implements RepositoryService {
 	public String createWorkspaceById(String Id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
 		if (Id == null) Id = UUID.randomUUID().toString();
 		return updateWorkspaceById(Id, name, state, metadata, true);
+	}
+
+	@Override
+    public void createDocumentLinkByName(String rootId, QualifiedName documentName, Reference reference, boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference {
+
+        LOG.logEntering("createDocumentLinkByName", rootId, documentName, reference);
+        
+        if (documentName == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidObjectName(documentName));
+        if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
+        
+        WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(documentName.parent, createWorkspace);
+        
+        Optional<NamedRepositoryObject> obj = workspace.getObject(documentName.part);
+        
+        if (obj.isPresent()) {  
+            throw new InvalidObjectName(documentName);
+        } else {
+            workspace.add(reference, documentName.part);
+        }
+        
+        LOG.logExiting("createDocumentLinkByName");
+    }
+	
+	@Override
+	public void updateDocumentLinkByName(String rootId, QualifiedName documentName, Reference reference, boolean create) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference {
+
+	    LOG.logEntering("createDocumentLinkByName", rootId, documentName, reference);
+
+	    if (documentName == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidObjectName(documentName));
+	    if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
+
+	    WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(documentName.parent, create);
+
+	    Optional<NamedRepositoryObject> obj = workspace.getObject(documentName.part);
+
+	    if (obj.isPresent()) {  
+	        if (obj.get().getType() != RepositoryObject.Type.DOCUMENT_LINK)
+	            throw new InvalidObjectName(documentName);
+	        else
+	            workspace.update(reference, documentName.part);
+	    } else {
+	        if (create)
+	            workspace.add(reference, documentName.part);
+	        else
+	            throw new InvalidObjectName(documentName);
+	    }
+
+	    LOG.logExiting("createDocumentLinkByName");
+
 	}
 
 

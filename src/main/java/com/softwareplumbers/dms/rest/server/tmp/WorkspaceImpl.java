@@ -378,6 +378,11 @@ class WorkspaceImpl implements Workspace {
 		}
 	}
 	
+	public Optional<NamedRepositoryObject> getObject(String name) {
+        NamedRepositoryObject obj = children.get(name);
+        return Optional.ofNullable(obj);
+	}
+	
 	public Optional<DocumentLink> getDocument(String name) {
 		NamedRepositoryObject obj = children.get(name);
 		if (obj == null || obj.getType() != Type.DOCUMENT_LINK) return Optional.empty();
