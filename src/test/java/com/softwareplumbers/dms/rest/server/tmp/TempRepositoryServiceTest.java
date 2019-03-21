@@ -90,9 +90,9 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 		repository.service.updateDocument(repository.ref1.id, null, null, null, workspace2, true);
 		repository.service.updateDocument(repository.ref2.id, null, null, null, workspace2, true);
 		repository.service.updateDocument(repository.ref3.id, null, null, null, workspace2, true);
-		assertEquals(2,repository.service.listWorkspaces(repository.ref1.id).count());
-		assertEquals(1,repository.service.listWorkspaces(repository.ref2.id).count());
-		assertEquals(1,repository.service.listWorkspaces(repository.ref3.id).count());
+		assertEquals(2,repository.service.listWorkspaces(repository.ref1.id, null).count());
+		assertEquals(1,repository.service.listWorkspaces(repository.ref2.id, null).count());
+		assertEquals(1,repository.service.listWorkspaces(repository.ref3.id, null).count());
 	}
 	
 	@Override

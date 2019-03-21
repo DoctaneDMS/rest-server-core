@@ -486,5 +486,5 @@ public interface RepositoryService {
 	 * @param id Id of document
 	 * @return A Stream of workspaces, all of which the given doc is in.
 	 */
-	public Stream<Workspace> listWorkspaces(String id);
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter);
 };

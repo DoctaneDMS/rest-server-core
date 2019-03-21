@@ -482,11 +482,20 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<Workspace> listWorkspaces(String id) {
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter) {
 		LOG.logEntering("listWorkspaces", id);
 		Set<UUID> workspaceIds = workspacesByDocument.get(id);
 		if (workspaceIds == null) return LOG.logReturn("listWorkspaces", Stream.empty());
-		return LOG.logReturn("listWorkspaces", workspaceIds.stream().map(name->workspacesById.get(name)));
+		// TODO: add pathFilter
+		return LOG.logReturn("listWorkspaces", 
+			workspaceIds.stream().map(wdId->{
+				try {
+					return workspacesById.get(wdId).getById(id);
+				} catch (InvalidDocumentId e) {
+					throw new RuntimeException("unexpected " + e);
+				}
+			})		
+		);
 	}
 
 	@Override

@@ -153,7 +153,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test 
 	public void testListWorkspacesInvalidWorkspaceId() throws InvalidDocumentId {
-		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id).count());
+		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id, QualifiedName.of("*")).count());
 	}
 
 	@Test
@@ -295,7 +295,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState {
 		Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, randomWorkspaceId(), true);
-		assertEquals(1, service().listWorkspaces(ref.id).count());
+		assertEquals(1, service().listWorkspaces(ref.id, QualifiedName.of("*")).count());
 	}
 	
 	@Test

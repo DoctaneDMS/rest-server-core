@@ -198,7 +198,7 @@ public class Workspaces {
                 return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
             JsonArrayBuilder result = Json.createArrayBuilder();
-            service.listWorkspaces(documentId).map(Workspace::toJson).forEach(value -> result.add(value));
+            service.listWorkspaces(documentId, null).map(DocumentLink::toJson).forEach(value -> result.add(value));
             //TODO: must be able to do this in a stream somehow.
             return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
         } catch (Throwable e) {

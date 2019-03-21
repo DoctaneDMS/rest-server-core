@@ -7,9 +7,11 @@ buildscript {
     }
 }
 
+/*
 plugins {
   id "org.jdrupes.mdoclet" version "1.0.3"
 }
+*/
 
 String propValue(String propName, String defValue) {
     (project.hasProperty(propName) && project.getProperty(propName)) ? project.getProperty(propName) : defValue
@@ -27,12 +29,6 @@ bootRun {
 	systemProperties = System.properties
 }
 
-
-bootRepackage {
-  classifier = 'standalone'
-  withJarTask = 'bootJar1'
-}
-
 test {
 	systemProperties = System.properties
 	testLogging {
@@ -40,9 +36,23 @@ test {
     }
 }
 
+javadoc {
+    source = sourceSets.main.allJava
+    classpath = configurations.compile
+}
+
 task bootJar1(type: Jar, dependsOn: classes) {
   classifier 'standalone'
   from sourceSets.main.output
+}
+
+bootRepackage  {
+	enabled=false
+}
+
+task repackageTask1(type: BootRepackage, dependsOn: bootJar1) {
+	classifier='standalone'
+	withJarTask='bootJar1'
 }
 
 jar {
@@ -56,6 +66,10 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 	from sourceSets.main.allSource
 }
 
+assemble {
+	dependsOn repackageTask1
+}
+
 artifacts {
 	archives sourcesJar 
   archives bootJar1
@@ -63,6 +77,9 @@ artifacts {
 
 test {
     systemProperty "spring.profiles.active", "test"
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 repositories {
