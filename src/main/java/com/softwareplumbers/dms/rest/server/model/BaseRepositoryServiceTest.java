@@ -366,8 +366,7 @@ public abstract class BaseRepositoryServiceTest {
 	    Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
 	    service().createDocumentLinkByName(ROOT_ID, name1.add("one"), ref1, true);
 	    service().createDocumentLinkByName(ROOT_ID, name2.add("two"), ref1, true);
-	    ObjectConstraint filterId = ObjectConstraint.from("Id", Range.equals(Value.from(ref1.id)));
-	    Stream<NamedRepositoryObject> result = service().catalogueByName(ROOT_ID, QualifiedName.of("*","*", "*","*"), filterId, false);
+	    Stream<DocumentLink> result = service().listWorkspaces(ref1.id, null);
 	    assertEquals(2, result.count());
 	}
 }

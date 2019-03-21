@@ -119,48 +119,53 @@ public class Workspaces {
                 wsName = wsName.rightFromStart(2);
             } 
             
+            // If we have an object id, we are looking for the workspaces it belongs to
             if (wsName.size() > 1 && wsName.right(2).startsWith(QualifiedName.of("!"))) {
                 String documentId = wsName.part;
-                wsName = wsName.parent.add("*");
-                filterConstraint = ObjectConstraint.from("Id", Range.equals(Value.from(documentId)));
-            }
-
-            if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
                 JsonArrayBuilder results = Json.createArrayBuilder();
-                service.catalogueByName(rootId, wsName, filterConstraint, false)
+                service.listWorkspaces(documentId, wsName)
                 .forEach(item -> results.add(item.toJson()));;
                 return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
             } else {
-                RepositoryObject result = service.getObjectByName(rootId, wsName);
-                if (result != null) {    					
-                    if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE) && result.getType() != RepositoryObject.Type.WORKSPACE) {
-                        Document document = (Document)result;
-                        FormDataBodyPart metadata = new FormDataBodyPart();
-                        metadata.setName("metadata");
-                        metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                        metadata.setEntity(document.toJson());
-                        FormDataBodyPart file = new FormDataBodyPart();
-                        file.setName("file");
-                        file.setMediaType(document.getMediaType());
-                        file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                        file.setEntity(new DocumentOutput(document));
-
-                        MultiPart response = new MultiPart()
-                            .bodyPart(metadata)
-                            .bodyPart(file);
-
-                        return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
-                    } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
-                        return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
-                    } else {
-                        DocumentLink document = (DocumentLink)result;
-                        return Response.ok()
-                            .header("content-disposition", "attachment; filename=" + URLEncoder.encode(document.getName().part, StandardCharsets.UTF_8.name()))
-                            .type(document.getMediaType())
-                            .entity(new DocumentOutput(document)).build();
-                    }
+                // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
+                if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
+                    JsonArrayBuilder results = Json.createArrayBuilder();
+                    service.catalogueByName(rootId, wsName, filterConstraint, false)
+                    .forEach(item -> results.add(item.toJson()));;
+                    return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
                 } else {
-                    return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
+                    // Path has no wildcards, so we are returning at most one object
+                    RepositoryObject result = service.getObjectByName(rootId, wsName);
+                    if (result != null) {    					
+                        if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE) && result.getType() != RepositoryObject.Type.WORKSPACE) {
+                            Document document = (Document)result;
+                            FormDataBodyPart metadata = new FormDataBodyPart();
+                            metadata.setName("metadata");
+                            metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                            metadata.setEntity(document.toJson());
+                            FormDataBodyPart file = new FormDataBodyPart();
+                            file.setName("file");
+                            file.setMediaType(document.getMediaType());
+                            file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                            file.setEntity(new DocumentOutput(document));
+
+                            MultiPart response = new MultiPart()
+                                .bodyPart(metadata)
+                                .bodyPart(file);
+
+                            return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
+                        } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
+                            return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
+                        } else {
+                            DocumentLink document = (DocumentLink)result;
+                            return Response.ok()
+                                .header("content-disposition", "attachment; filename=" + URLEncoder.encode(document.getName().part, StandardCharsets.UTF_8.name()))
+                                .type(document.getMediaType())
+                                .entity(new DocumentOutput(document)).build();
+                        }
+                    } else {
+                        return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
+                    }
                 }
             }
 

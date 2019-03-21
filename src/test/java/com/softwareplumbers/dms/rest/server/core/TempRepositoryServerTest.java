@@ -552,5 +552,15 @@ public class TempRepositoryServerTest {
         assertEquals(wsId, doc.getId());
         
     }
+
+    @Test
+    public void testListWorkspaces() throws IOException, ParseException {
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        String wsId = response1.getString("id");
+        putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
+        DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
+        JsonArray result = getWorkspaceJson("/*/!/"+wsId, JsonArray.class);
+        assertEquals(2, result.size());
+    }
 }
 
