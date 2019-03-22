@@ -236,7 +236,7 @@ public class Workspaces {
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
             @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
             JsonObject object) {
-        LOG.logEntering("put", repository, object, updateType);
+        LOG.logEntering("put", repository, objectName, createWorkspace, updateType, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
@@ -248,10 +248,12 @@ public class Workspaces {
 
             QualifiedName wsName = QualifiedName.parse(objectName, "/");
             String rootId = ROOT_ID;
+            String firstPart = wsName.get(0);
 
-            if (wsName.startsWith(QualifiedName.of("~"))) {             
-                rootId = wsName.get(1);
-                wsName = wsName.rightFromStart(2);
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            if (firstPart.startsWith("~")) {
+                rootId = firstPart.substring(1);
+                wsName = wsName.rightFromStart(1);
             } 
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
@@ -341,10 +343,12 @@ public class Workspaces {
                 return Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build();
 
             String wsId = null;
-            if (pathName.startsWith(QualifiedName.of("~"))) {  
-                wsId = pathName.get(1);
-                pathName = pathName.rightFromStart(2);
-            }
+            String firstPart = pathName.get(0);
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            if (firstPart.startsWith("~")) {
+                wsId = firstPart.substring(1);
+                pathName = pathName.rightFromStart(1);
+            } 
 
             Reference result = service.updateDocumentByName(
                     wsId, 
@@ -390,11 +394,13 @@ public class Workspaces {
 
             QualifiedName wsName = QualifiedName.parse(path, "/");
             String rootId = ROOT_ID;
+            String firstPart = wsName.get(0);
 
-            if (wsName.startsWith(QualifiedName.of("~"))) {    			
-                rootId = wsName.get(1);
-                wsName = wsName.rightFromStart(2);
-            }
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            if (firstPart.startsWith("~")) {
+                rootId = firstPart.substring(1);
+                wsName = wsName.rightFromStart(1);
+            } 
 
             service.deleteObjectByName(rootId, wsName);
 
