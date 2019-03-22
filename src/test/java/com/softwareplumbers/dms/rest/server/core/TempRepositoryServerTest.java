@@ -509,7 +509,7 @@ public class TempRepositoryServerTest {
 			
 			assertTrue(result.containsKey("id"));
 			
-			JsonObject result2 = getWorkspaceJson("~/"+result.getString("id"), JsonObject.class);
+			JsonObject result2 = getWorkspaceJson("~"+result.getString("id"), JsonObject.class);
 			
 			assertEquals("test4/test5", result2.getString("name"));
 			assertEquals("Open", result2.getString("state"));		
@@ -559,7 +559,7 @@ public class TempRepositoryServerTest {
         String wsId = response1.getString("id");
         putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
         DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
-        JsonArray result = getWorkspaceJson("/*/!/"+wsId, JsonArray.class);
+        JsonArray result = getWorkspaceJson("/*/~"+wsId, JsonArray.class);
         assertEquals(2, result.size());
     }
 }

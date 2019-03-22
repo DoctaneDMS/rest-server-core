@@ -112,16 +112,17 @@ public class Workspaces {
 
             QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
             String rootId = ROOT_ID;
+            String firstPart = wsName.get(0);
 
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repository
-            if (wsName.startsWith(QualifiedName.of("~"))) {
-                rootId = wsName.get(1);
-                wsName = wsName.rightFromStart(2);
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            if (firstPart.startsWith("~")) {
+                rootId = firstPart.substring(1);
+                wsName = wsName.rightFromStart(1);
             } 
             
             // If we have an object id, we are looking for the workspaces it belongs to
-            if (wsName.size() > 1 && wsName.right(2).startsWith(QualifiedName.of("!"))) {
-                String documentId = wsName.part;
+            if (wsName.size() > 1 && wsName.part.startsWith("~")) {
+                String documentId = wsName.part.substring(1);
                 JsonArrayBuilder results = Json.createArrayBuilder();
                 service.listWorkspaces(documentId, wsName)
                 .forEach(item -> results.add(item.toJson()));;
