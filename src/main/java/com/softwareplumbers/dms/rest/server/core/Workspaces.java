@@ -121,7 +121,7 @@ public class Workspaces {
             } 
             
             // If we have an object id, we are looking for the workspaces it belongs to
-            if (wsName.size() > 1 && wsName.part.startsWith("~")) {
+            if (!wsName.isEmpty() && wsName.part.startsWith("~")) {
                 String documentId = wsName.part.substring(1);
                 JsonArrayBuilder results = Json.createArrayBuilder();
                 service.listWorkspaces(documentId, wsName)
