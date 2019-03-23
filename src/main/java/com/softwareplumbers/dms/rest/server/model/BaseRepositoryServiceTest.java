@@ -36,7 +36,7 @@ public abstract class BaseRepositoryServiceTest {
 	public abstract RepositoryService service();
 	
 	public static final String[] names = { "julien", "peter", "fairfax", "austen", "celtic", "a", "the", "halibut", "eaten" };
-	public static final String characters = "-._~";
+	public static final String characters = "-._";
 	public static final String reserved = "&$+,/:;=?@#";
 	
 	public static int unique = 0;
@@ -327,9 +327,9 @@ public abstract class BaseRepositoryServiceTest {
 		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
 		String wsId2 = service().createWorkspaceByName(wsId, null, State.Open, EMPTY_METADATA);
 		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
-		assertEquals(QualifiedName.of("~", wsId), ((Workspace)ro).getName());
+		assertEquals(QualifiedName.of("~" + wsId), ((Workspace)ro).getName());
 		RepositoryObject ro2 = service().getObjectByName(wsId2, QualifiedName.ROOT);
-		assertEquals(3, ((Workspace)ro2).getName().size());
+		assertEquals(2, ((Workspace)ro2).getName().size());
 	}
 
 	@Test
