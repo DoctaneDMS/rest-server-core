@@ -5,6 +5,11 @@
 	xsi:schemaLocation="
  	http://www.springframework.org/schema/beans
 	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd">
+	
+	<bean id ="keymgr" class="com.softwareplumbers.dms.rest.server.util.KeyManager" scope="singleton">
+		<constructor-arg index="0" value="/tmp/doctane-proxy.keystore"/>
+		<constructor-arg index="1" value="password"/>
+	</bean>
 
    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
    		<constructor-arg index="0" value="filename"/>

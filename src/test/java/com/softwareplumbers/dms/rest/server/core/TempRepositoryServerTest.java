@@ -31,6 +31,7 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -40,6 +41,7 @@ import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
+import com.softwareplumbers.dms.rest.server.util.KeyManager;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 
@@ -56,6 +58,9 @@ public class TempRepositoryServerTest {
     Client client = ClientBuilder.newClient(new ClientConfig()
     		.register(MultiPartFeature.class)
             .register(JsonProcessingFeature.class));
+    
+    @Autowired
+    AuthenticationService cookieHandler;
     
     /** Utility function to post a document using the Jersey client API.
      * 
@@ -88,6 +93,7 @@ public class TempRepositoryServerTest {
 
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
     			.post(Entity.entity(multiPart, multiPart.getMediaType()));
     	
 			
@@ -131,6 +137,7 @@ public class TempRepositoryServerTest {
 
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
     			.put(Entity.entity(multiPart, multiPart.getMediaType()));
     	
 			
@@ -165,6 +172,7 @@ public class TempRepositoryServerTest {
         
         Response response = target
                 .request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
                 .put(Entity.entity(link, MediaType.APPLICATION_JSON_TYPE));
         
         if (response.getStatus() != Response.Status.ACCEPTED.getStatusCode()) {
@@ -185,6 +193,7 @@ public class TempRepositoryServerTest {
     	
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
     			.put(Entity.entity(data, MediaType.APPLICATION_JSON_TYPE));
 			
 		if (response.getStatus() == Response.Status.ACCEPTED.getStatusCode()) {
@@ -206,6 +215,7 @@ public class TempRepositoryServerTest {
     	
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
     			.get();
 			
 		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
@@ -257,6 +267,7 @@ public class TempRepositoryServerTest {
         
         Response response = target
                 .request(MediaType.MULTIPART_FORM_DATA)
+                .cookie(cookieHandler.generateCookie("test_user"))
                 .get();
         
         JsonObject metadata = null;
@@ -305,6 +316,7 @@ public class TempRepositoryServerTest {
     	
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)
+    			.cookie(cookieHandler.generateCookie("test_user"))
     			.get();
     	
 		if (response.getStatus() == Response.Status.OK.getStatusCode()) {
@@ -372,6 +384,7 @@ public class TempRepositoryServerTest {
 
     	Response response = target
     			.request(MediaType.APPLICATION_JSON_TYPE)
+                .cookie(cookieHandler.generateCookie("test_user"))
     			.post(Entity.entity(file, MediaType.TEXT_PLAIN));
     	
 			

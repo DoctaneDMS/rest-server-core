@@ -37,6 +37,7 @@ import com.softwareplumbers.common.abstractquery.ObjectConstraint;
  *
  */
 @Component
+@Authenticated
 @Path("/cat")
 public class Catalogue {
 	///////////--------- Static member variables --------////////////

@@ -112,12 +112,17 @@ dependencyManagement {
 dependencies {
     compile("org.springframework.boot:spring-boot-starter-jersey")
     compile("org.springframework.boot:spring-boot-starter-tomcat")
-    compile("org.keycloak:keycloak-spring-boot-starter")
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
     compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.3'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
-    compile("junit:junit:4.12")
+    compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'
+    compile group: 'org.opensaml', name: 'opensaml-core', version: '3.3.0'
+    compile group: 'io.jsonwebtoken', name: 'jjwt-api', version:'0.10.5'
+    compile group: 'junit', name: 'junit', version: '4.12'
+    runtime group: 'io.jsonwebtoken', name: 'jjwt-impl', version: '0.10.5'
+    runtime group: 'io.jsonwebtoken', name: 'jjwt-jackson', version: '0.10.5'
+    compile group: 'org.opensaml', name: 'opensaml-saml-impl', version: '3.3.0'
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }

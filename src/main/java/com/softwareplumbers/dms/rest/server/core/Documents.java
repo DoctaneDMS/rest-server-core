@@ -47,6 +47,7 @@ import com.softwareplumbers.dms.rest.server.util.Log;
  */
 @Component
 @Path("/docs")
+@Authenticated
 public class Documents {
 	
 	///////////--------- Static member variables --------////////////

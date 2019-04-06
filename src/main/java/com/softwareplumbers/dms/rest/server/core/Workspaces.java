@@ -59,6 +59,7 @@ import static com.softwareplumbers.dms.rest.server.model.Constants.*;
  *
  */
 @Component
+@Authenticated
 @Path("/ws")
 public class Workspaces {
     ///////////--------- Static member variables --------////////////

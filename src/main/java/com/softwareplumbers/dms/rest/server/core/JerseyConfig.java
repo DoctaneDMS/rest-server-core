@@ -18,9 +18,11 @@ public class JerseyConfig extends ResourceConfig {
 		register(Workspaces.class);
 		register(Catalogue.class);
 		register(Heartbeat.class);
+		register(Authentication.class);
 		register(CORSRequestFilter.class);
         register(CORSResponseFilter.class);
 	    register(MultiPartFeature.class);
+	    register(AuthenticationFilter.class);
 	}
 
 }
