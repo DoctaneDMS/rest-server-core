@@ -45,12 +45,17 @@ public class AuthenticationService {
     public NewCookie generateCookie(String uid) {
         LOG.logEntering("generateCookie", uid);
         ZonedDateTime expirationDate = LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault());
+        Date expirationDateAsDate = Date.from(expirationDate.toInstant());
         String jwt = Jwts.builder()
             .setSubject(uid)
-            .setExpiration(Date.from(expirationDate.toInstant()))
+            .setExpiration(expirationDateAsDate)
             .signWith(jwtSigningKey)
             .compact();
-        return LOG.logReturn("generateCookie", new NewCookie("DoctaneUserToken", jwt));
+        NewCookie cookie = new NewCookie(
+             "DoctaneUserToken", jwt, 
+             "/", null, Cookie.DEFAULT_VERSION, "Doctane User Token", 
+             NewCookie.DEFAULT_MAX_AGE, expirationDateAsDate, false, false);
+        return LOG.logReturn("generateCookie", cookie);
     }
     
     /** Validate that request is authenticated and generate an appropriate security context
