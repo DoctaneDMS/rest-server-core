@@ -18,6 +18,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -144,9 +145,14 @@ public class Authentication {
     @Authenticated
     @GET
     @Produces({MediaType.APPLICATION_JSON})
-    public Response getTokenValidity(@Context SecurityContext context) {
+    public Response getTokenValidity(@Context ContainerRequestContext context) {
+        SecurityContext secContext = context.getSecurityContext();
         JsonObjectBuilder builder = Json.createObjectBuilder();
-        builder.add("user", context.getUserPrincipal().getName());
+        builder.add("user", secContext.getUserPrincipal().getName());
+        Date validFrom = (Date)context.getProperty("validFrom");
+        Date validUntil = (Date)context.getProperty("validUntil");
+        if (validFrom != null) builder.add("validFrom", DateTimeFormatter.ISO_INSTANT.format(validFrom.toInstant()));
+        if (validUntil != null) builder.add("validUntil", DateTimeFormatter.ISO_INSTANT.format(validUntil.toInstant()));
         return Response.ok().entity(builder.build()).build();      
     }
 

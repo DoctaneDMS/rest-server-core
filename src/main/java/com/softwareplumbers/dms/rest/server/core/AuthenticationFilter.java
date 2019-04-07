@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import java.io.IOException;
 import java.security.Key;
 import java.util.Optional;
+import java.util.TreeMap;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -34,9 +35,11 @@ public class AuthenticationFilter implements ContainerRequestFilter {
         
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
-        Optional<SecurityContext> securityContext = cookieHandler.validateCookie(requestContext);
+        TreeMap<String,Object> additionalProperties = new TreeMap<>();
+        Optional<SecurityContext> securityContext = cookieHandler.validateCookie(requestContext, additionalProperties);
         if (securityContext.isPresent()) {
             requestContext.setSecurityContext(securityContext.get());
+            additionalProperties.forEach((key, value) -> requestContext.setProperty(key, value));
         } else {
             requestContext.abortWith(Response.status(Status.UNAUTHORIZED).build());
         }
