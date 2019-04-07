@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
 import com.softwareplumbers.dms.rest.server.util.KeyManager;
 import com.softwareplumbers.dms.rest.server.util.KeyManager.KeyName;
+import com.softwareplumbers.dms.rest.server.util.Log;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -25,6 +26,8 @@ import io.jsonwebtoken.Jwts;
 @Scope("singleton")
 public class AuthenticationService {
     
+    private static final Log LOG = new Log(AuthenticationService.class);
+    
     private final Key jwtSigningKey;
 
     public AuthenticationService(KeyManager keyManager) {
@@ -32,21 +35,24 @@ public class AuthenticationService {
     }
     
     public NewCookie generateCookie(String uid) {
-        return new NewCookie("DoctaneUserToken", Jwts.builder().setSubject(uid).signWith(jwtSigningKey).compact());
+        LOG.logEntering("generateCookie", uid);
+        return LOG.logReturn("generateCookie", new NewCookie("DoctaneUserToken", Jwts.builder().setSubject(uid).signWith(jwtSigningKey).compact()));
     }
     
     public Optional<SecurityContext> validateCookie(ContainerRequestContext requestContext) {
+        LOG.logEntering("validateCookie", Log.fmt(requestContext));
         Cookie cookie = requestContext.getCookies().get("DoctaneUserToken");
+        LOG.log.finer("DoctaneUserToken Cookie:" + cookie);
         if (cookie != null) {
             String jws = cookie.getValue();
             try {
                 Claims claims = Jwts.parser().setSigningKey(jwtSigningKey).parseClaimsJws(jws).getBody();
-                return Optional.of(new JWTSecurityContext(claims));
+                return LOG.logReturn("validateCookie", Optional.of(new JWTSecurityContext(claims)));
             } catch (JwtException exp) {
-                return Optional.empty();
+                return LOG.logReturn("validateCookie", Optional.empty());
             }
         } else {
-            return Optional.empty();
+            return LOG.logReturn("validateCookie", Optional.empty());
         }
     }
 

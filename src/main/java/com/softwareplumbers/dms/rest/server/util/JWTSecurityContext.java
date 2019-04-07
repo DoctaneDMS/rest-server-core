@@ -1,6 +1,7 @@
 package com.softwareplumbers.dms.rest.server.util;
 
 import java.security.Principal;
+import java.util.Date;
 
 import javax.ws.rs.core.SecurityContext;
 
@@ -41,5 +42,4 @@ public class JWTSecurityContext implements SecurityContext {
     public JWTSecurityContext(Claims claims) {
         this.claims = claims;
     }
-    
 }

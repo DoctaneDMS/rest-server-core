@@ -6,15 +6,23 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 import javax.inject.Singleton;
+import javax.json.Json;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -45,6 +53,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
+import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
 import com.softwareplumbers.dms.rest.server.util.Log;
 
 import net.shibboleth.utilities.java.support.component.ComponentInitializationException;
@@ -129,6 +138,16 @@ public class Authentication {
     boolean hasDocumentViewerRole(org.opensaml.saml.saml2.core.Response response) {
         //TODO: implement
         return true;
+    }
+    
+    @Path("token")
+    @Authenticated
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    public Response getTokenValidity(@Context SecurityContext context) {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+        builder.add("user", context.getUserPrincipal().getName());
+        return Response.ok().entity(builder.build()).build();      
     }
 
     @Path("saml")
