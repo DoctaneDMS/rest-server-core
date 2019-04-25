@@ -13,6 +13,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.softwareplumbers.dms.rest.server.core.SystemKeyPairs;
+import com.softwareplumbers.dms.rest.server.core.SystemSecretKeys;
+import com.softwareplumbers.keymanager.KeyManager;
+
 public class KeyStoreTest {
     
     Path file;
@@ -29,17 +33,17 @@ public class KeyStoreTest {
     
     @Test
     public void testCreateNewKeyStore() throws KeyStoreException, IOException {
-        KeyManager kmgr = new KeyManager(file.toString(), "password");
-        Key key = kmgr.getKey(KeyManager.KeyName.JWT_SIGNING_KEY);
+        KeyManager<SystemSecretKeys, SystemKeyPairs> kmgr = new KeyManager<>(file.toString(), "password", SystemSecretKeys.class, SystemKeyPairs.class);
+        Key key = kmgr.getKey(SystemSecretKeys.JWT_SIGNING_KEY);
         assertNotNull(key);
     }
     
     @Test
     public void testPersistentStore() throws KeyStoreException, IOException {
-        KeyManager kmgr1 = new KeyManager(file.toString(), "password");
-        Key key1 = kmgr1.getKey(KeyManager.KeyName.JWT_SIGNING_KEY);
-        KeyManager kmgr2 = new KeyManager(file.toString(), "password");
-        Key key2 = kmgr1.getKey(KeyManager.KeyName.JWT_SIGNING_KEY);
+        KeyManager<SystemSecretKeys, SystemKeyPairs> kmgr1 = new KeyManager<>(file.toString(), "password", SystemSecretKeys.class, SystemKeyPairs.class);
+        Key key1 = kmgr1.getKey(SystemSecretKeys.JWT_SIGNING_KEY);
+        KeyManager<SystemSecretKeys, SystemKeyPairs> kmgr3 = new KeyManager<>(file.toString(), "password", SystemSecretKeys.class, SystemKeyPairs.class);
+        Key key2 = kmgr1.getKey(SystemSecretKeys.JWT_SIGNING_KEY);
         assertEquals(key1,key2);
     }
 }

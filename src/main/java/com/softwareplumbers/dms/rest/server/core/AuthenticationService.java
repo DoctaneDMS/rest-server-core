@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
-import com.softwareplumbers.dms.rest.server.util.KeyManager;
+import com.softwareplumbers.keymanager.KeyManager;
 import com.softwareplumbers.dms.rest.server.util.Log;
 
 import io.jsonwebtoken.Claims;
@@ -37,8 +37,8 @@ public class AuthenticationService {
     
     private final Key jwtSigningKey;
 
-    public AuthenticationService(KeyManager keyManager) {
-        jwtSigningKey = keyManager.getKey(KeyManager.KeyName.JWT_SIGNING_KEY);    
+    public AuthenticationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager) {
+        jwtSigningKey = keyManager.getKey(SystemSecretKeys.JWT_SIGNING_KEY);    
     }
     
     /** Generate a cookie for the provided UID */

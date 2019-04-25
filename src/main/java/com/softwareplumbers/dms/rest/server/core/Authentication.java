@@ -64,7 +64,7 @@ import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
 import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
-import com.softwareplumbers.dms.rest.server.util.KeyManager;
+import com.softwareplumbers.keymanager.KeyManager;
 import com.softwareplumbers.dms.rest.server.util.Log;
 
 import net.shibboleth.utilities.java.support.component.ComponentInitializationException;
@@ -92,9 +92,9 @@ public class Authentication {
     private final DocumentBuilderFactory documentBuilderFactory;
     private final Credential idpCredential;
     private final AuthenticationService cookieHandler;
-    private final KeyManager keyManager;
+    private final KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager;
     
-    public Authentication(AuthenticationService cookieHandler, KeyManager keyManager) throws InitializationException, ComponentInitializationException, ResolverException {
+    public Authentication(AuthenticationService cookieHandler, KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager) throws InitializationException, ComponentInitializationException, ResolverException {
         InitializationService.initialize();
         documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
@@ -151,7 +151,7 @@ public class Authentication {
     boolean validateSignature(byte[] serviceRequest, byte[] signature, String account) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, java.security.SignatureException {
         Key key = keyManager.getKey(account);
         if (key == null) return false;
-        Signature sig = Signature.getInstance(KeyManager.DEFAULT_SIGNATURE_ALGORITHM, "SUN");
+        Signature sig = Signature.getInstance(KeyManager.PUBLIC_KEY_SIGNATURE_ALGORITHM, "SUN");
         sig.initVerify((PublicKey)key);
         sig.update(serviceRequest);
         return sig.verify(signature);

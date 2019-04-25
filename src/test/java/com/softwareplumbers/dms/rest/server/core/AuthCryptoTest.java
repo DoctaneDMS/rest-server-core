@@ -12,7 +12,7 @@ import org.junit.Test;
 import org.opensaml.core.config.InitializationException;
 import org.opensaml.security.credential.Credential;
 
-import com.softwareplumbers.dms.rest.server.util.KeyManager;
+import com.softwareplumbers.keymanager.KeyManager;
 
 import net.shibboleth.utilities.java.support.component.ComponentInitializationException;
 import net.shibboleth.utilities.java.support.resolver.ResolverException;
@@ -33,7 +33,7 @@ public class AuthCryptoTest {
 
     @Test
     public void testGetCredential() throws InitializationException, ComponentInitializationException, ResolverException, KeyStoreException {
-        KeyManager keyManager = new KeyManager(file.toString(),"");
+        KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager = new KeyManager<>(file.toString(),"",SystemSecretKeys.class, SystemKeyPairs.class);
         Authentication authResource = new Authentication(new AuthenticationService(keyManager), keyManager);
         Credential credential = Authentication.getIDPCredential();
         assertEquals("https://auth.softwareplumbers.com/auth/realms/doctane-test",credential.getEntityId());
