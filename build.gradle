@@ -119,6 +119,8 @@ dependencies {
     compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'
     compile group: 'org.opensaml', name: 'opensaml-core', version: '3.3.0'
     compile group: 'io.jsonwebtoken', name: 'jjwt-api', version:'0.10.5'
+    compile group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: '1.54'
+    compile group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.54'
     compile group: 'junit', name: 'junit', version: '4.12'
     runtime group: 'io.jsonwebtoken', name: 'jjwt-impl', version: '0.10.5'
     runtime group: 'io.jsonwebtoken', name: 'jjwt-jackson', version: '0.10.5'

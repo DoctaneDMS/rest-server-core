@@ -2,23 +2,31 @@ package com.softwareplumbers.dms.rest.server.core;
 
 import static org.junit.Assert.*;
 
-
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.text.ParseException;
-import java.util.List;
+import java.util.Base64;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.json.JsonValue;
+import javax.json.JsonWriter;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
 
 import org.glassfish.jersey.client.ClientConfig;
@@ -61,6 +69,8 @@ public class TempRepositoryServerTest {
     
     @Autowired
     AuthenticationService cookieHandler;
+    @Autowired
+    KeyManager keyManager;
     
     /** Utility function to post a document using the Jersey client API.
      * 
@@ -574,6 +584,41 @@ public class TempRepositoryServerTest {
         DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
         JsonArray result = getWorkspaceJson("/*/~"+wsId, JsonArray.class);
         assertEquals(2, result.size());
+    }
+    
+    @Test
+    public void testServiceAccountLogin() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
+        String account = KeyManager.KeyName.DEFAULT_SERVICE_ACCOUNT.name();
+        KeyPair pair = keyManager.getKeyPair(account);
+        JsonObjectBuilder request = Json.createObjectBuilder(); 
+        request.add("account", account);
+        request.add("instant", System.currentTimeMillis());
+        JsonObject requestObject = request.build();
+        ByteArrayOutputStream out = new ByteArrayOutputStream(); 
+        try (JsonWriter writer = Json.createWriter(out)) {
+            writer.write(requestObject);
+        } 
+        byte[] requestBytes = out.toByteArray();
+        Signature sig = Signature.getInstance("SHA1withDSA", "SUN");
+        sig.initSign(pair.getPrivate());
+        sig.update(requestBytes);
+        byte[] signatureBytes = sig.sign();
+        
+        WebTarget target = client
+            .target("http://localhost:" + port + "/auth/service")
+            .queryParam("request", Base64.getUrlEncoder().encodeToString(requestBytes))
+            .queryParam("signature", Base64.getUrlEncoder().encodeToString(signatureBytes));
+  
+        Response response = target.request().get();
+            
+        if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+            NewCookie cookie = response.getCookies().get("DoctaneUserToken");
+            assertNotNull(cookie);
+        } else {
+            System.out.println(response.toString());
+            throw new RuntimeException("Bad service auth request");
+        }
+
     }
 }
 
