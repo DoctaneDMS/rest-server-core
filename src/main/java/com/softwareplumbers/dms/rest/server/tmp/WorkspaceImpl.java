@@ -1,8 +1,5 @@
 package com.softwareplumbers.dms.rest.server.tmp;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -12,7 +9,6 @@ import java.util.stream.Stream;
 
 import javax.json.JsonObject;
 import javax.json.JsonValue;
-import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
@@ -22,7 +18,6 @@ import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import com.softwareplumbers.dms.rest.server.model.DocumentLinkImpl;
 import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
@@ -54,7 +49,7 @@ class WorkspaceImpl implements Workspace {
 	private final TempRepositoryService service;
 	private WorkspaceImpl parent;
 	private String name;
-	private UUID id;
+	private String id;
 	private TreeMap<String, NamedRepositoryObject> children;
 	private State state;
 	private JsonObject metadata;
@@ -66,8 +61,11 @@ class WorkspaceImpl implements Workspace {
 	}
 
 	
-	public WorkspaceImpl(TempRepositoryService service, WorkspaceImpl parent, UUID id, String name, State state, JsonObject metadata) {
-		this.service = service;
+	public WorkspaceImpl(TempRepositoryService service, WorkspaceImpl parent, String id, String name, State state, JsonObject metadata) {
+		if (state == null) throw new IllegalArgumentException("state cannot be null");
+		if (service == null) throw new IllegalArgumentException("service cannot be null");
+		if (id == null) throw new IllegalArgumentException("Id cannot be null");
+	    this.service = service;
 		this.id = id;
 		this.name = name == null ? generateName() : name;
 		this.state = state;
@@ -90,14 +88,11 @@ class WorkspaceImpl implements Workspace {
 	
 	@Override
 	public String getId() {
-		return id.toString();
-	}
-		
-	public UUID getRawId() {
 		return id;
 	}
-	
+			
 	public void setState(State state) {
+	    if (state == null) throw new IllegalArgumentException("state cannot be null");
 		
 		// Convert references to point to a specific version
 		// of a document when a workspace is closed or finalized
@@ -332,7 +327,7 @@ class WorkspaceImpl implements Workspace {
 		WorkspaceImpl childWorkspace = null;
 		if (child == null) {
 			if (createWorkspace) {
-				childWorkspace = new WorkspaceImpl(service, this, UUID.randomUUID(), firstPart, State.Open, TempRepositoryService.EMPTY_METADATA);
+				childWorkspace = new WorkspaceImpl(service, this, UUID.randomUUID().toString(), firstPart, State.Open, TempRepositoryService.EMPTY_METADATA);
 				children.put(firstPart, childWorkspace);
 				service.registerWorkspace(childWorkspace);
 			} else 
@@ -351,9 +346,12 @@ class WorkspaceImpl implements Workspace {
 			return childWorkspace.getOrCreateWorkspace(remainingName, createWorkspace);
 	}
 	
-	public WorkspaceImpl createWorkspace(UUID id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
+	public WorkspaceImpl createWorkspace(String id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
 		String localName;
 		WorkspaceImpl localParent;
+		if (state == null) {
+		    state = State.Open;
+		}
 		if (name == null) {
 			localParent = this;
 			localName = generateName();
