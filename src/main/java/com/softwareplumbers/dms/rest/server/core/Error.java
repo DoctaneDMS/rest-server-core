@@ -37,11 +37,13 @@ public class Error {
 	}
 
 	public static JsonObject mapServiceError(InvalidWorkspaceState err) {
-		return Json.createObjectBuilder()
+		JsonObjectBuilder builder = Json.createObjectBuilder()
 				.add("error", "Workspace " + err.workspace + " is in invalid state " + err.state)
-				.add("workspaceName", err.workspace)
-				.add("workspaceState", err.state.toString())
-				.build();		
+				.add("workspaceName", err.workspace);
+		
+		if (err.state != null) builder = builder.add("state", err.state.toString());
+				
+		return builder.build();		
 	}
 	
 	public static JsonObject mapServiceError(InvalidObjectName err) {
