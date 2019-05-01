@@ -191,7 +191,7 @@ public class Authentication {
         LOG.logEntering("handleSamlResponse");
         
         try {
-            ByteArrayInputStream is = new ByteArrayInputStream(Base64.getUrlDecoder().decode(samlResponse));
+            ByteArrayInputStream is = new ByteArrayInputStream(Base64.getDecoder().decode(samlResponse));
             DocumentBuilder docBuilder = documentBuilderFactory.newDocumentBuilder();
             Document document = docBuilder.parse(is);
         
