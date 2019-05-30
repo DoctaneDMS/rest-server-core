@@ -85,6 +85,7 @@ test {
 repositories {
 	maven { url propValue("proxyMavenCentral", "https://repo.maven.apache.org/maven2/") }
     maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss' }
+    maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss-snapshot' }
 }
 
 uploadArchives {
@@ -126,6 +127,9 @@ dependencies {
     runtime group: 'io.jsonwebtoken', name: 'jjwt-impl', version: '0.10.5'
     runtime group: 'io.jsonwebtoken', name: 'jjwt-jackson', version: '0.10.5'
     compile group: 'org.opensaml', name: 'opensaml-saml-impl', version: '3.3.0'
+    compile group: 'org.apache.tika', name:'tika-core', version:'2.0-SNAPSHOT'
+    compile group: 'org.apache.tika', name:'tika-parser-office-module', version:'2.0-SNAPSHOT'
+    compile("junit:junit:4.12")
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }

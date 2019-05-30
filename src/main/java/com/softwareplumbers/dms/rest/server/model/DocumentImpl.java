@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -50,6 +51,12 @@ public class DocumentImpl implements Document {
 	@Override
 	public void writeDocument(OutputStream target) throws IOException {
 		target.write(data);
+	}
+	
+	/** Get document as an input stream */
+	@Override
+	public InputStream getData() throws IOException {
+		return new ByteArrayInputStream(data);
 	}
 	
 	/** Private constructor creates a document from a byte array and meta-data object
