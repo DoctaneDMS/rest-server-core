@@ -85,6 +85,7 @@ test {
 repositories {
 	maven { url propValue("proxyMavenCentral", "https://repo.maven.apache.org/maven2/") }
     maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss' }
+    maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss-snapshot' }
 }
 
 uploadArchives {
@@ -117,6 +118,8 @@ dependencies {
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
     compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.3'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
+    compile group: 'org.apache.tika', name:'tika-core', version:'2.0-SNAPSHOT'
+    compile group: 'org.apache.tika', name:'tika-parser-office-module', version:'2.0-SNAPSHOT'
     compile("junit:junit:4.12")
     
     testCompile("org.springframework.boot:spring-boot-starter-test")

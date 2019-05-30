@@ -1,6 +1,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.json.JsonObject;
@@ -71,4 +72,9 @@ public class DocumentLinkImpl implements DocumentLink {
     public DocumentLinkImpl toDynamic() {
         return new DocumentLinkImpl(service, name, new Reference(ref.id));
     }
+
+	@Override
+	public InputStream getData() throws IOException {
+		return getDocument().getData();
+	}
 }

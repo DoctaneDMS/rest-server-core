@@ -5,8 +5,11 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.text.ParseException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -20,6 +23,12 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.jsonp.JsonProcessingFeature;
@@ -29,11 +38,13 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.MultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
+import org.glassfish.jersey.message.internal.MediaTypes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.w3c.dom.Node;
 
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
@@ -47,6 +58,11 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = Application.class)
 @EnableConfigurationProperties
 public class TempRepositoryServerTest {
+	
+	private static final Map<String,MediaType> mediaTypesByExtension = new HashMap<String,MediaType>() {{
+		put("txt", MediaType.TEXT_PLAIN_TYPE);
+		put("docx", MediaType.valueOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+	}};
 
 	int port = 8080;
     
@@ -67,16 +83,18 @@ public class TempRepositoryServerTest {
      * @return The result of posting the document to the test server.
      * 
      */
-    public JsonObject postDocument(String name, String workspace) throws IOException {
+    public JsonObject postDocument(String name, String workspace, String ext) throws IOException {
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp");
     	if (workspace != null) target = target.queryParam("workspace", workspace).queryParam("createWorkspace", true);
     	MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
         
+        MediaType type = mediaTypesByExtension.get(ext);
+        
         StreamDataBodyPart file = new StreamDataBodyPart(
         	"file",
-             TestRepository.getTestFile("/"+name+".txt"),
-             MediaType.TEXT_PLAIN);
+             TestRepository.getTestFile("/"+name+"."+ext),
+             type.toString());
 
         FormDataBodyPart metadata = new FormDataBodyPart(
             	"metadata",
@@ -107,19 +125,20 @@ public class TempRepositoryServerTest {
      * 
      * @param name Name of test document file (without extension)
      * @param path Path of document to update (including base, so /docs/tmp/id or /ws/tmp/workspace/docName)
+     * @param ext File extension
      * @return The result of posting the document to the test server.
      * 
      */
-    public JsonObject putDocument(String name, String path) throws IOException {
+    public JsonObject putDocument(String name, String path, String ext) throws IOException {
     	WebTarget target = client.target("http://localhost:" + port + path);
-    	
+    	    	
     	MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
         
         StreamDataBodyPart file = new StreamDataBodyPart(
         	"file",
-             TestRepository.getTestFile("/"+name+".txt"),
-             MediaType.TEXT_PLAIN);
+             TestRepository.getTestFile("/"+name+"."+ext),
+             mediaTypesByExtension.get(ext).toString());
 
         FormDataBodyPart metadata = new FormDataBodyPart(
             	"metadata",
@@ -288,7 +307,54 @@ public class TempRepositoryServerTest {
         System.out.println(response.getEntity().toString());
         throw new RuntimeException("Bad get");
     } 
+    
+    /** Utility function to get a document from the local test server
+     * 
+     * @param target The target url
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public Node getXMLFromTarget(WebTarget target) throws IOException, ParseException {
+        
+        Response response = target
+                .request(MediaType.APPLICATION_XHTML_XML_TYPE)
+                .get();
+        
+        if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+        	return response.readEntity(org.w3c.dom.Document.class);
+        } 
 
+        System.out.println(response.getEntity().toString());
+        throw new RuntimeException("Bad get");
+    } 
+
+    /** Utility function to get a document from the local test server
+     * 
+     * @param id The id of the document to get
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public Node getXMLDocument(String id) throws IOException, ParseException {
+		
+    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id + "/xhtml");
+
+    	return getXMLFromTarget(target);
+    } 
+    
+    public static void printDocument(Node doc) throws IOException, TransformerException {
+        TransformerFactory tf = TransformerFactory.newInstance();
+        Transformer transformer = tf.newTransformer();
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+        transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+
+        transformer.transform(new DOMSource(doc), 
+             new StreamResult(new OutputStreamWriter(System.out, "UTF-8")));
+    }
 
     /** Utility function to get a catalog from the local test server
      * 
@@ -350,7 +416,7 @@ public class TempRepositoryServerTest {
 	@Test
 	public void postDocumentTest() throws IllegalStateException, IOException {
 
-		JsonObject response = postDocument("test1", null);
+		JsonObject response = postDocument("test1", null,"txt");
 		
 		String id = response.getString("id");
 		
@@ -395,7 +461,7 @@ public class TempRepositoryServerTest {
 	@Test
 	public void roundtripDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		JsonObject response = postDocument("test1", null);
+		JsonObject response = postDocument("test1", null, "txt");
 		
 		String id = response.getString("id");
 		
@@ -419,11 +485,11 @@ public class TempRepositoryServerTest {
 	@Test
 	public void putDocumentTest() throws IllegalStateException, IOException, ParseException {
 
-		JsonObject response1 = postDocument("test1", null);
+		JsonObject response1 = postDocument("test1", null, "txt");
 		
 		assertNotNull(response1.getString("id"));
 		
-		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"));
+		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"),"txt");
 		
 		assertNotNull(response2.getString("id"));
 		
@@ -441,7 +507,7 @@ public class TempRepositoryServerTest {
      */
 	@Test
 	public void putDocumentInWorkspaceTest() throws IllegalStateException, IOException, ParseException {
-		JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+		JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1","txt");
 		String wsId = response1.getString("id");
 		assertNotNull(wsId);
 		JsonArray response2 = getWorkspaceJson("wsname/*", JsonArray.class);
@@ -457,9 +523,9 @@ public class TempRepositoryServerTest {
 	public void searchDocumentTest() throws IllegalStateException, IOException, ParseException {
 
 		JsonArray catalog0 = getCatalog("/",null);
-		JsonObject response1 = postDocument("test1", null);
-		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"));
-		JsonObject response3 = postDocument("test3", null);
+		JsonObject response1 = postDocument("test1", null, "txt");
+		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"),"txt");
+		JsonObject response3 = postDocument("test3", null, "txt");
 		JsonArray catalog1 = getCatalog("/",null);
 		assertEquals(2, catalog1.size() - catalog0.size());
 		assertTrue(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response2))));
@@ -474,9 +540,9 @@ public class TempRepositoryServerTest {
 		String workspaceB = UUID.randomUUID().toString();
 		
 		clear();
-		postDocument("test1", workspaceA);
-		postDocument("test2", workspaceA);
-		postDocument("test3", workspaceB);
+		postDocument("test1", workspaceA, "txt");
+		postDocument("test2", workspaceA, "txt");
+		postDocument("test3", workspaceB, "txt");
 		JsonArray catalog0 = getCatalog("/", workspaceA);
 		assertEquals(2, catalog0.size());
 		JsonArray catalog1 = getCatalog("/", workspaceB);
@@ -520,7 +586,7 @@ public class TempRepositoryServerTest {
      */
     @Test
     public void getDocumentFromWorkspaceTest() throws IllegalStateException, IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
         String wsId = response1.getString("id");
         assertNotNull(wsId);
         JsonObject response2 = getWorkspaceJson("wsname/doc1", JsonObject.class);
@@ -544,7 +610,7 @@ public class TempRepositoryServerTest {
     
     @Test
     public void testCreateDocumentLink() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
         String wsId = response1.getString("id");
         assertNotNull(wsId);
         putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
@@ -555,12 +621,20 @@ public class TempRepositoryServerTest {
 
     @Test
     public void testListWorkspaces() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
         String wsId = response1.getString("id");
         putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
         DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
         JsonArray result = getWorkspaceJson("/*/~"+wsId, JsonArray.class);
         assertEquals(2, result.size());
+    }
+    
+    @Test
+    public void testGetDocumentXML() throws IOException, ParseException, TransformerException {
+		JsonObject response1 = postDocument("testdoc", null, "docx");
+		String id = response1.getString("id");
+		Node xmlDoc = getXMLDocument(id);
+		printDocument(xmlDoc);
     }
 }
 

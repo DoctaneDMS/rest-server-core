@@ -21,12 +21,18 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.Parser;
+import org.apache.tika.parser.microsoft.ooxml.OOXMLParser;
+import org.apache.tika.sax.ToXMLContentHandler;
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.glassfish.jersey.media.multipart.MultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartMediaTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.xml.sax.ContentHandler;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
@@ -35,6 +41,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocum
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.rest.server.tika.TestTikaOfficeParser;
 import com.softwareplumbers.dms.rest.server.util.Log;
 
 /** Handle CRUD operations on documents.
@@ -171,6 +178,49 @@ public class Documents {
     				.status(Status.OK)
     				.type(document.getMediaType())
     				.entity(new DocumentOutput(document))
+    				.build();
+    		} else {
+    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
+    		}
+    	} catch (Throwable e) {
+    		LOG.log.severe(e.getMessage());
+    		e.printStackTrace(System.err);
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    	}
+    }
+    
+    /** GET a document on path /docs/{repository}/{id}/file
+     * 
+     * retrieves a specific document by its unique identifier. On success returns
+     * the original uploaded file as binary data with mime type as set when uploaded.
+     * 
+     * @param repository string identifier of a document repository
+     * @param id string document id
+     * @param version (optional) integer version number of document
+     * @return A response, typically binary, with variable mime type.
+     */
+    @GET
+    @Path("{repository}/{id}/xhtml")
+    @Produces("application/xhtml+xml")
+    public Response getXhtml(
+    	@PathParam("repository") String repository, 
+    	@PathParam("id") String id,
+    	@QueryParam("version") String version
+    ) {
+        LOG.logEntering("getFile", repository, id, version);
+    	try {
+    		RepositoryService service = repositoryServiceFactory.getService(repository);
+
+    		if (service == null) 
+    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+
+    		Document document = service.getDocument(new Reference(id, version));
+    		        
+    		if (document != null) { 
+    			return Response
+    				.status(Status.OK)
+    				.type(MediaType.APPLICATION_XHTML_XML_TYPE)
+    				.entity(new XMLOutput(document))
     				.build();
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
