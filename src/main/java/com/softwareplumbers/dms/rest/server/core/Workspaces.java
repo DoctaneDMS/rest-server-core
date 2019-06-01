@@ -44,8 +44,6 @@ import com.softwareplumbers.dms.rest.server.util.Log;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
-import com.softwareplumbers.common.abstractquery.Range;
-import com.softwareplumbers.common.abstractquery.Value;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
@@ -82,12 +80,31 @@ public class Workspaces {
         this.repositoryServiceFactory = serviceFactory;
     }
 
-    /** GET workspace state on path /ws/{repository}/{workspace}
+    /** GET information from a workspace path /ws/{repository}/{path}
      * 
      * Retrieves information about the given workspace. The workspace may be a path (i.e.
-     * have several elements separated by '/'). If the first element is a '~', what follows
-     * is assumed to be a workspace id. If not, we assume it is a name and query the service
-     * accordingly.
+     * have several elements separated by '/'). An element beginning with '~' is assumed to be
+     * an id. Thus, knowing the id of a workspace, we can use a path like ~AF2s6sv34/subworkspace/document.txt 
+     * to find a document in that workspace without knowing the full path to the parent workspace. 
+     * 
+     * A path in a workspace identifies either a document or a workspace. Paths may contain simple
+     * wildcards ('*' for 0 or more characters, '?' for a single character). If a path contains wildcards,
+     * the result of this endpoint will always be a JSON list containing metadata for all objects with paths
+     * matching the template provided. If no items are matched, the result will be an empty array.
+     * 
+     * If a path contains no wildcards, and it does not match any item, the result will be a HTTP Status NOT FOUND.
+     * 
+     * If a path contains no wildcards, and it matches something, the result depends on the type of object matched and
+     * the content type specified in the accepts header of the request.
+     * 
+     * If the item matched is a document:
+     * 
+     * * If there is no content type specified, the raw document will be returned
+     * * If the content type is APPLICATION_JSON, document metadata is returned in JSON format
+     * * If the content type is MULTIPART_FORM_DATA, both the raw document and metadata are returned
+     * * If the content type is APPLICATION_XHTML_XML, and XHTML representation of the document may be returned
+     * 
+     * If the item matched is a workspace, workspace metadata is returned in JSON format.
      * 
      * @param repository string identifier of a document repository
      * @param workspaceName string identifier of a workspace
@@ -122,6 +139,10 @@ public class Workspaces {
             } 
             
             // If we have an object id, we are looking for the workspaces it belongs to
+            // Note: this only really makes sense if wsName contains wildcards, and it's 
+            // just an optimization; a full search operation would be more expensive.
+            // I'm not actually sure this belongs here; possibly it should be an endpoint in
+            // Documents
             if (!wsName.isEmpty() && wsName.part.startsWith("~")) {
                 String documentId = wsName.part.substring(1);
                 JsonArrayBuilder results = Json.createArrayBuilder();
@@ -138,33 +159,46 @@ public class Workspaces {
                 } else {
                     // Path has no wildcards, so we are returning at most one object
                     RepositoryObject result = service.getObjectByName(rootId, wsName);
-                    if (result != null) {    					
-                        if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE) && result.getType() != RepositoryObject.Type.WORKSPACE) {
-                            Document document = (Document)result;
-                            FormDataBodyPart metadata = new FormDataBodyPart();
-                            metadata.setName("metadata");
-                            metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                            metadata.setEntity(document.toJson());
-                            FormDataBodyPart file = new FormDataBodyPart();
-                            file.setName("file");
-                            file.setMediaType(document.getMediaType());
-                            file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                            file.setEntity(new DocumentOutput(document));
+                    if (result != null) { 
+                    	switch (result.getType()) {
+                    		case WORKSPACE:
+                    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();                    			
+                    		case DOCUMENT:                    			
+                    		case DOCUMENT_LINK:
+                                if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE))  {
+                                    Document document = (Document)result;
+                                    FormDataBodyPart metadata = new FormDataBodyPart();
+                                    metadata.setName("metadata");
+                                    metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                                    metadata.setEntity(document.toJson());
+                                    FormDataBodyPart file = new FormDataBodyPart();
+                                    file.setName("file");
+                                    file.setMediaType(document.getMediaType());
+                                    file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                                    file.setEntity(new DocumentOutput(document));
 
-                            MultiPart response = new MultiPart()
-                                .bodyPart(metadata)
-                                .bodyPart(file);
+                                    MultiPart response = new MultiPart()
+                                        .bodyPart(metadata)
+                                        .bodyPart(file);                                   
 
-                            return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
-                        } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
-                            return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
-                        } else {
-                            DocumentLink document = (DocumentLink)result;
-                            return Response.ok()
-                                .header("content-disposition", "attachment; filename=" + URLEncoder.encode(document.getName().part, StandardCharsets.UTF_8.name()))
-                                .type(document.getMediaType())
-                                .entity(new DocumentOutput(document)).build();
-                        }
+                                    return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();                                	
+                                } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_XHTML_XML_TYPE)) {
+                                    Document document = (Document)result;
+                                    return Response.ok()
+                                        .type(MediaType.APPLICATION_XHTML_XML_TYPE)
+                                        .entity(new XMLOutput(document)).build();                                	
+                                } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
+                                    return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
+                                } else {
+                                    Document document = (Document)result;
+                                    return Response.ok()
+                                        .header("content-disposition", "attachment; filename=" + URLEncoder.encode(wsName.part, StandardCharsets.UTF_8.name()))
+                                        .type(document.getMediaType())
+                                        .entity(new DocumentOutput(document)).build();
+                                }
+                           default:
+                        	   throw new RuntimeException("Unknown result type:" + result.getType());
+                    	}
                     } else {
                         return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
                     }

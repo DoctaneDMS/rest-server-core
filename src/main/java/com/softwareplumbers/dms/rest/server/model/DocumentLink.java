@@ -9,7 +9,7 @@ import com.softwareplumbers.common.QualifiedName;
 
 public interface DocumentLink extends NamedRepositoryObject, Document {
     
-    /** Default implementation returns Type.DOCUMENT */ 
+    /** Default implementation returns Type.DOCUMENT_LINK */ 
     default Type getType() { return Type.DOCUMENT_LINK; }
     
     /** Output DocumentLink to Json.

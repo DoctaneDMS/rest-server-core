@@ -54,6 +54,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
@@ -336,7 +337,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public Node getXMLFromTarget(WebTarget target) throws IOException, ParseException {
+    public org.w3c.dom.Document getXMLFromTarget(WebTarget target) throws IOException, ParseException {
         
         Response response = target
                 .request(MediaType.APPLICATION_XHTML_XML_TYPE)
@@ -358,10 +359,21 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public Node getXMLDocument(String id) throws IOException, ParseException {
-		
-    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id + "/xhtml");
-
+    public org.w3c.dom.Document getXMLDocument(String id) throws IOException, ParseException {
+    	//WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id + "/xhtml");
+    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id + "/file");
+    	return getXMLFromTarget(target);
+    } 
+    
+    /** Utility function to get a document from the local test server
+     * 
+     * @param path The path of the document to get
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public org.w3c.dom.Document getXMLDocumentFromWorkspace(String path) throws IOException, ParseException {
+    	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
     	return getXMLFromTarget(target);
     } 
     
@@ -372,12 +384,10 @@ public class TempRepositoryServerTest {
         transformer.setOutputProperty(OutputKeys.METHOD, "xml");
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-
         transformer.transform(new DOMSource(doc), 
              new StreamResult(new OutputStreamWriter(System.out, "UTF-8")));
     }
-
+    
     /** Utility function to get a catalog from the local test server
      * 
      * @param the catalog to get (may be "/")
@@ -691,8 +701,22 @@ public class TempRepositoryServerTest {
     public void testGetDocumentXML() throws IOException, ParseException, TransformerException {
 		JsonObject response1 = postDocument("testdoc", null, "docx");
 		String id = response1.getString("id");
-		Node xmlDoc = getXMLDocument(id);
-		printDocument(xmlDoc);
+		org.w3c.dom.Document xmlDoc = getXMLDocument(id);
+		NodeList h1s = xmlDoc.getElementsByTagName("h1");
+		assertEquals(1, h1s.getLength());
+		NodeList tds = xmlDoc.getElementsByTagName("td");
+		assertEquals(4, tds.getLength());
+    }
+    
+    @Test
+    public void testGetDocumentXMLFromWorkspace() throws IOException, ParseException, TransformerException {
+        JsonObject response1 = putDocument("testdoc", "/ws/tmp/wsname/doc1", "docx");
+        DocumentImpl doc = getDocumentFromWorkspace("wsname/doc1");
+		org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace("wsname/doc1");
+		NodeList h1s = xmlDoc.getElementsByTagName("h1");
+		assertEquals(1, h1s.getLength());
+		NodeList tds = xmlDoc.getElementsByTagName("td");
+		assertEquals(4, tds.getLength());
     }
 }
 

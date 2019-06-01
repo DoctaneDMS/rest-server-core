@@ -17,9 +17,11 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.StreamingOutput;
 
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataParam;
@@ -143,12 +145,15 @@ public class Documents {
     
     /** GET a document on path /docs/{repository}/{id}/file
      * 
-     * retrieves a specific document by its unique identifier. On success returns
-     * the original uploaded file as binary data with mime type as set when uploaded.
+     * Retrieves a specific document by its unique identifier. If no media type is specified in the 
+     * request, on success returns the original uploaded file as binary data with mime type as set when
+     * uploaded. If application/xhml+xml is specified, will attempt to return a representation of the
+     * document content in XHTML format.
      * 
      * @param repository string identifier of a document repository
      * @param id string document id
      * @param version (optional) integer version number of document
+     * @param headers http header data including optional list of acceptable content types
      * @return A response, typically binary, with variable mime type.
      */
     @GET
@@ -156,7 +161,8 @@ public class Documents {
     public Response getFile(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") String version
+    	@QueryParam("version") String version,
+        @Context HttpHeaders headers
     ) {
         LOG.logEntering("getFile", repository, id, version);
     	try {
@@ -166,12 +172,20 @@ public class Documents {
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
 
     		Document document = service.getDocument(new Reference(id, version));
-        
+            		
+    		StreamingOutput responseStream = null;
+    		
+    		if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_XHTML_XML_TYPE)) {
+    			responseStream = new XMLOutput(document);
+    		} else {
+    			responseStream = new DocumentOutput(document);
+    		}
+    		
     		if (document != null) { 
     			return Response
     				.status(Status.OK)
     				.type(document.getMediaType())
-    				.entity(new DocumentOutput(document))
+    				.entity(responseStream)
     				.build();
     		} else {
     			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
@@ -182,50 +196,7 @@ public class Documents {
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
     }
-    
-    /** GET a document on path /docs/{repository}/{id}/file
-     * 
-     * retrieves a specific document by its unique identifier. On success returns
-     * the original uploaded file as binary data with mime type as set when uploaded.
-     * 
-     * @param repository string identifier of a document repository
-     * @param id string document id
-     * @param version (optional) integer version number of document
-     * @return A response, typically binary, with variable mime type.
-     */
-    @GET
-    @Path("{repository}/{id}/xhtml")
-    @Produces("application/xhtml+xml")
-    public Response getXhtml(
-    	@PathParam("repository") String repository, 
-    	@PathParam("id") String id,
-    	@QueryParam("version") String version
-    ) {
-        LOG.logEntering("getFile", repository, id, version);
-    	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-
-    		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
-
-    		Document document = service.getDocument(new Reference(id, version));
-    		        
-    		if (document != null) { 
-    			return Response
-    				.status(Status.OK)
-    				.type(MediaType.APPLICATION_XHTML_XML_TYPE)
-    				.entity(new XMLOutput(document))
-    				.build();
-    		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
-    		}
-    	} catch (Throwable e) {
-    		LOG.log.severe(e.getMessage());
-    		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
-    	}
-    }
-    
+        
     /** GET metadata object on path /docs/{repository}/{id}/metadata
      * 
      * Retrieves metadata for a specific document by its unique identifier. Returns
