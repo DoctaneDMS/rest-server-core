@@ -63,7 +63,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
-import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
 import com.softwareplumbers.keymanager.KeyManager;
 import com.softwareplumbers.dms.rest.server.util.Log;
 
