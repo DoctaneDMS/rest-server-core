@@ -12,19 +12,12 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.parser.microsoft.ooxml.OOXMLParser;
-import org.apache.tika.sax.ToXMLContentHandler;
-import org.xml.sax.ContentHandler;
 
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerConfigurationException;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
