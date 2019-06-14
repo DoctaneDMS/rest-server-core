@@ -249,18 +249,27 @@ public class Workspaces {
         }
     }
 
-    /** PUT workspace state on path /ws/{repository}/{workspace}
+    /** Update workspace state on path /ws/{repository}/{objectName}
      * 
-     * The workspace may be a path (i.e.have several elements separated by '/'). If the first
-     * element is a '~', what follows is assumed to be a workspace id. If not, we assume it 
+     * The objectName is be a path (i.e.have several elements separated by '/'). If the first
+     * element begins with a '~', what follows is assumed to be a workspace id. If not, we assume it 
      * is a name and call the service accordingly.
      * 
      * Can be used to modify workspace state (e.g. Closing or Finalizing a workspace),
-     * and to create a new workspace.
+     * create a new workspace, or put an existing document in a workspace.
+     * 
+     * The updateType parameter defaults to CREATE_OR_UPDATE and influences behavior as follows:
+     * 
+     * | updateType       | Behavior |
+     * | -----------------|----------|
+     * | CREATE           | Creates a new workspace or document, error if objectName exists already |
+     * | UPDATE           | Updates a workspace or document, error if objectName does not exist already |
+     * | CREATE_OR_UPDATE | Create or update a workspace or document |
      * 
      * @param repository string identifier of a document repository
-     * @param objectName string identifier of a workspace
-     * @param createWorkspace string identifier of a workspace
+     * @param objectName string identifier of a workspace or document
+     * @param createWorkspace if true, proxy will create any parent workspaces specified in the path
+     * @param updateType controls update behavior on actual object referenced by objectName
      */
     @PUT
     @Path("/{repository}/{workspace:.+}")
@@ -339,7 +348,7 @@ public class Workspaces {
         } 
     }
 
-    /** PUT document on path /ws/{repository}/{workspace}/{documentName}
+    /** PUT document on path /ws/{repository}/{path}
      * 
      * A path as several elements separated by '/'. If the first
      * element is a '~', what follows is assumed to be a workspace id. If not, we assume it 
