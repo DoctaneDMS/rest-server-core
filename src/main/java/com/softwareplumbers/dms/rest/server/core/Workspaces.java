@@ -114,68 +114,69 @@ public class Workspaces {
             String rootId = ROOT_ID;
             String firstPart = wsName.get(0);
 
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repository
             if (firstPart.startsWith("~")) {
                 rootId = firstPart.substring(1);
                 wsName = wsName.rightFromStart(1);
             } 
             
-            // If we have an object id, we are looking for the workspaces it belongs to
-            if (!wsName.isEmpty() && wsName.part.startsWith("~")) {
-                String documentId = wsName.part.substring(1);
+            // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
+            if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
                 JsonArrayBuilder results = Json.createArrayBuilder();
-                service.listWorkspaces(documentId, wsName)
+                service.catalogueByName(rootId, wsName, filterConstraint, false)
                 .forEach(item -> results.add(item.toJson()));;
-                return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
+                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build());
             } else {
-                // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
-                if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
-                    JsonArrayBuilder results = Json.createArrayBuilder();
-                    service.catalogueByName(rootId, wsName, filterConstraint, false)
-                    .forEach(item -> results.add(item.toJson()));;
-                    return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
+                // Path has no wildcards, so we are returning at most one object
+                RepositoryObject result;
+                if (!wsName.isEmpty() && wsName.getFromEnd(0).startsWith("~")) {
+                    QualifiedName path = wsName.leftFromEnd(1);
+                    if (!path.isEmpty()) {
+                        rootId = service.getObjectByName(rootId, path).getId();
+                    }
+                    String documentId = wsName.getFromEnd(0).substring(1);
+                    result = service.getDocument(documentId, rootId);
                 } else {
-                    // Path has no wildcards, so we are returning at most one object
-                    RepositoryObject result = service.getObjectByName(rootId, wsName);
-                    if (result != null) {    					
-                        if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE) && result.getType() != RepositoryObject.Type.WORKSPACE) {
-                            Document document = (Document)result;
-                            FormDataBodyPart metadata = new FormDataBodyPart();
-                            metadata.setName("metadata");
-                            metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                            metadata.setEntity(document.toJson());
-                            FormDataBodyPart file = new FormDataBodyPart();
-                            file.setName("file");
-                            file.setMediaType(document.getMediaType());
-                            file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                            file.setEntity(new DocumentOutput(document));
+                    result = service.getObjectByName(rootId, wsName);
+                }
+                if (result != null) {    					
+                    if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE) && result.getType() != RepositoryObject.Type.WORKSPACE) {
+                        Document document = (Document)result;
+                        FormDataBodyPart metadata = new FormDataBodyPart();
+                        metadata.setName("metadata");
+                        metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                        metadata.setEntity(document.toJson());
+                        FormDataBodyPart file = new FormDataBodyPart();
+                        file.setName("file");
+                        file.setMediaType(document.getMediaType());
+                        file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                        file.setEntity(new DocumentOutput(document));
 
-                            MultiPart response = new MultiPart()
+                        MultiPart response = new MultiPart()
                                 .bodyPart(metadata)
                                 .bodyPart(file);
 
-                            return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();
-                        } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
-                            return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
-                        } else {
-                            DocumentLink document = (DocumentLink)result;
-                            return Response.ok()
+                        return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());
+                    } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
+                        return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
+                    } else {
+                        DocumentLink document = (DocumentLink)result;
+                        return LOG.logResponse("get", Response.ok()
                                 .header("content-disposition", "attachment; filename=" + URLEncoder.encode(document.getName().part, StandardCharsets.UTF_8.name()))
                                 .type(document.getMediaType())
-                                .entity(new DocumentOutput(document)).build();
-                        }
-                    } else {
-                        return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
+                                .entity(new DocumentOutput(document)).build());
                     }
+                } else {
+                    return LOG.logResponse("get", Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build());
                 }
             }
 
         } catch (InvalidWorkspace err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         }
     }
 
@@ -275,7 +276,7 @@ public class Workspaces {
                 JsonObjectBuilder result = Json.createObjectBuilder();
                 result.add("id", wsId);
     
-                return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+                return LOG.logResponse("put", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 
@@ -284,7 +285,7 @@ public class Workspaces {
                 else
                     service.updateDocumentLinkByName(rootId, wsName, reference, updateType == UpdateType.CREATE_OR_UPDATE);
                 
-                return Response.accepted().build();
+                return LOG.logResponse("put", Response.accepted().build());
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
