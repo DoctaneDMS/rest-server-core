@@ -84,13 +84,15 @@ public class Workspaces {
     /** GET workspace state on path /ws/{repository}/{workspace}
      * 
      * Retrieves information about the given workspace. The workspace may be a path (i.e.
-     * have several elements separated by '/'). If the first element is a '~', what follows
+     * have several elements separated by '/'). If the first element begins with a '~', what follows
      * is assumed to be a workspace id. If not, we assume it is a name and query the service
-     * accordingly.
+     * accordingly. If the last element begins with a '~', what follows is assumed to be a document Id.
+     * Otherwise it is assumed to be a name.
      * 
      * @param repository string identifier of a document repository
-     * @param workspaceName string identifier of a workspace
+     * @param workspaceName string identifier of a workspace or document
      * @param filter AbstractQuery filter (in Base64 encoded Json) to fine down results of wildcard searches
+     * @param headers including content type information
      * @return Information about the workspace or file in json format, or the file itself, depending on the requested content type
      */
     @GET
