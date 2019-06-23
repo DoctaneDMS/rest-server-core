@@ -581,10 +581,20 @@ public class TempRepositoryServerTest {
     }
 
     @Test
+    public void testWildcardWithId() throws IOException, ParseException {
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname1/doc1");
+        String wsId = response1.getString("id");
+        putDocumentLink("/ws/tmp/anotherws1/myDoc", wsId, UpdateType.CREATE);
+        DocumentImpl doc = getDocumentFromWorkspace("anotherws1/myDoc");
+        JsonArray result = getWorkspaceJson("/*/~"+wsId, JsonArray.class);
+        assertEquals(2, result.size());
+    }
+    
+    @Test
     public void testListWorkspaces() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname2/doc2");
         String docId = response1.getString("id");
-        putDocumentLink("/ws/tmp/anotherws/myDoc", docId, UpdateType.CREATE);
+        putDocumentLink("/ws/tmp/anotherws2/myDoc", docId, UpdateType.CREATE);
         JsonArray result = getDocumentJson(docId, "workspaces", JsonArray.class);
         assertEquals(2, result.size());
     }

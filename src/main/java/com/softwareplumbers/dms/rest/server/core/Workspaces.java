@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
+import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
@@ -124,10 +126,16 @@ public class Workspaces {
             
             // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
             if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
-                JsonArrayBuilder results = Json.createArrayBuilder();
-                service.catalogueByName(rootId, wsName, filterConstraint, false)
-                .forEach(item -> results.add(item.toJson()));;
-                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build());
+                Stream<NamedRepositoryObject> results;
+                if (wsName.part.startsWith("~")) {
+                    results = service.listWorkspaces(wsName.part.substring(1), wsName)
+                        .map(item->(NamedRepositoryObject)item);
+                } else {
+                    results = service.catalogueByName(rootId, wsName, filterConstraint, false);
+                }
+                JsonArrayBuilder response = Json.createArrayBuilder();
+                results.forEach(item -> response.add(item.toJson()));
+                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(response.build()).build());
             } else {
                 // Path has no wildcards, so we are returning at most one object
                 RepositoryObject result;
