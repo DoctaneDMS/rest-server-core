@@ -3,7 +3,10 @@ package com.softwareplumbers.dms.rest.server.core;
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
 import java.io.InputStream;
+import java.util.stream.Stream;
 
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -29,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
@@ -224,6 +228,41 @@ public class Documents {
     		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
     	}
     }
+
+    /** list workspaces in repository {repository} which document {id} belongs
+     * 
+     * Retrieves a list of workspaces to which a given document belongs.
+     * 
+     * @param repository string identifier of a document repository
+     * @param id string document id
+     * @param version (optional) integer version number of document
+     * @return Response wrapping JSON metadata
+     */
+    @GET
+    @Path("{repository}/{id}/workspaces")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getWorkspaces(
+        @PathParam("repository") String repository, 
+        @PathParam("id") String id,
+        @QueryParam("version") String version) {
+        LOG.logEntering("getWorkspaces", repository, id, version);
+        try {
+            RepositoryService service = repositoryServiceFactory.getService(repository);
+
+            if (service == null) 
+                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+
+                JsonArrayBuilder results = Json.createArrayBuilder();
+                Stream<DocumentLink> links = service.listWorkspaces(id, null);
+                if (links != null) links.forEach(item -> results.add(item.toJson()));
+                return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
+                    
+        } catch (Throwable e) {
+            LOG.log.severe(e.getMessage());
+            e.printStackTrace(System.err);
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+        }
+    }    
     
     /** POST a new document on path /docs/{repository}
      * 

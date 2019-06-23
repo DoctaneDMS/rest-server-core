@@ -430,7 +430,7 @@ public interface RepositoryService {
 	 * @param metadata workspace metadata
 	 * @param createWorkspace create workspace with given name if it does not already exist
 	 * @return the id of the created/updated workspace
-	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
+	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
 	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
 
@@ -484,7 +484,8 @@ public interface RepositoryService {
 	 * Will return an empty stream if no workspace is found.
 	 * 
 	 * @param id Id of document
-	 * @return A Stream of workspaces, all of which the given doc is in.
+	 * @param pathFilter wildcard path which can be used to cut down number of responses
+	 * @return A Stream of DocumentLink objects, each of which links this document to a workspace.
 	 */
-	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter);
-};
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter); // throws InvalidDocumentId;
+}

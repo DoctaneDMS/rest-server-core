@@ -232,6 +232,34 @@ public class TempRepositoryServerTest {
     	return getDocumentFromTarget(target);
     } 
     
+
+    /** Utility function to get a document from the local test server
+     * 
+     * @param id The id of the document to get
+     * @param operation The operation to perform
+     * @param resultType the type of result to return
+     * @return The document if it exists
+     * @throws IOException In the case of low-level IO error
+     * @throws ParseException If response cannot be parsed
+     */
+    public <T extends JsonValue> T getDocumentJson(String id, String operation, Class<T> resultType) throws IOException, ParseException {
+        
+        WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id +"/" + operation);
+
+        Response response = target
+                .request(MediaType.APPLICATION_JSON)
+                .get();
+            
+        if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+            return response.readEntity(resultType);
+        } else {
+            System.out.println(response.toString());
+            throw new RuntimeException("Bad get");
+        }
+
+    } 
+    
+    
     /** Utility function to get a document from the local test server
      * 
      * @param path The workspace path of the document to get
@@ -550,16 +578,14 @@ public class TempRepositoryServerTest {
         putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
         DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
         assertEquals(wsId, doc.getId());
-        
     }
 
     @Test
     public void testListWorkspaces() throws IOException, ParseException {
         JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1");
-        String wsId = response1.getString("id");
-        putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
-        DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
-        JsonArray result = getWorkspaceJson("/*/~"+wsId, JsonArray.class);
+        String docId = response1.getString("id");
+        putDocumentLink("/ws/tmp/anotherws/myDoc", docId, UpdateType.CREATE);
+        JsonArray result = getDocumentJson(docId, "workspaces", JsonArray.class);
         assertEquals(2, result.size());
     }
 }
