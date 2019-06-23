@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
+import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
@@ -83,6 +85,7 @@ public class Workspaces {
     /** GET information from a workspace path /ws/{repository}/{path}
      * 
      * Retrieves information about the given workspace. The workspace may be a path (i.e.
+<<<<<<< HEAD
      * have several elements separated by '/'). An element beginning with '~' is assumed to be
      * an id. Thus, knowing the id of a workspace, we can use a path like ~AF2s6sv34/subworkspace/document.txt 
      * to find a document in that workspace without knowing the full path to the parent workspace. 
@@ -105,10 +108,17 @@ public class Workspaces {
      * * If the content type is APPLICATION_XHTML_XML, and XHTML representation of the document may be returned
      * 
      * If the item matched is a workspace, workspace metadata is returned in JSON format.
+=======
+     * have several elements separated by '/'). If the first element begins with a '~', what follows
+     * is assumed to be a workspace id. If not, we assume it is a name and query the service
+     * accordingly. If the last element begins with a '~', what follows is assumed to be a document Id.
+     * Otherwise it is assumed to be a name.
+>>>>>>> refs/heads/0.0.51_bugfix
      * 
      * @param repository string identifier of a document repository
-     * @param workspaceName string identifier of a workspace
+     * @param workspaceName string identifier of a workspace or document
      * @param filter AbstractQuery filter (in Base64 encoded Json) to fine down results of wildcard searches
+     * @param headers including content type information
      * @return Information about the workspace or file in json format, or the file itself, depending on the requested content type
      */
     @GET
@@ -132,37 +142,43 @@ public class Workspaces {
             String rootId = ROOT_ID;
             String firstPart = wsName.get(0);
 
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repository
             if (firstPart.startsWith("~")) {
                 rootId = firstPart.substring(1);
                 wsName = wsName.rightFromStart(1);
             } 
             
-            // If we have an object id, we are looking for the workspaces it belongs to
-            // Note: this only really makes sense if wsName contains wildcards, and it's 
-            // just an optimization; a full search operation would be more expensive.
-            // I'm not actually sure this belongs here; possibly it should be an endpoint in
-            // Documents
-            if (!wsName.isEmpty() && wsName.part.startsWith("~")) {
-                String documentId = wsName.part.substring(1);
-                JsonArrayBuilder results = Json.createArrayBuilder();
-                service.listWorkspaces(documentId, wsName)
-                .forEach(item -> results.add(item.toJson()));;
-                return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
-            } else {
-                // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
-                if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
-                    JsonArrayBuilder results = Json.createArrayBuilder();
-                    service.catalogueByName(rootId, wsName, filterConstraint, false)
-                    .forEach(item -> results.add(item.toJson()));;
-                    return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
+
+            // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
+            if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
+                Stream<NamedRepositoryObject> results;
+                if (wsName.part.startsWith("~")) {
+                    results = service.listWorkspaces(wsName.part.substring(1), wsName)
+                        .map(item->(NamedRepositoryObject)item);
                 } else {
-                    // Path has no wildcards, so we are returning at most one object
-                    RepositoryObject result = service.getObjectByName(rootId, wsName);
-                    if (result != null) { 
+                    results = service.catalogueByName(rootId, wsName, filterConstraint, false);
+                }
+                JsonArrayBuilder response = Json.createArrayBuilder();
+                results.forEach(item -> response.add(item.toJson()));
+                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(response.build()).build());
+            } else {
+  
+                // Path has no wildcards, so we are returning at most one object
+                RepositoryObject result;
+                    if (!wsName.isEmpty() && wsName.getFromEnd(0).startsWith("~")) {
+                        QualifiedName path = wsName.leftFromEnd(1);
+                        if (!path.isEmpty()) {
+                            rootId = service.getObjectByName(rootId, path).getId();
+                        }
+                        String documentId = wsName.getFromEnd(0).substring(1);
+                        result = service.getDocument(documentId, rootId);
+                    } else {
+                        result = service.getObjectByName(rootId, wsName);
+                    }
+                    if (result != null) {                       
                     	switch (result.getType()) {
                     		case WORKSPACE:
-                    			return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();                    			
+                    			return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());                    			
                     		case DOCUMENT:                    			
                     		case DOCUMENT_LINK:
                                 if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE))  {
@@ -176,41 +192,38 @@ public class Workspaces {
                                     file.setMediaType(document.getMediaType());
                                     file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
                                     file.setEntity(new DocumentOutput(document));
-
                                     MultiPart response = new MultiPart()
                                         .bodyPart(metadata)
                                         .bodyPart(file);                                   
-
-                                    return Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build();                                	
+                                    return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
                                 } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_XHTML_XML_TYPE)) {
                                     Document document = (Document)result;
-                                    return Response.ok()
+                                    return LOG.logResponse("get", Response.ok()
                                         .type(MediaType.APPLICATION_XHTML_XML_TYPE)
-                                        .entity(new XMLOutput(document)).build();                                	
+                                        .entity(new XMLOutput(document)).build());                                	
                                 } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
-                                    return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
+                                    return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
                                 } else {
                                     Document document = (Document)result;
-                                    return Response.ok()
+                                    return LOG.logResponse("get", Response.ok()
                                         .header("content-disposition", "attachment; filename=" + URLEncoder.encode(wsName.part, StandardCharsets.UTF_8.name()))
                                         .type(document.getMediaType())
-                                        .entity(new DocumentOutput(document)).build();
+                                        .entity(new DocumentOutput(document)).build());
                                 }
                            default:
                         	   throw new RuntimeException("Unknown result type:" + result.getType());
                     	}
-                    } else {
-                        return Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build();
-                    }
+                } else {
+                    return LOG.logResponse("get", Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build());
                 }
             }
 
         } catch (InvalidWorkspace err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         }
     }
 
@@ -319,7 +332,7 @@ public class Workspaces {
                 JsonObjectBuilder result = Json.createObjectBuilder();
                 result.add("id", wsId);
     
-                return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+                return LOG.logResponse("put", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 
@@ -328,7 +341,7 @@ public class Workspaces {
                 else
                     service.updateDocumentLinkByName(rootId, wsName, reference, updateType == UpdateType.CREATE_OR_UPDATE);
                 
-                return Response.accepted().build();
+                return LOG.logResponse("put", Response.accepted().build());
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());

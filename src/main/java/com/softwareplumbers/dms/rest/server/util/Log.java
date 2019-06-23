@@ -5,6 +5,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.ws.rs.core.Response;
+
 import org.apache.tomcat.util.http.fileupload.util.Streams;
 
 public class Log {
@@ -24,6 +26,11 @@ public class Log {
 	public final <T> T logReturn(String method, T result) {
 		log.log(Level.FINER, "Exiting: " + method + " with " + result);
 		return result;
+	}
+	
+	public final Response logResponse(String method, Response response) {
+	    log.log(Level.FINER, "Exiting: " + method + " with status " + response.getStatus());
+	    return response;
 	}
 	
 	public final <T extends Throwable> T logThrow(String method, T r) {
