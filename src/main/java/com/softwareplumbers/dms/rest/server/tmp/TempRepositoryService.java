@@ -106,7 +106,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Document getDocument(String documentId, String workspaceId) throws InvalidWorkspace, InvalidDocumentId {
+	public DocumentLink getDocument(String documentId, String workspaceId) throws InvalidWorkspace, InvalidDocumentId {
 		LOG.logEntering("getDocument", documentId, workspaceId);
 		WorkspaceImpl workspace = workspacesById.get(workspaceId);
 		if (workspace == null) throw LOG.logThrow("getDocument", new InvalidWorkspace(workspaceId));
@@ -439,10 +439,10 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public RepositoryObject getObjectByName(String rootId, QualifiedName objectName) throws InvalidObjectName, InvalidWorkspace {
+	public NamedRepositoryObject getObjectByName(String rootId, QualifiedName objectName) throws InvalidObjectName, InvalidWorkspace {
 		LOG.logEntering("getObjectByName", objectName);
 		if (objectName == null) throw LOG.logThrow("getObjectByName", new InvalidObjectName(objectName));
-		RepositoryObject result = getRoot(rootId).getObject(objectName);
+		NamedRepositoryObject result = getRoot(rootId).getObject(objectName);
 		if (result == null) throw LOG.logThrow("getObjectByName", new InvalidWorkspace(objectName));
 		return LOG.logReturn("getObjectByName",result);
 	}
