@@ -115,7 +115,7 @@ public interface RepositoryService {
 	 * @return the requested document
 	 * @throws InvalidReference if there is no document matching the reference in the repository 
 	 */
-	public Document getDocument(String id, String workspaceId) throws InvalidWorkspace, InvalidDocumentId;
+	public DocumentLink getDocument(String id, String workspaceId) throws InvalidWorkspace, InvalidDocumentId;
 
 	/** Create a new document in the repository
 	 * 
@@ -441,8 +441,8 @@ public interface RepositoryService {
 	 * @return a Workspace object containing current workspace state
 	 * @throws InvalidWorkspace if workspace does not already exist
 	 */
-	public RepositoryObject getObjectByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
-	
+	public NamedRepositoryObject getObjectByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
+        	
 	/** Get current state of workspace 
 	 * 
 	 * @param id the id of the requested workspace
