@@ -229,7 +229,7 @@ public class Authentication {
         @QueryParam("request") String request,
         @QueryParam("signature") String signature
     ) {
-        LOG.logEntering("handleSamlResponse");
+        LOG.logEntering("handleServiceRequest");
         
         if (request == null) return Response.status(Status.NOT_ACCEPTABLE).build();
         if (signature == null) return Response.status(Status.NOT_ACCEPTABLE).build();
