@@ -6,6 +6,7 @@ import javax.json.JsonObjectBuilder;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -35,6 +36,13 @@ public class Error {
 				.add("workspaceName", err.workspace)
 				.build();		
 	}
+    
+    public static JsonObject mapServiceError(CannotConvertFormatException err) {
+        return Json.createObjectBuilder()
+				.add("error", "Cannot convert " + err.mediaType + " to XML")
+				.add("mediaType", err.mediaType.toString())
+				.build();
+    }
 
 	public static JsonObject mapServiceError(InvalidWorkspaceState err) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()

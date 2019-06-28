@@ -10,6 +10,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.microsoft.ooxml.OOXMLParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
+import org.apache.tika.parser.microsoft.OfficeParser;
 import org.apache.tika.sax.ToXMLContentHandler;
 import org.junit.Test;
 import org.xml.sax.ContentHandler;
@@ -24,6 +25,17 @@ public class TestTikaOfficeParser {
 	    Parser parser = new OOXMLParser();
 	    Metadata metadata = new Metadata();
 	    try (InputStream stream = TestTikaOfficeParser.class.getResourceAsStream("/testdoc.docx")) {
+	        parser.parse(stream, handler, metadata, new ParseContext());
+	        System.out.println(handler.toString());
+	    } 
+	}
+
+	@Test
+	public void testParseMessageOutlook2010() throws IOException, TikaException, SAXException {
+		ContentHandler handler = new ToXMLContentHandler();
+	    Parser parser = new OfficeParser();
+	    Metadata metadata = new Metadata();
+	    try (InputStream stream = TestTikaOfficeParser.class.getResourceAsStream("/testdoc_outlook2010.msg")) {
 	        parser.parse(stream, handler, metadata, new ParseContext());
 	        System.out.println(handler.toString());
 	    } 

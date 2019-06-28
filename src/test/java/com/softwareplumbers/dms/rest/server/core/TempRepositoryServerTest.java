@@ -61,6 +61,8 @@ import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 import com.softwareplumbers.keymanager.KeyManager;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 
@@ -73,6 +75,7 @@ public class TempRepositoryServerTest {
     private static final Map<String,MediaType> mediaTypesByExtension = new HashMap<String,MediaType>() {{
 		put("txt", MediaType.TEXT_PLAIN_TYPE);
 		put("docx", MediaType.valueOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+		put("msg", MediaType.valueOf("application/vnd.ms-outlook"));
 	}};
 
 	int port = 8080;
@@ -109,8 +112,9 @@ public class TempRepositoryServerTest {
         
         StreamDataBodyPart file = new StreamDataBodyPart(
         	"file",
-             TestRepository.getTestFile("/"+name+"."+ext),
-             type.toString());
+            TestRepository.getTestFile("/"+name+"."+ext),
+            null,
+            type);
 
         FormDataBodyPart metadata = new FormDataBodyPart(
             	"metadata",
@@ -155,7 +159,8 @@ public class TempRepositoryServerTest {
         StreamDataBodyPart file = new StreamDataBodyPart(
         	"file",
              TestRepository.getTestFile("/"+name+"."+ext),
-             mediaTypesByExtension.get(ext).toString());
+             null,
+             mediaTypesByExtension.get(ext));
 
         FormDataBodyPart metadata = new FormDataBodyPart(
             	"metadata",
@@ -288,13 +293,13 @@ public class TempRepositoryServerTest {
 
         Response response = target
                 .request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
                 .get();
             
         if (response.getStatus() == Response.Status.OK.getStatusCode()) {
             return response.readEntity(resultType);
         } else {
-            System.out.println(response.toString());
-            throw new RuntimeException("Bad get");
+            throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
         }
 
     } 
@@ -354,8 +359,7 @@ public class TempRepositoryServerTest {
             }
         } 
 
-        System.out.println(response.getEntity().toString());
-        throw new RuntimeException("Bad get");
+        throw new RuntimeException("Bad get" + response.getEntity());
     } 
     
     /** Utility function to get a document from the local test server
@@ -365,10 +369,10 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public org.w3c.dom.Document getXMLFromTarget(WebTarget target) throws IOException, ParseException {
+    public org.w3c.dom.Document getXMLFromTarget(MediaType type, WebTarget target) throws IOException, ParseException {
         
         Response response = target
-                .request(MediaType.APPLICATION_XHTML_XML_TYPE)
+                .request(type)
                 .cookie(cookieHandler.generateCookie("test_user"))
                 .get();
         
@@ -376,8 +380,7 @@ public class TempRepositoryServerTest {
         	return response.readEntity(org.w3c.dom.Document.class);
         } 
 
-        System.out.println(response.getEntity().toString());
-        throw new RuntimeException("Bad get");
+        throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
     } 
 
     /** Utility function to get a document from the local test server
@@ -387,10 +390,10 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public org.w3c.dom.Document getXMLDocument(String id) throws IOException, ParseException {
+    public org.w3c.dom.Document getXMLDocument(MediaType type, String id) throws IOException, ParseException {
     	//WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id + "/xhtml");
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id + "/file");
-    	return getXMLFromTarget(target);
+    	return getXMLFromTarget(type, target);
     } 
     
     /** Utility function to get a document from the local test server
@@ -400,9 +403,9 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public org.w3c.dom.Document getXMLDocumentFromWorkspace(String path) throws IOException, ParseException {
+    public org.w3c.dom.Document getXMLDocumentFromWorkspace(MediaType type, String path) throws IOException, ParseException {
     	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
-    	return getXMLFromTarget(target);
+    	return getXMLFromTarget(type, target);
     } 
     
     public static void printDocument(Node doc) throws IOException, TransformerException {
@@ -439,8 +442,7 @@ public class TempRepositoryServerTest {
 			return result;
 		} 
 
-		System.out.println(response.getEntity().toString());
-		throw new RuntimeException("Bad get: " + response.getStatus());
+        throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
     }
     
     public void clear() {
@@ -451,7 +453,7 @@ public class TempRepositoryServerTest {
     			.get();
     	
 		if (!(response.getStatus() == Response.Status.OK.getStatusCode())) {
-			throw new RuntimeException("Bad get: " + response.getStatus());
+            throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
 		}
     }
 
@@ -724,10 +726,10 @@ public class TempRepositoryServerTest {
     }
 
     @Test
-    public void testGetDocumentXML() throws IOException, ParseException, TransformerException {
+    public void testGetWordDocumentXML() throws IOException, ParseException, TransformerException {
 		JsonObject response1 = postDocument("testdoc", null, "docx");
 		String id = response1.getString("id");
-		org.w3c.dom.Document xmlDoc = getXMLDocument(id);
+		org.w3c.dom.Document xmlDoc = getXMLDocument(MediaType.APPLICATION_XHTML_XML_TYPE, id);
 		NodeList h1s = xmlDoc.getElementsByTagName("h1");
 		assertEquals(1, h1s.getLength());
 		NodeList tds = xmlDoc.getElementsByTagName("td");
@@ -735,24 +737,47 @@ public class TempRepositoryServerTest {
     }
     
     @Test
+    public void testGetOutlook2010DocumentXML() throws IOException, ParseException, TransformerException {
+		JsonObject response1 = postDocument("testdoc_outlook2010", null, "msg");
+		String id = response1.getString("id");
+		org.w3c.dom.Document xmlDoc = getXMLDocument(MediaType.APPLICATION_XHTML_XML_TYPE, id);
+		assertNotNull(xmlDoc);
+        NodeList h1s = xmlDoc.getElementsByTagName("h1");
+        assertEquals(1, h1s.getLength());
+        assertEquals("Microsoft Outlook Test Message", h1s.item(0).getTextContent());
+    }
+
+    @Test
     public void testGetDocumentXMLFromWorkspace() throws IOException, ParseException, TransformerException {
         JsonObject response1 = putDocument("testdoc", "/ws/tmp/wsname/doc1", "docx");
         assertNotNull(response1);
         DocumentImpl doc = getDocumentFromWorkspace("wsname/doc1");
         assertNotNull(doc);
-		org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace("wsname/doc1");
-		NodeList h1s = xmlDoc.getElementsByTagName("h1");
-		assertEquals(1, h1s.getLength());
-		NodeList tds = xmlDoc.getElementsByTagName("td");
-		assertEquals(4, tds.getLength());
+        org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace(MediaType.APPLICATION_XHTML_XML_TYPE, "wsname/doc1");
+        NodeList h1s = xmlDoc.getElementsByTagName("h1");
+        assertEquals(1, h1s.getLength());
+        NodeList tds = xmlDoc.getElementsByTagName("td");
+        assertEquals(4, tds.getLength());
     }
 
+    @Test
     public void testListWorkspaces() throws IOException, ParseException {
         JsonObject response1 = putDocument("test2", "/ws/tmp/wsname2/doc2", "txt");
         String docId = response1.getString("id");
         putDocumentLink("/ws/tmp/anotherws2/myDoc", docId, UpdateType.CREATE);
         JsonArray result = getDocumentJson(docId, "workspaces", JsonArray.class);
         assertEquals(2, result.size());
+    }
+    
+    @Test
+    public void testGetDocumentXMLFromWorkspaceWithContentType() throws IOException, ParseException, TransformerException {
+        JsonObject response1 = putDocument("testdoc", "/ws/tmp/wsname/doc4", "docx");
+        assertNotNull(response1);
+        org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace(MediaType.WILDCARD_TYPE, "wsname/doc4?contentType=" + URLEncoder.encode(MediaType.APPLICATION_XHTML_XML, "UTF-8"));
+        NodeList h1s = xmlDoc.getElementsByTagName("h1");
+        assertEquals(1, h1s.getLength());
+        NodeList tds = xmlDoc.getElementsByTagName("td");
+        assertEquals(4, tds.getLength());
     }
 }
 

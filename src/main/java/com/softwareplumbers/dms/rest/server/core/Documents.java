@@ -12,7 +12,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.OPTIONS;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -42,6 +41,8 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidRefer
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
+import java.util.Arrays;
+import java.util.List;
 
 /** Handle CRUD operations on documents.
  * 
@@ -59,6 +60,8 @@ public class Documents {
 	///////////--------- Static member variables --------////////////
 
 	private static Log LOG = new Log(Documents.class);
+    
+    private static final List<MediaType> GET_FILE_RESULT_TYPES = Arrays.asList(MediaType.WILDCARD_TYPE, MediaType.APPLICATION_XHTML_XML_TYPE);
 
 	///////////---------  member variables --------////////////
 
@@ -166,38 +169,53 @@ public class Documents {
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
+        @QueryParam("contentType") @DefaultValue("*/*") MediaType contentType,
         @Context HttpHeaders headers
     ) {
-        LOG.logEntering("getFile", repository, id, version);
+        LOG.logEntering("getFile", repository, id, version, contentType);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return LOG.logResponse("getFile", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
     		Document document = service.getDocument(new Reference(id, version));
             		
-    		StreamingOutput responseStream = null;
+            if (document != null) { 
+ 
+        		StreamingOutput responseStream = null;	
+                List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), contentType);
+                MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_FILE_RESULT_TYPES);  
+                MediaType responseMediaType;
+                
+                if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
+                    responseStream = new XMLOutput(document);
+                    responseMediaType = MediaType.APPLICATION_XHTML_XML_TYPE;
+                } else {
+                    responseStream = new DocumentOutput(document);
+                    responseMediaType = document.getMediaType();
+                }
     		
-    		if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_XHTML_XML_TYPE)) {
-    			responseStream = new XMLOutput(document);
-    		} else {
-    			responseStream = new DocumentOutput(document);
-    		}
-    		
-    		if (document != null) { 
-    			return Response
+    			return LOG.logResponse("getFile", Response
     				.status(Status.OK)
-    				.type(document.getMediaType())
+    				.type(responseMediaType)
     				.entity(responseStream)
-    				.build();
+    				.build());
     		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
+    			return LOG.logResponse("getFile", Response
+                    .status(Status.NOT_FOUND)
+                    .type(MediaType.APPLICATION_JSON_TYPE)
+                    .entity(Error.documentNotFound(repository,id,version))
+                    .build());    			
     		}
     	} catch (Throwable e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return LOG.logResponse("getFile", Response
+                .status(Status.INTERNAL_SERVER_ERROR)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .entity(Error.reportException(e))
+                .build());
     	}
     }
         
@@ -223,24 +241,25 @@ public class Documents {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.repositoryNotFound(repository)).build();
 
     		Document document = service.getDocument(new Reference(id, version));
         
     		if (document != null) { 
     			return Response
     				.status(Status.OK) 
+                    .type(MediaType.APPLICATION_JSON_TYPE)
     				// Breaking change 20190303 - returned Json includes id, version, as well as metadata 
     				// Old metadata is in 'metadata' property of returned object
     				.entity(document.toJson())
     				.build();
     		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository,id,version)).build();    			
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}
     	} catch (Throwable e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.reportException(e)).build();
     	}
     }
 
@@ -265,17 +284,17 @@ public class Documents {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
-                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+                return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
 
                 JsonArrayBuilder results = Json.createArrayBuilder();
                 Stream<DocumentLink> links = service.listWorkspaces(id, null);
                 if (links != null) links.forEach(item -> results.add(item.toJson()));
-                return Response.ok().type(MediaType.APPLICATION_JSON).entity(results.build()).build();
+                return Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build();
                     
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build();
         }
     }    
     
@@ -306,16 +325,16 @@ public class Documents {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
     		if (metadata_part == null) 
-    			return Response.status(Status.BAD_REQUEST).entity(Error.missingMetadata()).build();
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingMetadata()).build();
 
     		if (file_part == null) 
-    			return Response.status(Status.BAD_REQUEST).entity(Error.missingFile()).build();
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingFile()).build();
 
     		if (file_part.getMediaType() == null)
-    			return Response.status(Status.BAD_REQUEST).entity(Error.missingContentType()).build();
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingContentType()).build();
 
     		Reference reference = 
     			service
@@ -328,18 +347,18 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return Response.status(Status.CREATED).entity(reference).build();
+    			return Response.status(Status.CREATED).type(MediaType.APPLICATION_JSON).entity(reference).build();
     		} else {
-    			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();    			
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.unexpectedFailure()).build();    			
     		}
     	} catch (InvalidWorkspace e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    		return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
-    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    		return Response.status(Status.FORBIDDEN).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build();
     	}
     }
     
@@ -366,7 +385,7 @@ public class Documents {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
 
     		Reference reference = 
     			service
@@ -379,18 +398,18 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return Response.status(Status.CREATED).entity(reference).build();
+    			return Response.status(Status.CREATED).type(MediaType.APPLICATION_JSON).entity(reference).build();
     		} else {
-    			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();    			
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.unexpectedFailure()).build();    			
     		}
     	} catch (InvalidWorkspace e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    		return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
-    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    		return Response.status(Status.FORBIDDEN).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build();
     	}
     }
   
@@ -419,13 +438,13 @@ public class Documents {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
     		if (metadata_part == null) 
-    			return Response.status(Status.BAD_REQUEST).entity(Error.missingMetadata()).build();
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingMetadata()).build();
 
     		if (file_part == null) 
-    			return Response.status(Status.BAD_REQUEST).entity(Error.missingFile()).build();
+    			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingFile()).build();
 
     		Reference reference = 
     			service
@@ -439,20 +458,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return Response.status(Status.ACCEPTED).entity(reference).build();
+    			return Response.status(Status.ACCEPTED).type(MediaType.APPLICATION_JSON).entity(reference.toJson()).build();
     		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
     	} catch (InvalidWorkspace e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    		return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
-    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    		return Response.status(Status.FORBIDDEN).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();    		
     	} catch (InvalidDocumentId e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
+    		return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();    		
     	} catch (Exception e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build();
     	}
     }
    
@@ -482,7 +501,7 @@ public class Documents {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
     		Reference reference = 
     			service
@@ -496,20 +515,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return Response.status(Status.ACCEPTED).entity(reference).build();
+    			return Response.status(Status.ACCEPTED).type(MediaType.APPLICATION_JSON).entity(reference.toJson()).build();
     		} else {
-    			return Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build();    			
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.documentNotFound(repository, id, null)).build();    			
     		}
     	}  catch (InvalidWorkspace e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();
+    		return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();
     	} catch (InvalidWorkspaceState e) {
-    		return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build();    		
+    		return Response.status(Status.FORBIDDEN).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();    		
     	} catch (InvalidDocumentId e) {
-    		return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build();    		
+    		return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build();    		
     	}catch (Exception e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build();
     	}
     }
 
@@ -538,7 +557,7 @@ public class Documents {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
     		Reference reference = 
     			service
@@ -552,20 +571,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return LOG.logReturn("updateMetadata", Response.status(Status.ACCEPTED).entity(reference).build());
+    			return LOG.logReturn("updateMetadata", Response.status(Status.ACCEPTED).type(MediaType.APPLICATION_JSON).entity(reference.toJson()).build());
     		} else {
-    			return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).entity(Error.documentNotFound(repository, id, null)).build());    			
+    			return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.documentNotFound(repository, id, null)).build());    			
     		}
     	}  catch (InvalidWorkspace e) {
-    		return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build());
+    		return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build());
     	} catch (InvalidWorkspaceState e) {
-    		return LOG.logReturn("updateMetadata", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(e)).build());    		
+    		return LOG.logReturn("updateMetadata", Response.status(Status.FORBIDDEN).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build());    		
     	} catch (InvalidDocumentId e) {
-    		return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(e)).build());    		
+    		return LOG.logReturn("updateMetadata", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(e)).build());    		
     	}catch (Exception e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logReturn("updateMetadata", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+    		return LOG.logReturn("updateMetadata", Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build());
     	}
     }
 }

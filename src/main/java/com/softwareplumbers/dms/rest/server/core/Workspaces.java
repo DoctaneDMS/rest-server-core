@@ -48,6 +48,8 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import java.util.Arrays;
+import java.util.List;
 
 
 /** Handle catalog operations on repositories and documents.
@@ -65,6 +67,13 @@ public class Workspaces {
     ///////////--------- Static member variables --------////////////
 
     private static Log LOG = new Log(Workspaces.class);
+    
+    private static List<MediaType> GET_RESULT_TYPES = Arrays.asList(
+        MediaType.WILDCARD_TYPE,
+        MediaType.MULTIPART_FORM_DATA_TYPE, 
+        MediaType.APPLICATION_XHTML_XML_TYPE, 
+        MediaType.APPLICATION_JSON_TYPE
+    );
 
     ///////////---------  member variables --------////////////
 
@@ -85,7 +94,6 @@ public class Workspaces {
     /** GET information from a workspace path /ws/{repository}/{path}
      * 
      * Retrieves information about the given workspace. The workspace may be a path (i.e.
-<<<<<<< HEAD
      * have several elements separated by '/'). An element beginning with '~' is assumed to be
      * an id. Thus, knowing the id of a workspace, we can use a path like ~AF2s6sv34/subworkspace/document.txt 
      * to find a document in that workspace without knowing the full path to the parent workspace. 
@@ -108,35 +116,36 @@ public class Workspaces {
      * * If the content type is APPLICATION_XHTML_XML, and XHTML representation of the document may be returned
      * 
      * If the item matched is a workspace, workspace metadata is returned in JSON format.
-=======
-     * have several elements separated by '/'). If the first element begins with a '~', what follows
-     * is assumed to be a workspace id. If not, we assume it is a name and query the service
-     * accordingly. If the last element begins with a '~', what follows is assumed to be a document Id.
-     * Otherwise it is assumed to be a name.
->>>>>>> refs/heads/0.0.51_bugfix
+     * 
+     * Content type can be specified either in the HTTP Accept header or in the contentType query parameter. The reason for
+     * this is that it is not possible to specify the Accept header in some important use cases (for example in the source
+     * of an iframe). 
      * 
      * @param repository string identifier of a document repository
      * @param workspaceName string identifier of a workspace or document
      * @param filter AbstractQuery filter (in Base64 encoded Json) to fine down results of wildcard searches
+     * @param contentType explicitly require contentType
      * @param headers including content type information
      * @return Information about the workspace or file in json format, or the file itself, depending on the requested content type
      */
     @GET
-    @Path("/{repository}/{workspace:.+}")
+    @Path("/{repository}/{workspace:[^?]+}")
     public Response get(
         @PathParam("repository") String repository,
         @PathParam("workspace") String workspaceName,
         @QueryParam("filter") String filter,
+        @QueryParam("contentType") @DefaultValue("*/*") String contentType,
         @Context HttpHeaders headers
     ) {
-        LOG.logEntering("get", repository, workspaceName, filter, headers.getAcceptableMediaTypes());
-
+        LOG.logEntering("get", repository, workspaceName, filter, contentType, headers.getAcceptableMediaTypes());
+        
         try {
+            
             ObjectConstraint filterConstraint = filter != null && filter.length() > 0 ? ObjectConstraint.urlDecode(filter) : ObjectConstraint.UNBOUNDED;
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
-                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+                return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
 
             QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
             String rootId = ROOT_ID;
@@ -181,49 +190,51 @@ public class Workspaces {
                     			return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());                    			
                     		case DOCUMENT:                    			
                     		case DOCUMENT_LINK:
-                                if (headers.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE))  {
-                                    Document document = (Document)result;
-                                    FormDataBodyPart metadata = new FormDataBodyPart();
-                                    metadata.setName("metadata");
-                                    metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                                    metadata.setEntity(document.toJson());
-                                    FormDataBodyPart file = new FormDataBodyPart();
-                                    file.setName("file");
-                                    file.setMediaType(document.getMediaType());
-                                    file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                                    file.setEntity(new DocumentOutput(document));
-                                    MultiPart response = new MultiPart()
-                                        .bodyPart(metadata)
-                                        .bodyPart(file);                                   
-                                    return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
-                                } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_XHTML_XML_TYPE)) {
-                                    Document document = (Document)result;
-                                    return LOG.logResponse("get", Response.ok()
-                                        .type(MediaType.APPLICATION_XHTML_XML_TYPE)
-                                        .entity(new XMLOutput(document)).build());                                	
-                                } else if (headers.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
-                                    return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
-                                } else {
-                                    Document document = (Document)result;
-                                    return LOG.logResponse("get", Response.ok()
-                                        .header("content-disposition", "attachment; filename=" + URLEncoder.encode(wsName.part, StandardCharsets.UTF_8.name()))
-                                        .type(document.getMediaType())
-                                        .entity(new DocumentOutput(document)).build());
-                                }
-                           default:
+                                    List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
+                                    MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  
+                                    if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE)  {
+                                        Document document = (Document)result;
+                                        FormDataBodyPart metadata = new FormDataBodyPart();
+                                        metadata.setName("metadata");
+                                        metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                                        metadata.setEntity(document.toJson());
+                                        FormDataBodyPart file = new FormDataBodyPart();
+                                        file.setName("file");
+                                        file.setMediaType(document.getMediaType());
+                                        file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                                        file.setEntity(new DocumentOutput(document));
+                                        MultiPart response = new MultiPart()
+                                            .bodyPart(metadata)
+                                            .bodyPart(file);                                   
+                                        return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
+                                    } else if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
+                                        Document document = (Document)result;
+                                        return LOG.logResponse("get", Response.ok()
+                                            .type(MediaType.APPLICATION_XHTML_XML_TYPE)
+                                            .entity(new XMLOutput(document)).build());                                	
+                                    } else if (requestedMediaType == MediaType.APPLICATION_JSON_TYPE) {
+                                        return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
+                                    } else {
+                                        Document document = (Document)result;
+                                        return LOG.logResponse("get", Response.ok()
+                                            .header("content-disposition", "attachment; filename=" + URLEncoder.encode(wsName.part, StandardCharsets.UTF_8.name()))
+                                            .type(document.getMediaType())
+                                            .entity(new DocumentOutput(document)).build());
+                                    }
+                               default:
                         	   throw new RuntimeException("Unknown result type:" + result.getType());
                     	}
                 } else {
-                    return LOG.logResponse("get", Response.status(Status.NOT_FOUND).entity(Error.objectNotFound(repository, wsName)).build());
+                    return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.objectNotFound(repository, wsName)).build());
                 }
             }
 
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+            return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build());
         }
     }
 
@@ -285,7 +296,7 @@ public class Workspaces {
      * @param updateType controls update behavior on actual object referenced by objectName
      */
     @PUT
-    @Path("/{repository}/{workspace:.+}")
+    @Path("/{repository}/{workspace:[^?]+}")
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
             @PathParam("repository") String repository,
@@ -377,7 +388,7 @@ public class Workspaces {
      * @param createDocument set true if we want to create a new document if one does not exist on the specified path
      */
     @PUT
-    @Path("/{repository}/{workspace:.+}")
+    @Path("/{repository}/{workspace:[^?]+}")
     @Consumes({ MediaType.MULTIPART_FORM_DATA })
     public Response putDocument(
         @PathParam("repository") String repository,
@@ -437,7 +448,7 @@ public class Workspaces {
      * @param path path to document
      */
     @DELETE
-    @Path("/{repository}/{path:.+}")
+    @Path("/{repository}/{path:[^?]+}")
     public Response deleteDocument(
         @PathParam("repository") String repository,
         @PathParam("path") String path
