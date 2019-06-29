@@ -93,6 +93,14 @@ public class Authentication {
     private final AuthenticationService cookieHandler;
     private final KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager;
     
+    /** Construct an authentication web service using an authentication back-end.
+     * 
+     * @param cookieHandler back-end authentication service
+     * @param keyManager key manager used for credentials
+     * @throws InitializationException
+     * @throws ComponentInitializationException
+     * @throws ResolverException 
+     */
     public Authentication(AuthenticationService cookieHandler, KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager) throws InitializationException, ComponentInitializationException, ResolverException {
         InitializationService.initialize();
         documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -103,12 +111,22 @@ public class Authentication {
         this.keyManager = keyManager;
     }
     
+    /** Get the SAML2 nameId from a SAML response
+     * @param samlResponse
+     * @return the name of the principal encoded in the SAML response
+     */
     public String getName(org.opensaml.saml.saml2.core.Response samlResponse) {
         Assertion assertion = samlResponse.getAssertions().get(0);
         return assertion.getSubject().getNameID().getValue();
     }
     
     
+    /** Determines the Credential used to validate signatures from the SAML2 IDP 
+     * 
+     * @return the Credential used to validate signatures from the SAML2 IDP
+     * @throws ComponentInitializationException
+     * @throws ResolverException 
+     */
     public static Credential getIDPCredential() throws ComponentInitializationException, ResolverException {
         try {
             URL metadata = Authentication.class.getResource("/idp-metadata.xml");
@@ -136,18 +154,20 @@ public class Authentication {
         }
     }
     
-    boolean validateSignature(org.opensaml.saml.saml2.core.Response response) {
+    private boolean validateSignature(org.opensaml.saml.saml2.core.Response response) {
         SAMLSignatureProfileValidator profileValidator = new SAMLSignatureProfileValidator();
         try {
-            profileValidator.validate(response.getSignature());
-            SignatureValidator.validate(response.getSignature(), idpCredential);
+            org.opensaml.xmlsec.signature.Signature signature = response.getSignature();
+            if (signature == null) return false;
+            profileValidator.validate(signature);
+            SignatureValidator.validate(signature, idpCredential);
         } catch (SignatureException exp) {
             return false;
         }       
         return true;
     }
     
-    boolean validateSignature(byte[] serviceRequest, byte[] signature, String account) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, java.security.SignatureException {
+    private boolean validateSignature(byte[] serviceRequest, byte[] signature, String account) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, java.security.SignatureException {
         Key key = keyManager.getKey(account);
         if (key == null) return false;
         Signature sig = Signature.getInstance(KeyManager.PUBLIC_KEY_SIGNATURE_ALGORITHM, "SUN");
@@ -156,7 +176,7 @@ public class Authentication {
         return sig.verify(signature);
     }
     
-    boolean validateInstant(long instant) {
+    private boolean validateInstant(long instant) {
         return Math.abs(instant - System.currentTimeMillis()) < 60000L;
     }
     
@@ -165,11 +185,20 @@ public class Authentication {
         return true;
     }
     
+    /** Check to see if a token is valid and, if so, how long for.
+     * 
+     * Returns a json object { validFrom: X, validTo: Y } with validity information. Since this is
+     * an authenticated endpoint, it will return UNAUTHORIZED if the token presented is not valid.
+     * 
+     * @param context
+     * @return validity information in json format
+     */
     @Path("token")
     @Authenticated
     @GET
     @Produces({MediaType.APPLICATION_JSON})
     public Response getTokenValidity(@Context ContainerRequestContext context) {
+        LOG.logEntering("getTokenValidity", context);
         SecurityContext secContext = context.getSecurityContext();
         JsonObjectBuilder builder = Json.createObjectBuilder();
         builder.add("user", secContext.getUserPrincipal().getName());
@@ -177,9 +206,18 @@ public class Authentication {
         Date validUntil = (Date)context.getProperty("validUntil");
         if (validFrom != null) builder.add("validFrom", DateTimeFormatter.ISO_INSTANT.format(validFrom.toInstant()));
         if (validUntil != null) builder.add("validUntil", DateTimeFormatter.ISO_INSTANT.format(validUntil.toInstant()));
-        return Response.ok().entity(builder.build()).build();      
+        return LOG.logResponse("getTokenValidity", Response.ok(MediaType.APPLICATION_JSON_TYPE).entity(builder.build()).build());      
     }
 
+    /** Handle a SAML2 response
+     * 
+     * Doctane handles a SAML2 authentication flow with this method. Takes a SAML response (passed here from
+     * the IDP via the client), validate it, and if OK passes a JWT token back to the client with a redirect.
+     * 
+     * @param samlResponse SAML response signed by IDP containing authenticated user details
+     * @param relayState Client URI for redirect
+     * @return A SEE OTHER response redirecting to the URI specified in relayState
+     */
     @Path("saml")
     @POST
     @Consumes({ MediaType.APPLICATION_FORM_URLENCODED })
@@ -202,27 +240,31 @@ public class Authentication {
         
             if (validateSignature(response) && hasDocumentViewerRole(response)) {
                 URI location = new URI(relayState);
-                return Response.seeOther(location).cookie(cookieHandler.generateCookie(getName(response))).build();
+                return LOG.logResponse("handleSamlResponse", 
+                    Response
+                        .seeOther(location)
+                        .cookie(cookieHandler.generateCookie(getName(response)))
+                        .build());
             } else {
-                return Response.status(Status.FORBIDDEN).build();
+                return LOG.logResponse("handleSamleResponse", Response.status(Status.FORBIDDEN).build());
             }
-        } catch(RuntimeException e) {
-            e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
-        } catch (ParserConfigurationException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
-        } catch (SAXException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();  
-        } catch (IOException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
-        } catch (UnmarshallingException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
-        } catch (URISyntaxException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
+        } catch(RuntimeException | ParserConfigurationException | SAXException | IOException | UnmarshallingException | URISyntaxException e) {
+            return LOG.logResponse("handleSamlResponse",Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
         }
         
     }
     
+    /** Handle service authentication request (i.e. authentication via public key)
+     * 
+     * The request is made in the form of a JSON object { account: X, instant: Y }.
+     * 
+     * The account is the alias of the public key stored in the server's key store, which will be used to validate
+     * the signature. Instant is a timestamp, which must be within 60 seconds of the current system time.
+     * 
+     * @param request Request for access to the API (a base 64 encoded JSON object)
+     * @param signature Signature of request (base 64 encoded)
+     * @return A JWT token providing access to the API
+     */
     @Path("service")
     @GET
     public Response handleServiceRequest(
@@ -247,23 +289,12 @@ public class Authentication {
             long instant = requestObject.getJsonNumber("instant").longValueExact();
             
             if (validateInstant(instant) && validateSignature(requestBinary, signatureBinary, account)) {
-                return Response.ok().cookie(cookieHandler.generateCookie(account)).build();
+                return LOG.logResponse("handleServiceRequest", Response.ok().cookie(cookieHandler.generateCookie(account)).build());
             } else {
-                return Response.status(Status.FORBIDDEN).build();
+                return LOG.logResponse("handleServiceRequest", Response.status(Status.FORBIDDEN).build());
             }
-        } catch(RuntimeException e) {
-            e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
-        } catch (IOException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
-        } catch (InvalidKeyException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
-        } catch (NoSuchAlgorithmException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
-        } catch (NoSuchProviderException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
-        } catch (java.security.SignatureException e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build(); 
+        } catch(RuntimeException | IOException | InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | java.security.SignatureException e) {
+            return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
         }
     }
 

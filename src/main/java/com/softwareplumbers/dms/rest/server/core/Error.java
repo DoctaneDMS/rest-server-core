@@ -12,6 +12,9 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjec
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 /** Generate error reports in Json */
 public class Error {
@@ -118,4 +121,8 @@ public class Error {
 	public static JsonObject bothVersionAndWorkspacePresent() {
 		return Json.createObjectBuilder().add("error", "Cannot specify both version and workspace when getting a document").build();				
 	}
+    
+    public static Response errorResponse(Status status, JsonObject error) {
+        return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(error).build();
+    }
 }

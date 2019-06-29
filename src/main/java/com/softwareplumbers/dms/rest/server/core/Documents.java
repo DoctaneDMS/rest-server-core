@@ -46,7 +46,7 @@ import java.util.List;
 
 /** Handle CRUD operations on documents.
  * 
- * Create/Read/Update/Delete operations on documents in a  repository are all performed 
+ * Create/Read/Update/Delete operations on documents in a repository are all performed 
  * via this interface under the /docs/{repository} path.
  * 
  * @author Jonathan Essex
