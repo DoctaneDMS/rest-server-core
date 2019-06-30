@@ -90,7 +90,7 @@ public class Authentication {
     private final UnmarshallerFactory unmarshallerFactory;
     private final DocumentBuilderFactory documentBuilderFactory;
     private final Credential idpCredential;
-    private final AuthenticationService cookieHandler;
+    private final CookieAuthenticationService cookieHandler;
     private final KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager;
     
     /** Construct an authentication web service using an authentication back-end.
@@ -101,7 +101,7 @@ public class Authentication {
      * @throws ComponentInitializationException
      * @throws ResolverException 
      */
-    public Authentication(AuthenticationService cookieHandler, KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager) throws InitializationException, ComponentInitializationException, ResolverException {
+    public Authentication(CookieAuthenticationService cookieHandler, KeyManager<SystemSecretKeys,SystemKeyPairs> keyManager) throws InitializationException, ComponentInitializationException, ResolverException {
         InitializationService.initialize();
         documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
@@ -233,7 +233,9 @@ public class Authentication {
             Document document = docBuilder.parse(is);
         
             Element element = document.getDocumentElement();
+            if (element == null) throw new RuntimeException("Malformed SAML Response");
             Unmarshaller unmarshaller = unmarshallerFactory.getUnmarshaller(element);
+            if (unmarshaller == null) throw new RuntimeException("Can't create XML unmarshaller");
             XMLObject responseXmlObj = unmarshaller.unmarshall(element);
             
             org.opensaml.saml.saml2.core.Response response = (org.opensaml.saml.saml2.core.Response)responseXmlObj;

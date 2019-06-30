@@ -26,9 +26,9 @@ import javax.ws.rs.container.ContainerRequestFilter;
 @Component
 public class AuthenticationFilter implements ContainerRequestFilter {
     
-    private AuthenticationService cookieHandler;
+    private CookieAuthenticationService cookieHandler;
     
-    public AuthenticationFilter(AuthenticationService cookieHandler) {
+    public AuthenticationFilter(CookieAuthenticationService cookieHandler) {
         this.cookieHandler = cookieHandler;
     }
         

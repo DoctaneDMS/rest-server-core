@@ -34,7 +34,7 @@ public class AuthCryptoTest {
     @Test
     public void testGetCredential() throws InitializationException, ComponentInitializationException, ResolverException, KeyStoreException {
         KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager = new KeyManager<>(file.toString(),"",SystemSecretKeys.class, SystemKeyPairs.class);
-        Authentication authResource = new Authentication(new AuthenticationService(keyManager), keyManager);
+        Authentication authResource = new Authentication(new CookieAuthenticationService(keyManager), keyManager);
         Credential credential = Authentication.getIDPCredential();
         assertEquals("https://auth.softwareplumbers.com/auth/realms/doctane-test",credential.getEntityId());
     }

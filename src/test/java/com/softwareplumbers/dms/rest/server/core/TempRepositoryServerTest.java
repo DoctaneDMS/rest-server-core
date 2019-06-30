@@ -88,7 +88,7 @@ public class TempRepositoryServerTest {
             .register(JsonProcessingFeature.class));
     
     @Autowired
-    AuthenticationService cookieHandler;
+    CookieAuthenticationService cookieHandler;
     @Autowired
     KeyManager<?,?> keyManager;
     

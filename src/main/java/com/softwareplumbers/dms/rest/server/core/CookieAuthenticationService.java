@@ -31,13 +31,13 @@ import io.jsonwebtoken.Jwts;
  */
 @Component
 @Scope("singleton")
-public class AuthenticationService {
+public class CookieAuthenticationService {
     
-    private static final Log LOG = new Log(AuthenticationService.class);
+    private static final Log LOG = new Log(CookieAuthenticationService.class);
     
     private final Key jwtSigningKey;
 
-    public AuthenticationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager) {
+    public CookieAuthenticationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager) {
         jwtSigningKey = keyManager.getKey(SystemSecretKeys.JWT_SIGNING_KEY);    
     }
     
