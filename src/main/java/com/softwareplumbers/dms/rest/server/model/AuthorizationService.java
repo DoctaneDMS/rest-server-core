@@ -1,0 +1,71 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.softwareplumbers.dms.rest.server.model;
+
+import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import javax.json.JsonObject;
+
+/** Authorization service.
+ * 
+ * Adds application-specific authorizations to a Doctane repository.
+ *
+ * @author Jonathan Essex
+ */
+public interface AuthorizationService {
+    
+    public enum DocumentAccessRole { CREATE, READ, UPDATE }
+    public enum ObjectAccessRole { CREATE, READ, UPDATE, DELETE }
+    
+    /** Get the Access Control List for a document.
+     * 
+     * If getDocumentACL(ref).contains(Value.from(userMetadata)) returns true, the user has can perform the given role
+     * on the referenced document.
+     * 
+     * 
+     * @param ref Reference to get ACL for
+     * @param role Role to get ACL for
+     * @return An access control list that can be used to determine if a user has the given role for the referenced document
+     */
+    ObjectConstraint getDocumentACL(Reference ref, DocumentAccessRole role);
+    
+    /**  Get the Access Control List for a Repository Object (Workspace or Document).
+     * 
+     * If getObjectACL(rootId, path).contains(Value.from(userMetadata)) returns true, the user has can perform the given
+     * role on the referenced repository object.
+     * 
+     * @param rootId Id of search root
+     * @param path path from root to object
+     * @param role to get ACL for
+     * @return An access control list that can be used to determine if a user has the given role for the object
+     */
+    ObjectConstraint getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role);
+    
+    /** Get An Access Constraint for the given user searching on the given path.
+     * 
+     * Allows search operations to be constrained based on a user's permissions.
+     * 
+     * getAccessConstraint(userMetadata, rootId, pathTemplate).contains(Value.from(repositoryObject)) will return
+     * false for any repositoryObject on the paths specified by (rootId, pathTemplate) if the specified user
+     * does not have permission to view that repository object.
+     * 
+     * @param userMetadata User metadata for user performing the search
+     * @param rootId Origin of search path
+     * @param pathTemplate Path to search on (may contain wildcards).
+     * @return An access constraint which can filter out search results for which the user has no permission to view
+     */
+    ObjectConstraint getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate);
+    
+    /** Get metadata for a given user Id.
+     * 
+     * Metadata may represent application specific permissions in a way entirely defined by the application; the
+     * Json format is simply convenient as as generic way to structure data suitable for transfer over the wire.
+     * 
+     * @param userId
+     * @return application specific metadata for that user Id 
+     */
+    JsonObject getUserMetadata(String userId);
+}
