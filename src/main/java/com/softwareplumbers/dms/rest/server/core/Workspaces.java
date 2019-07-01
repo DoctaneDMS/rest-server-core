@@ -418,10 +418,12 @@ public class Workspaces {
                 pathName = pathName.rightFromStart(1);
             } 
 
+            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), pathName.part);
+
             Reference result = service.updateDocumentByName(
                     wsId, 
                     pathName, 
-                    file_part.getMediaType(),
+                    computedMediaType,
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
                     createWorkspace, 

@@ -77,4 +77,10 @@ public class DocumentLinkImpl implements DocumentLink {
 	public InputStream getData() throws IOException {
 		return getDocument().getData();
 	}
+    
+    /** Return a short string describing document */
+    @Override
+    public String toString() {
+        return String.format("DocumentLink { name: %s, type: %s, length %d }", getName().join("/"), getMediaType().toString(), getLength() );
+    }
 }

@@ -111,4 +111,22 @@ public class MediaTypes {
     public static boolean isLegacyOfficeDoc(MediaType type, String name) {
         return OFFICE_TYPES.contains(type) || name != null && OFFICE_TYPES.contains(getTypeFromFilename(name));
     }
+    
+  
+    /** *  Compute best media type from supplied type and filename 
+     *
+     * Computes a media type from the supplied filename.If the computed type is a subset of the supplied type,
+     * use the computed type.If the media type is 'application/octet-stream' then regard any 'application' type
+     * as a subset even it it isn't really.
+     * 
+     * @param type Supplied media type
+     * @param filename Filename to compute media type from
+     * @return The most specific of the supplied type and the computed type
+     */
+    public static MediaType getComputedMediaType(MediaType type, String filename) {
+        MediaType typeFromName = getTypeFromFilename(filename);
+        if (isSubsetType(type, typeFromName)) return typeFromName;
+        if (type.equals(MediaType.APPLICATION_OCTET_STREAM_TYPE) && typeFromName.getType().equals("application")) return typeFromName;
+        return type;
+    }
 }

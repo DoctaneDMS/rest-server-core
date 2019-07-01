@@ -146,4 +146,10 @@ public class DocumentImpl implements Document {
     public DocumentImpl setReference(Reference reference) {        
         return new DocumentImpl(reference.id, reference.version, this.mediaType, this.data, this.metadata);
     }
+    
+    /** Return a short string describing document */
+    @Override
+    public String toString() {
+        return String.format("Document { type: %s, length %d }", getMediaType().toString(), getLength() );
+    }
 }

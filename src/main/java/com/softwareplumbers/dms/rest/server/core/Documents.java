@@ -335,11 +335,13 @@ public class Documents {
 
     		if (file_part.getMediaType() == null)
     			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingContentType()).build();
+            
+            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
 
     		Reference reference = 
     			service
     				.createDocument(
-    					file_part.getMediaType(),
+    					computedMediaType,
     					()->file_part.getEntityAs(InputStream.class),
 						metadata_part.getEntityAs(JsonObject.class),
 						workspace,
@@ -446,11 +448,13 @@ public class Documents {
     		if (file_part == null) 
     			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingFile()).build();
 
+            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
+           
     		Reference reference = 
     			service
     				.updateDocument(
     					id,
-    					file_part.getMediaType(),
+    					computedMediaType,
     					()->file_part.getEntityAs(InputStream.class),
 						metadata_part.getEntityAs(JsonObject.class),
 						workspace,
