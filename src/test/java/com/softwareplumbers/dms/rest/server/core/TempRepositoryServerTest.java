@@ -76,6 +76,7 @@ public class TempRepositoryServerTest {
 		put("txt", MediaType.TEXT_PLAIN_TYPE);
 		put("docx", MediaType.valueOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
 		put("msg", MediaType.valueOf("application/vnd.ms-outlook"));
+        put("doc", MediaType.valueOf("application/msword"));
 	}};
 
 	int port = 8080;
@@ -745,6 +746,18 @@ public class TempRepositoryServerTest {
         NodeList h1s = xmlDoc.getElementsByTagName("h1");
         assertEquals(1, h1s.getLength());
         assertEquals("Microsoft Outlook Test Message", h1s.item(0).getTextContent());
+    }
+    
+    @Test
+    public void testGetWord2004DocumentXML() throws IOException, ParseException, TransformerException {
+		JsonObject response1 = postDocument("testdoc_word2004", null, "doc");
+		String id = response1.getString("id");
+		org.w3c.dom.Document xmlDoc = getXMLDocument(MediaType.APPLICATION_XHTML_XML_TYPE, id);
+		assertNotNull(xmlDoc);
+ 		NodeList h1s = xmlDoc.getElementsByTagName("h1");
+		assertEquals(1, h1s.getLength());
+		NodeList tds = xmlDoc.getElementsByTagName("td");
+		assertEquals(4, tds.getLength());
     }
 
     @Test

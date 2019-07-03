@@ -19,17 +19,20 @@ public class MediaTypes {
     
     private static MimetypesFileTypeMap fileTypeMap = new MimetypesFileTypeMap() {{ 
        this.addMimeTypes("type=application/vnd.ms-outlook exts=msg");
+       this.addMimeTypes("type=application/msword exts=doc,dot");
     }};
     
     /** Microsoft Word XML media type (aka DOCX) */
     public static final MediaType MICROSOFT_WORD_XML = MediaType.valueOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document"); 
+    /** Microsoft Word media type (aka DOC) */
+    public static final MediaType MICROSOFT_WORD = MediaType.valueOf("application/msword"); 
     /** Microsoft Outlook message media type (aka MSG) */
     public static final MediaType MICROSOFT_OUTLOOK = MediaType.valueOf("application/vnd.ms-outlook"); 
     
     /** List of Open Office XML types which the Tika Open Office XML parser can handle */
     private static List<MediaType> OPEN_OFFICE_XML_TYPES = Arrays.asList(MICROSOFT_WORD_XML);
     /** List of Open Office XML types which the Tika Office parser can handle */
-    private static List<MediaType> OFFICE_TYPES = Arrays.asList(MICROSOFT_OUTLOOK);
+    private static List<MediaType> OFFICE_TYPES = Arrays.asList(MICROSOFT_OUTLOOK, MICROSOFT_WORD);
 
    /** Test if one media type is a subset of another.
     * 
