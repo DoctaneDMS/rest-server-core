@@ -15,10 +15,9 @@ import com.softwareplumbers.common.abstractquery.ObjectConstraint;
 import com.softwareplumbers.common.abstractquery.Value.MapValue;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
-import com.softwareplumbers.dms.rest.server.model.DocumentLinkImpl;
 import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
@@ -26,21 +25,66 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidRefer
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import javax.ws.rs.core.MediaType;
 
 class WorkspaceImpl implements Workspace {
 	
 	static Log LOG = new Log(WorkspaceImpl.class);
 	
-	private static class DocumentInfo extends DocumentLinkImpl {
+	private class DocumentInfo implements DocumentLink {
+        
 		public boolean deleted;
+        public Reference link;
+        public String name;
 		
-		public DocumentInfo(RepositoryService service, QualifiedName name, Reference link, boolean deleted) {
-		    super(service, name, link);
+		public DocumentInfo(String name, Reference link, boolean deleted) {
 		    this.deleted = deleted;
+            this.link = link; 
+            this.name = name;
 		}	
 		
-		public DocumentLinkImpl toDynamic() { return new DocumentInfo(this.service, this.name, new Reference(ref.id), deleted); }
-        public DocumentLinkImpl toStatic() { return new DocumentInfo(this.service, this.name, getReference(), deleted); }
+		public DocumentLink toDynamic() { return new DocumentInfo(this.name, new Reference(link.id), deleted); }
+        public DocumentLink toStatic() { return new DocumentInfo( this.name, getReference(), deleted); }
+
+        @Override
+        public QualifiedName getName() {
+            return WorkspaceImpl.this.getName().add(name);
+        }
+
+        private Document linkedDocument() {
+            try {
+                return service.getDocument(link);
+            } catch (InvalidReference ex) {
+                throw LOG.logRethrow("DocumentInfo.getMetadata", new RuntimeException(ex));
+            } 
+        }
+        
+        @Override
+        public JsonObject getMetadata() { return linkedDocument().getMetadata(); }
+
+        @Override
+        public String getId() { return link.id; }
+
+        @Override
+        public MediaType getMediaType() { return linkedDocument().getMediaType(); }
+
+        @Override
+        public void writeDocument(OutputStream target) throws IOException { linkedDocument().writeDocument(target); }
+
+        @Override
+        public InputStream getData() throws IOException { return linkedDocument().getData(); }
+
+        @Override
+        public long getLength() { return linkedDocument().getLength(); }
+
+        @Override
+        public String getVersion() { return linkedDocument().getVersion(); }
+        
+        @Override
+        public Reference getReference() { return linkedDocument().getReference(); }
 	}
 	
 	/**
@@ -99,14 +143,14 @@ class WorkspaceImpl implements Workspace {
 		if (this.state == State.Open && state != State.Open)
 		    children.entrySet().stream()
 		        .filter(entry -> entry.getValue().getType() == Type.DOCUMENT_LINK)
-		        .forEach(entry -> entry.setValue(((DocumentLinkImpl)entry.getValue()).toStatic()));
+		        .forEach(entry -> entry.setValue(((DocumentInfo)entry.getValue()).toStatic()));
 
 		// Convert references to point to a the most recent version
 		// of a document when a workspace is opened
 		if (this.state != State.Open && state == State.Open)
             children.entrySet().stream()
             .filter(entry -> entry.getValue().getType() == Type.DOCUMENT_LINK)
-            .forEach(entry -> entry.setValue(((DocumentLinkImpl)entry.getValue()).toDynamic()));
+            .forEach(entry -> entry.setValue(((DocumentInfo)entry.getValue()).toDynamic()));
 		
 				
 		this.state = state;
@@ -168,7 +212,7 @@ class WorkspaceImpl implements Workspace {
 		if (state == State.Open) {
 			if (!service.referenceExists(this, reference)) {
 				Reference latest = new Reference(reference.id);
-				this.children.put(docName, new DocumentInfo(service,getName().add(docName),latest,false));
+				this.children.put(docName, new DocumentInfo(docName,latest,false));
 				service.registerWorkspaceReference(this, latest);
 			}
 		}
@@ -178,14 +222,14 @@ class WorkspaceImpl implements Workspace {
 	
 	public void update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
 		LOG.logEntering("add", reference, docName);
-		NamedRepositoryObject objRef = children.get(docName);
+		RepositoryObject objRef = children.get(docName);
 		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw new InvalidObjectName(getName().add(docName));
-		DocumentLink docRef = (DocumentLink)objRef;
+		DocumentInfo docRef = (DocumentInfo)objRef;
 		if (state == State.Open) {
 			if (docRef.getId() != reference.id) {
 				service.deregisterWorkspaceReference(this, docRef.getReference());
 				service.registerWorkspaceReference(this, reference);
-				children.put(docName, new DocumentInfo(service, docRef.getName(), new Reference(reference.id), false));
+				children.put(docName, new DocumentInfo(docRef.name, new Reference(reference.id), false));
 			} 
 			// else really nothing to do
 		}
@@ -240,7 +284,7 @@ class WorkspaceImpl implements Workspace {
 	private Stream<DocumentInfo> getHistory(DocumentInfo doc, ObjectConstraint filter) {
 	    try {
             return service.catalogueHistory(doc.getReference(), filter)
-                .map(histDoc->new DocumentInfo(service, doc.getName(), histDoc.getReference(), false));
+                .map(histDoc->new DocumentInfo(doc.name, histDoc.getReference(), false));
         } catch (InvalidReference e) {
             throw new RuntimeException(e);
         }
@@ -423,7 +467,7 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 
-	public DocumentLinkImpl getById(String documentId) throws InvalidDocumentId {
+	public DocumentLink getById(String documentId) throws InvalidDocumentId {
 		return children.values().stream()
 	            .filter(child->child.getType() == Type.DOCUMENT_LINK)
 	            .map(child->(DocumentInfo)child)
