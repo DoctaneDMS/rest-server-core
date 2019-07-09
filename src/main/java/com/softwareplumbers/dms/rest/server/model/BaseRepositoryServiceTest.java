@@ -369,4 +369,19 @@ public abstract class BaseRepositoryServiceTest {
 	    Stream<DocumentLink> result = service().listWorkspaces(ref1.id, null);
 	    assertEquals(2, result.count());
 	}
+    
+    @Test
+	public void testDocumentLinkParent() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName docName = name1.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
+	    NamedRepositoryObject doc1 = service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(name1, doc1.getParent().getName());
+        JsonObject jsonRep = doc1.toJson();
+        assertEquals(EMPTY_METADATA, jsonRep.getJsonObject("parent").getJsonObject("metadata"));
+        assertEquals(name1.join("/"), jsonRep.getJsonObject("parent").getString("name"));
+	}
 }
