@@ -26,6 +26,7 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
         MediaType mediaType = getMediaType();
         QualifiedName name = getName();
         Type type = getType();
+        Workspace parent = getParent();
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
         
@@ -38,6 +39,7 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
         // Document fields
         if (mediaType != null) builder.add("mediaType", mediaType.toString());
         if (version != null) builder.add("version", version);
+        if (parent != null) builder.add("parent", parent.toJson());
         builder.add("length", getLength());
         return builder.build();
 

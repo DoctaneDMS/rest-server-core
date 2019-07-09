@@ -83,4 +83,14 @@ public class DocumentLinkImpl implements DocumentLink {
     public String toString() {
         return String.format("DocumentLink { name: %s, type: %s, length %d }", getName().join("/"), getMediaType().toString(), getLength() );
     }
+
+    @Override
+    public Workspace getParent() {
+        try {
+            return (Workspace)service.getObjectByName(null, name.parent);
+        } catch (RepositoryService.InvalidObjectName | RepositoryService.InvalidWorkspace e) {
+            // logically shouldn't happen
+            throw new RuntimeException(e);
+        }
+    }
 }
