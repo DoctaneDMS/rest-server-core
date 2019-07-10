@@ -16,9 +16,8 @@ import javax.ws.rs.core.MediaType;
 import org.junit.Test;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
-import com.softwareplumbers.common.abstractquery.Value;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -197,11 +196,11 @@ public abstract class BaseRepositoryServiceTest {
 		service().createWorkspaceByName(ROOT_ID, pamela_jones, State.Open, null);
 		service().createWorkspaceByName(ROOT_ID, roger_carter, State.Open, null);
 				
-		assertEquals(4, service().catalogueByName(ROOT_ID, base.addAll("*","*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("jones","*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("carter","*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(3, service().catalogueByName(ROOT_ID,base.addAll("*","p*"), ObjectConstraint.UNBOUNDED, false).count());
-		assertEquals(3, service().catalogueByName(ROOT_ID,base.addAll("*","*r"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(4, service().catalogueByName(ROOT_ID, base.addAll("*","*"), Query.UNBOUNDED, false).count());
+		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("jones","*"), Query.UNBOUNDED, false).count());
+		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("carter","*"), Query.UNBOUNDED, false).count());
+		assertEquals(3, service().catalogueByName(ROOT_ID,base.addAll("*","p*"), Query.UNBOUNDED, false).count());
+		assertEquals(3, service().catalogueByName(ROOT_ID,base.addAll("*","*r"), Query.UNBOUNDED, false).count());
 	}
 	
 	@Test
@@ -221,7 +220,7 @@ public abstract class BaseRepositoryServiceTest {
 		service().createWorkspaceByName(ROOT_ID, base, State.Open, null);
 		service().createWorkspaceByName(ROOT_ID, jones, State.Open, null);
 		service().createDocumentByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
-		assertEquals(2,service().catalogueByName(ROOT_ID, base.add("*"), ObjectConstraint.UNBOUNDED, false).count());
+		assertEquals(2,service().catalogueByName(ROOT_ID, base.add("*"), Query.UNBOUNDED, false).count());
 	}
 	
 	@Test
@@ -248,23 +247,23 @@ public abstract class BaseRepositoryServiceTest {
 	 */
 	@Test
 	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
-		long count1 = service().catalogue(ObjectConstraint.UNBOUNDED, true).count();
+		long count1 = service().catalogue(Query.UNBOUNDED, true).count();
 		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		long count2 = service().catalogue(ObjectConstraint.UNBOUNDED, true).count();
+		long count2 = service().catalogue(Query.UNBOUNDED, true).count();
 		assertEquals(3, count2 - count1);
 	}
 	
 	@Test
 	public void testRepositoryCatalog() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId {
-		long count1 = service().catalogue(ObjectConstraint.UNBOUNDED, false).count();
+		long count1 = service().catalogue(Query.UNBOUNDED, false).count();
 		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		long count2 = service().catalogue(ObjectConstraint.UNBOUNDED, false).count();
+		long count2 = service().catalogue(Query.UNBOUNDED, false).count();
 		assertEquals(3, count2 - count1);
 	}
 

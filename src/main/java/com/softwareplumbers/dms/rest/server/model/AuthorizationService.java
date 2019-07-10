@@ -6,7 +6,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Query;
 import javax.json.JsonObject;
 
 /** Authorization service.
@@ -30,7 +30,7 @@ public interface AuthorizationService {
      * @param role Role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the referenced document
      */
-    ObjectConstraint getDocumentACL(Reference ref, DocumentAccessRole role);
+    Query getDocumentACL(Reference ref, DocumentAccessRole role);
     
     /**  Get the Access Control List for a Repository Object (Workspace or Document).
      * 
@@ -42,7 +42,7 @@ public interface AuthorizationService {
      * @param role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the object
      */
-    ObjectConstraint getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role);
+    Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role);
     
     /** Get An Access Constraint for the given user searching on the given path.
      * 
@@ -57,7 +57,7 @@ public interface AuthorizationService {
      * @param pathTemplate Path to search on (may contain wildcards).
      * @return An access constraint which can filter out search results for which the user has no permission to view
      */
-    ObjectConstraint getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate);
+    Query getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate);
     
     /** Get metadata for a given user Id.
      * 

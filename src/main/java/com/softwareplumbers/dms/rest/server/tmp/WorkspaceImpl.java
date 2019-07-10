@@ -11,8 +11,7 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
-import com.softwareplumbers.common.abstractquery.Value.MapValue;
+import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
@@ -124,7 +123,7 @@ class WorkspaceImpl implements Workspace {
 	@Override
 	public QualifiedName getName() {
 		if (this == service.root) return QualifiedName.ROOT;
-		if (parent == null) return QualifiedName.of("~" + id.toString());
+		if (parent == null) return QualifiedName.of("~" + id);
 		return parent.getName().add(name);
 	}
 	
@@ -234,7 +233,7 @@ class WorkspaceImpl implements Workspace {
 		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw new InvalidObjectName(getName().add(docName));
 		DocumentInfo docRef = (DocumentInfo)objRef;
 		if (state == State.Open) {
-			if (docRef.getId() != reference.id) {
+			if (!docRef.getId().equals(reference.id)) {
 				service.deregisterWorkspaceReference(this, docRef.getReference());
 				service.registerWorkspaceReference(this, reference);
 				children.put(docName, new DocumentInfo(docRef.name, new Reference(reference.id), false));
@@ -289,7 +288,7 @@ class WorkspaceImpl implements Workspace {
 		LOG.logExiting("deleteById");
 	}
 
-	private Stream<DocumentInfo> getHistory(DocumentInfo doc, ObjectConstraint filter) {
+	private Stream<DocumentInfo> getHistory(DocumentInfo doc, Query filter) {
 	    try {
             return service.catalogueHistory(doc.getReference(), filter)
                 .map(histDoc->new DocumentInfo(doc.name, histDoc.getReference(), false));
@@ -298,9 +297,9 @@ class WorkspaceImpl implements Workspace {
         }
 	}
 	
-	public Stream<NamedRepositoryObject> catalogue(ObjectConstraint filter, boolean searchHistory) {
+	public Stream<NamedRepositoryObject> catalogue(Query filter, boolean searchHistory) {
 		
-		final Predicate<NamedRepositoryObject> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.getMetadata()));
+		final Predicate<NamedRepositoryObject> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.getMetadata());
 
 		Stream<DocumentInfo> docInfo = children.values().stream()
 		        .filter(child -> child.getType() == Type.DOCUMENT_LINK)
@@ -326,7 +325,7 @@ class WorkspaceImpl implements Workspace {
 		return Stream.concat(docInfo, folderInfo);
 	}
 	
-	public Stream<NamedRepositoryObject> catalogue(QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) {
+	public Stream<NamedRepositoryObject> catalogue(QualifiedName workspaceName, Query filter, boolean searchHistory) {
 		
 		if (workspaceName == QualifiedName.ROOT) return catalogue(filter, searchHistory);
 
@@ -410,7 +409,7 @@ class WorkspaceImpl implements Workspace {
 		} else {
 			localName = name.part;
 			localParent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, true);
-			if (name != null && localParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
+			if (localParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
 		}
 
 		WorkspaceImpl child = new WorkspaceImpl(service, localParent, id, localName, state, metadata);
@@ -467,7 +466,7 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public boolean isEmpty() {
-		if (children.size() == 0) return true;
+		if (children.isEmpty()) return true;
 		return children.values().stream()
 		    .filter(child->child.getType() == Type.DOCUMENT_LINK)
 		    .map(child->(DocumentInfo)child)

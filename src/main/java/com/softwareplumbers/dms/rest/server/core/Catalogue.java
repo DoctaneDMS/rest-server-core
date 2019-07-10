@@ -25,7 +25,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Query;
 
 /** Handle catalog operations on repositories and documents.
  * 
@@ -85,12 +85,12 @@ public class Catalogue {
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			Stream<? extends RepositoryObject> infos = null;
-    			ObjectConstraint queryObjectConstraint = query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query);
+    			Query queryQuery = query == null ? Query.UNBOUNDED : Query.urlDecode(query);
     			
     			if (workspace != null)
-    				infos = service.catalogueById(workspace, queryObjectConstraint , searchHistory);
+    				infos = service.catalogueById(workspace, queryQuery , searchHistory);
     			else
-    				infos = service.catalogue(queryObjectConstraint, searchHistory);
+    				infos = service.catalogue(queryQuery, searchHistory);
     			
     			infos
     				.map(RepositoryObject::toJson)
@@ -132,7 +132,7 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueHistory(new Reference(id,version), query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query))
+    			service.catalogueHistory(new Reference(id,version), query == null ? Query.UNBOUNDED : Query.urlDecode(query))
     				.map(Document::toJson)
     				.forEach(info->result.add(info));
     			
@@ -172,7 +172,7 @@ public class Catalogue {
     				return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueParts(new Reference(id,version), query == null ? ObjectConstraint.UNBOUNDED : ObjectConstraint.urlDecode(query))
+    			service.catalogueParts(new Reference(id,version), query == null ? Query.UNBOUNDED : Query.urlDecode(query))
     				.map(DocumentPart::toJson)
     				.forEach(info->result.add(info));
     			

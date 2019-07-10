@@ -1,7 +1,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Query;
 import java.util.stream.Stream;
 
 import javax.json.JsonObject;
@@ -261,7 +261,7 @@ public interface RepositoryService {
 	 * 
 	 * Returns information (including reference and meta-data) about documents in the repository 
 
-	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
+	 * Results can be filtered using a 'Query' object to filter for documents with metadata matching
 	 * the specified query.
 	 * 
 	 * By default catalog operation works on only the most recent version of any document in a workspace
@@ -274,14 +274,14 @@ public interface RepositoryService {
 	 * @param searchHistory indicate whether to search document history for a match
 	 * @return a stream of Info objects with the results of the search
 	 */
-	public Stream<Document> catalogue(ObjectConstraint filter, boolean searchHistory);
+	public Stream<Document> catalogue(Query filter, boolean searchHistory);
 	
 	/** Catalog a workspace.
 	 * <p>
 	 * Returns information (including reference and meta-data) about documents in a workspace 
 	 * (or the entire repository if the workspace is set to null).
 	 * </p><p>
-	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
+	 * Results can be filtered using a 'Query' object to filter for documents with metadata matching
 	 * the specified query.
 	 * </p><p>
 	 * By default catalog operation works on only the most recent version of any document in a workspace
@@ -296,14 +296,14 @@ public interface RepositoryService {
 	 * @return a stream of Info objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, Query filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog a workspace.
 	 * <p>
 	 * Returns information (including reference and meta-data) about documents in a workspace 
 	 * (or the entire repository if the workspace is set to null).
 	 * </p><p>
-	 * Results can be filtered using a 'ObjectConstraint' object to filter for documents with metadata matching
+	 * Results can be filtered using a 'Query' object to filter for documents with metadata matching
 	 * the specified query. The path provided may contain the wildcard characters * and ?. 
 	 * </p><p>
 	 * By default catalog operation works on only the most recent version of any document in a workspace
@@ -319,7 +319,7 @@ public interface RepositoryService {
 	 * @return a stream of objects with the results of the search
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 */
-	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName path, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace;
+	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName path, Query filter, boolean searchHistory) throws InvalidWorkspace;
 
 	/** Catalog history of a given document.
 	 * 
@@ -331,7 +331,7 @@ public interface RepositoryService {
 	 * @return a Stream of Info objects with the results of the search
 	 * @throws InvalidReference no document exists with the given id
 	 */
-	public Stream<Document> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference;
+	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference;
 	
 	/** Catalog all the parts of a document.
 	 * 
@@ -345,7 +345,7 @@ public interface RepositoryService {
 	 * @return a stream of Info objects relating to the selected parts of the document
 	 * @throws InvalidReference
 	 */
-	public Stream<DocumentPart> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference;
+	public Stream<DocumentPart> catalogueParts(Reference ref, Query filter) throws InvalidReference;
 	
 	
 	/** Create a workspace 

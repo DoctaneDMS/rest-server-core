@@ -19,8 +19,7 @@ import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
-import com.softwareplumbers.common.abstractquery.Value.MapValue;
+import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import com.softwareplumbers.dms.rest.server.model.DocumentPart;
@@ -54,11 +53,11 @@ public class TempRepositoryService implements RepositoryService {
 	public static final JsonObject EMPTY_METADATA = Json.createObjectBuilder().build();
 	
 	///////////--------- Private member variables --------////////////
-	private TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
-	private TreeMap<String, WorkspaceImpl> workspacesById = new TreeMap<>();
-	private TreeMap<String, Set<String>> workspacesByDocument = new TreeMap<>();
+	private final TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
+	private final TreeMap<String, WorkspaceImpl> workspacesById = new TreeMap<>();
+	private final TreeMap<String, Set<String>> workspacesByDocument = new TreeMap<>();
 	WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
-	private QualifiedName nameAttribute;
+	private final QualifiedName nameAttribute;
 	
 	private WorkspaceImpl getRoot(String rootId) throws InvalidWorkspace {
 		WorkspaceImpl myRoot = root;
@@ -115,17 +114,16 @@ public class TempRepositoryService implements RepositoryService {
 		return LOG.logReturn("getDocument", result);
 	}
 	
-	public void registerWorkspace(WorkspaceImpl workspace) {
+	void registerWorkspace(WorkspaceImpl workspace) {
 		workspacesById.put(workspace.getId(), workspace);
 	}
 
-	public void deregisterWorkspace(WorkspaceImpl workspace) {
+	void deregisterWorkspace(WorkspaceImpl workspace) {
 		workspacesById.remove(workspace.getId());
 	}
 
-	public void registerWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
-		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<String>()).add(workspace.getId());
-		
+	void registerWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
+		workspacesByDocument.computeIfAbsent(ref.id, key -> new TreeSet<>()).add(workspace.getId());
 	}
 	
 	public void deregisterWorkspaceReference(WorkspaceImpl workspace, Reference ref) {
@@ -293,11 +291,11 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<Document> catalogue(ObjectConstraint filter, boolean searchHistory) {
+	public Stream<Document> catalogue(Query filter, boolean searchHistory) {
 		
 		LOG.logEntering("catalogue", filter, searchHistory);
 
-		final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.getMetadata()));
+		final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.getMetadata());
 
 		Stream<Document> infos = store.values().stream().map(doc->(Document)doc);
 
@@ -312,7 +310,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, Query filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueById", filter, searchHistory);
 		
@@ -354,7 +352,7 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName workspaceName, ObjectConstraint filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName workspaceName, Query filter, boolean searchHistory) throws InvalidWorkspace {
 
 		LOG.logEntering("catalogueByName", filter, searchHistory);
 
@@ -372,8 +370,8 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<Document> catalogueHistory(Reference ref, ObjectConstraint filter) throws InvalidReference {
-	      final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(MapValue.from(info.getMetadata()));
+	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference {
+	      final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.getMetadata());
 	        Reference first = new Reference(ref.id, newVersion("0"));
 	        Collection<DocumentImpl> history = store.subMap(first, true, ref, true).values();
 	        if (history.isEmpty()) throw new InvalidReference(ref);
@@ -481,7 +479,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<DocumentPart> catalogueParts(Reference ref, ObjectConstraint filter) throws InvalidReference {
+	public Stream<DocumentPart> catalogueParts(Reference ref, Query filter) throws InvalidReference {
 		return Stream.empty();
 	}
 

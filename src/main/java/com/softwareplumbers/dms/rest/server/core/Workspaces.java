@@ -45,7 +45,7 @@ import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import com.softwareplumbers.dms.rest.server.model.Workspace;
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.common.abstractquery.ObjectConstraint;
+import com.softwareplumbers.common.abstractquery.Query;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import java.util.Arrays;
@@ -141,7 +141,7 @@ public class Workspaces {
         
         try {
             
-            ObjectConstraint filterConstraint = filter != null && filter.length() > 0 ? ObjectConstraint.urlDecode(filter) : ObjectConstraint.UNBOUNDED;
+            Query filterConstraint = filter != null && filter.length() > 0 ? Query.urlDecode(filter) : Query.UNBOUNDED;
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
