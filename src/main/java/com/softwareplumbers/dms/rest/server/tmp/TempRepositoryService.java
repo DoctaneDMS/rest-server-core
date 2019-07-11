@@ -294,8 +294,10 @@ public class TempRepositoryService implements RepositoryService {
 	public Stream<Document> catalogue(Query filter, boolean searchHistory) {
 		
 		LOG.logEntering("catalogue", filter, searchHistory);
-
-		final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.getMetadata());
+        // IMPORTANT breaking change in support of #55 and #24.
+        // The query namespace now includes all fields in the document link, including the parent folder, mediaType, etc.
+        // Medatadata fields that used to be in the root of the query namespace must now be prefixed with 'metadata'.
+		final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.toJson());
 
 		Stream<Document> infos = store.values().stream().map(doc->(Document)doc);
 
@@ -371,7 +373,10 @@ public class TempRepositoryService implements RepositoryService {
 
 	@Override
 	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference {
-	      final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.getMetadata());
+        // IMPORTANT breaking change in support of #55 and #24.
+        // The query namespace now includes all fields in the document link, including the parent folder, mediaType, etc.
+        // Medatadata fields that used to be in the root of the query namespace must now be prefixed with 'metadata'.
+	      final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.toJson());
 	        Reference first = new Reference(ref.id, newVersion("0"));
 	        Collection<DocumentImpl> history = store.subMap(first, true, ref, true).values();
 	        if (history.isEmpty()) throw new InvalidReference(ref);

@@ -299,7 +299,10 @@ class WorkspaceImpl implements Workspace {
 	
 	public Stream<NamedRepositoryObject> catalogue(Query filter, boolean searchHistory) {
 		
-		final Predicate<NamedRepositoryObject> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.getMetadata());
+        // IMPORTANT breaking change in support of #55 and #24.
+        // The query namespace now includes all fields in the document link, including the parent folder, mediaType, etc.
+        // Medatadata fields that used to be in the root of the query namespace must now be prefixed with 'metadata'.
+		final Predicate<NamedRepositoryObject> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.toJson());
 
 		Stream<DocumentInfo> docInfo = children.values().stream()
 		        .filter(child -> child.getType() == Type.DOCUMENT_LINK)
@@ -359,7 +362,7 @@ class WorkspaceImpl implements Workspace {
 			.map(e -> e.getValue());
 		
 		if (remainingName.isEmpty()) {
-		    return matchingChildren;
+		    return matchingChildren.filter(item->filter.containsItem(item.toJson()));
 		} else {
 			return matchingChildren
 			    .filter(child -> child.getType() == Type.WORKSPACE)

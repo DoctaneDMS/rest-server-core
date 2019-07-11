@@ -383,4 +383,61 @@ public abstract class BaseRepositoryServiceTest {
         assertEquals(EMPTY_METADATA, jsonRep.getJsonObject("parent").getJsonObject("metadata"));
         assertEquals(name1.join("/"), jsonRep.getJsonObject("parent").getString("name"));
 	}
+    
+    @Test
+	public void testRepositorySearchByMediaType() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Reference ref2 = service().createDocument(MediaType.APPLICATION_OCTET_STREAM_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName doc1Name = name1.add(randomUrlSafeName());
+        QualifiedName doc2Name = name1.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, doc1Name, ref1, true);
+        service().createDocumentLinkByName(ROOT_ID, doc2Name, ref2, true);
+		RepositoryObject[] result = service().catalogueByName(ROOT_ID, name1.add("*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
+		assertEquals(1, result.length);
+		assertEquals(((Document)result[0]).getReference(), ref1);
+	}
+    
+    @Test
+	public void testRepositorySearchByFolderState() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+        QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
+        QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
+        service().createWorkspaceByName(ROOT_ID, name1, State.Closed, EMPTY_METADATA);
+        service().createWorkspaceByName(ROOT_ID, name2, State.Open, EMPTY_METADATA);
+		RepositoryObject[] resultAll = service().catalogueByName(ROOT_ID, QualifiedName.ROOT, Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = service().catalogueByName(ROOT_ID, QualifiedName.ROOT, Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
+		assertEquals(2, resultAll.length);
+		assertEquals(1, result.length);
+		assertEquals(name1, ((Workspace)result[0]).getName());
+	}
+    
+    @Test
+	public void testRepositorySearchByParentFolderStateAndMediaType() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+        QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
+        QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Reference ref2 = service().createDocument(MediaType.APPLICATION_OCTET_STREAM_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName W1doc1Name = name1.add(randomUrlSafeName());
+        QualifiedName W1doc2Name = name1.add(randomUrlSafeName());
+        QualifiedName W2doc1Name = name2.add(randomUrlSafeName());
+        QualifiedName W2doc2Name = name2.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, W1doc1Name, ref1, true);
+        service().createDocumentLinkByName(ROOT_ID, W1doc2Name, ref2, true);
+        service().createDocumentLinkByName(ROOT_ID, W2doc1Name, ref1, true);
+        service().createDocumentLinkByName(ROOT_ID, W2doc2Name, ref2, true);
+        // Close worspace 2
+        service().updateWorkspaceByName(ROOT_ID, name2, null, State.Closed, EMPTY_METADATA, false);
+		JsonObject[] resultAll = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).map(item->item.toJson()).toArray(JsonObject[]::new);
+		RepositoryObject[] resultClosed = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] resultText = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
+		JsonObject[] resultClosedAndText = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}"), false).map(item->item.toJson()).toArray(JsonObject[]::new);
+		assertEquals(4, resultAll.length);
+		assertEquals(2, resultClosed.length);
+		assertEquals(2, resultText.length);
+		assertEquals(1, resultClosedAndText.length);
+	}
+	
 }

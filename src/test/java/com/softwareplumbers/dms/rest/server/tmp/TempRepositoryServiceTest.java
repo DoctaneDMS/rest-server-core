@@ -65,7 +65,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	@Test
 	public void testRepositorySearch() throws IOException, InvalidWorkspace {
 		TestRepository repository = getTestRepository();
-		RepositoryObject[] result = repository.service.catalogue(Query.fromJson("{ 'filename': 'partiphuckborlz'}"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = repository.service.catalogue(Query.fromJson("{ 'metadata': { 'filename': 'partiphuckborlz'}}"), false).toArray(RepositoryObject[]::new);
 		assertEquals(result.length, 1);
 		assertEquals(((Document)result[0]).getReference(), repository.ref2);
 	}
