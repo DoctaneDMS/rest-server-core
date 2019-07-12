@@ -457,13 +457,14 @@ public interface RepositoryService {
 	 *  from a catalog search of the workspace, unless the searchHistory option
 	 *  is set.
 	 *  
-	 * @param workspace_id
+	 * @param root_id Root workspace id
+     * @param path Path to workspace 
 	 * @param doc_id document id to remove from workspace
 	 * @throws InvalidWorkspace if workspace does not exist
 	 * @throws InvalidDocumentId if document is not in workspace
 	 * @throws InvalidWorkspaceState if workspace is not open
 	 */
-	public void deleteDocument(String workspace_id, String doc_id) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState;
+	public void deleteDocument(String workspace_id, QualifiedName path, String doc_id) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState;
 	
 	/** Remove a document from a workspace
 	 *   

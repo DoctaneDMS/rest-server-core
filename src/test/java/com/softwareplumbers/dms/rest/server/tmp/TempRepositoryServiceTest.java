@@ -77,7 +77,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 		String workspace_id = UUID.randomUUID().toString();
 		repository.service.updateDocument(repository.ref1.id, null, null, null, workspace_id, true);
 		assertEquals(repository.service.catalogueById(workspace_id, null, false).count(), 1);
-		repository.service.deleteDocument(workspace_id, repository.ref1.id);
+		repository.service.deleteDocument(workspace_id, QualifiedName.ROOT, repository.ref1.id);
 		assertEquals(repository.service.catalogueById(workspace_id, null, false).count(), 0);
 	}
 	

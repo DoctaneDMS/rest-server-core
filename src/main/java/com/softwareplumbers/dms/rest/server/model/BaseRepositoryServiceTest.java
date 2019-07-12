@@ -138,7 +138,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test (expected = InvalidDocumentId.class)
 	public void testDeleteDocumentInvalidDocumentError() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
 		String workspace = service().createWorkspaceById(null, null, State.Open, null);
-		service().deleteDocument(workspace, randomDocumentReference().getId());
+		service().deleteDocument(workspace, QualifiedName.ROOT, randomDocumentReference().getId());
 	}
 
 	@Test (expected = InvalidWorkspace.class)
@@ -147,7 +147,7 @@ public abstract class BaseRepositoryServiceTest {
 			MediaType.TEXT_PLAIN_TYPE, 
 			()->toStream(randomText()), null, null, false
 		);
-		service().deleteDocument(randomWorkspaceId(), ref.id);
+		service().deleteDocument(randomWorkspaceId(), QualifiedName.ROOT, ref.id);
 	}
 	
 	@Test 

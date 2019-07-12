@@ -48,6 +48,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import java.util.Arrays;
 import java.util.List;
 
@@ -78,7 +79,7 @@ public class Workspaces {
     ///////////---------  member variables --------////////////
 
     private RepositoryServiceFactory repositoryServiceFactory;
-
+    
     ///////////---------  methods --------////////////
 
     /**
@@ -466,13 +467,19 @@ public class Workspaces {
             String rootId = ROOT_ID;
             String firstPart = wsName.get(0);
 
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            // If the qualified name starts with a '~', what follows is an Id which we will use for the root repository
             if (firstPart.startsWith("~")) {
                 rootId = firstPart.substring(1);
                 wsName = wsName.rightFromStart(1);
             } 
-
-            service.deleteObjectByName(rootId, wsName);
+            
+            if (!wsName.isEmpty() && wsName.getFromEnd(0).startsWith("~")) {
+                QualifiedName ws = wsName.leftFromEnd(1);
+                String documentId = wsName.getFromEnd(0).substring(1);
+                service.deleteDocument(rootId, ws, documentId);
+            } else {
+                service.deleteObjectByName(rootId, wsName);
+            }
 
             return Response.status(Status.NO_CONTENT).build();
         } catch (InvalidWorkspace err) {
@@ -481,6 +488,8 @@ public class Workspaces {
             return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
         } catch (InvalidWorkspaceState err) {
             return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();
+        } catch (InvalidDocumentId err) {
+            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);

@@ -451,13 +451,15 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public void deleteDocument(String workspaceId, String docId) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
-		LOG.logEntering("deleteDocument", workspaceId, docId);
+	public void deleteDocument(String workspaceId, QualifiedName path, String docId) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
+		LOG.logEntering("deleteDocument", workspaceId, path, docId);
 		if (workspaceId == null) throw LOG.logThrow("getWorkspaceById", new InvalidWorkspace("null"));
 		if (docId == null) throw LOG.logThrow("getWorkspaceById", new InvalidDocumentId("null"));
 
 		WorkspaceImpl result = workspacesById.get(workspaceId);
 		if (result == null) throw LOG.logThrow("deleteDocument", new InvalidWorkspace(workspaceId));
+        
+        result = result.getWorkspace(path).orElseThrow(()->LOG.logThrow("deleteDocument", new InvalidWorkspace(path)));
 
 		result.deleteById(docId);
 		
