@@ -402,19 +402,26 @@ public abstract class BaseRepositoryServiceTest {
     
     @Test
 	public void testRepositorySearchByFolderState() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+        QualifiedName name0 = randomQualifiedName();
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
-        service().createWorkspaceByName(ROOT_ID, name1, State.Closed, EMPTY_METADATA);
-        service().createWorkspaceByName(ROOT_ID, name2, State.Open, EMPTY_METADATA);
-		RepositoryObject[] resultAll = service().catalogueByName(ROOT_ID, QualifiedName.ROOT, Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] result = service().catalogueByName(ROOT_ID, QualifiedName.ROOT, Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
+        
+        service().createWorkspaceByName(baseId, name1, State.Closed, EMPTY_METADATA);
+        service().createWorkspaceByName(baseId, name2, State.Open, EMPTY_METADATA);
+		RepositoryObject[] resultAll = service().catalogueByName(baseId, QualifiedName.ROOT, Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = service().catalogueByName(baseId, QualifiedName.ROOT, Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
 		assertEquals(2, resultAll.length);
 		assertEquals(1, result.length);
-		assertEquals(name1, ((Workspace)result[0]).getName());
+		assertEquals(name0.addAll(name1), ((Workspace)result[0]).getName());
 	}
     
     @Test
 	public void testRepositorySearchByParentFolderStateAndMediaType() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+        QualifiedName name0 = randomQualifiedName();
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
         String originalText = randomText();
@@ -424,16 +431,16 @@ public abstract class BaseRepositoryServiceTest {
         QualifiedName W1doc2Name = name1.add(randomUrlSafeName());
         QualifiedName W2doc1Name = name2.add(randomUrlSafeName());
         QualifiedName W2doc2Name = name2.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, W1doc1Name, ref1, true);
-        service().createDocumentLinkByName(ROOT_ID, W1doc2Name, ref2, true);
-        service().createDocumentLinkByName(ROOT_ID, W2doc1Name, ref1, true);
-        service().createDocumentLinkByName(ROOT_ID, W2doc2Name, ref2, true);
+        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true);
+        service().createDocumentLinkByName(baseId, W1doc2Name, ref2, true);
+        service().createDocumentLinkByName(baseId, W2doc1Name, ref1, true);
+        service().createDocumentLinkByName(baseId, W2doc2Name, ref2, true);
         // Close worspace 2
-        service().updateWorkspaceByName(ROOT_ID, name2, null, State.Closed, EMPTY_METADATA, false);
-		JsonObject[] resultAll = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).map(item->item.toJson()).toArray(JsonObject[]::new);
-		RepositoryObject[] resultClosed = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }"), false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] resultText = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
-		JsonObject[] resultClosedAndText = service().catalogueByName(ROOT_ID, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}"), false).map(item->item.toJson()).toArray(JsonObject[]::new);
+        service().updateWorkspaceByName(baseId, name2, null, State.Closed, EMPTY_METADATA, false);
+		JsonObject[] resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).map(item->item.toJson()).toArray(JsonObject[]::new);
+		RepositoryObject[] resultClosed = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] resultText = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
+		JsonObject[] resultClosedAndText = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}"), false).map(item->item.toJson()).toArray(JsonObject[]::new);
 		assertEquals(4, resultAll.length);
 		assertEquals(2, resultClosed.length);
 		assertEquals(2, resultText.length);

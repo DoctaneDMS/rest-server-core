@@ -225,6 +225,7 @@ public interface RepositoryService {
 	 * @param stream (optional) a supplier function that produces a stream of binary data representing the document 
 	 * @param metadata (optional) a json object describing the document
 	 * @param workspaceId (optional) string identifying the workspace in which to place the document
+     * @param createWorkspace flag whether to create workspaces in the path
 	 * @return A reference to the new version of the document.
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
@@ -245,7 +246,7 @@ public interface RepositoryService {
      * @param documentName the fully qualified name of the document in a workspace
      * @param reference Reference of document to link to
      * @param create Allow object creation if object (or workspaces in path) do not exist
-     * @throws InvalidObject name if replaceExisting is false and an object with the given name already exists
+     * @throws InvalidObjectName if replaceExisting is false and an object with the given name already exists
      * @throws InvalidWorkspace if document link or workspace does not exist and create is false
      * @throws InvalidWorkspaceState if workspace is already closed
      * @throws InvalidReference 
