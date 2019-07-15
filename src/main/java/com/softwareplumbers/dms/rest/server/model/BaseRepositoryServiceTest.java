@@ -460,7 +460,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     private long countMatchingMetadata(List<NamedRepositoryObject> items, Predicate<JsonObject> match) {
-        return items.stream().map(NamedRepositoryObject::getMetadata).filter(match).count();
+        return items.stream().map(item->item.getMetadata()).filter(match).count();
     }
     
     private long countMatchingWorkspaceMetadata(List<NamedRepositoryObject> items, Predicate<JsonObject> match) {
