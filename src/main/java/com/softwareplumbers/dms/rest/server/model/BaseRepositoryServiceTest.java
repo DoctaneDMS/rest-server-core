@@ -16,8 +16,8 @@ import javax.ws.rs.core.MediaType;
 import org.junit.Test;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractquery.JsonUtil;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -26,31 +26,39 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /** Unit tests that should pass for all implementations of RepositoryService. 
+ * 
+ * Note that the underlying repository must support at least the metadata field "Description" in both workspaces and
+ * documents. This is important in implementations for systems such as Filenet which have fixed schemas for content
+ * metadata.
  * 
  */
 public abstract class BaseRepositoryServiceTest {
 	
 	public abstract RepositoryService service();
 	
-	public static final String[] names = { "julien", "peter", "fairfax", "austen", "celtic", "a", "the", "halibut", "eaten" };
-	public static final String characters = "-._";
-	public static final String reserved = "&$+,/:;=?@#";
+	public static final String[] NAMES = { "julien", "peter", "fairfax", "austen", "celtic", "a", "the", "halibut", "eaten" };
+	public static final String CHARACTERS = "-._";
+	public static final String RESERVED = "&$+,/:;=?@#";
 	
 	public static int unique = 0;
 	
 	public static final String randomUrlSafeName() {
-		StringBuffer buffer = new StringBuffer(names[(int)(Math.random() * names.length)]);
-		buffer.append(characters.charAt((int)(Math.random() * characters.length())));
+		StringBuilder buffer = new StringBuilder(NAMES[(int)(Math.random() * NAMES.length)]);
+		buffer.append(CHARACTERS.charAt((int)(Math.random() * CHARACTERS.length())));
 		buffer.append(Integer.toHexString(unique++));
 		return buffer.toString();
 	}
 	
 	public static final String randomReservedName() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		for (int i = 1; i < 3; i++) {
-			buffer.append(reserved.charAt((int)(Math.random() * reserved.length())));
+			buffer.append(RESERVED.charAt((int)(Math.random() * RESERVED.length())));
 			buffer.append(randomUrlSafeName());
 		}
 		return buffer.toString();
@@ -63,7 +71,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 		
 	public static final String randomText() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		for (int i = 1; i < 10; i++) {
 			buffer.append(randomUrlSafeName());
 			buffer.append(" ");
@@ -240,10 +248,14 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
 	}
 
-	/** Important - what should be returned when we have multiple versions of a document matching criteria.
+	/** *  Important - what should be returned when we have multiple versions of a document matching criteria.Definiton is that we return the latest version which matches the criteria.
 	 * 
-	 * Definiton is that we return the latest version which matches the criteria.
-	 * 
+	 *
+     * @throws java.io.IOException 
+     * @throws InvalidDocumentId 
+     * @throws InvalidWorkspace 
+     * @throws InvalidWorkspaceState 
+     * @throws InvalidReference 
 	 */
 	@Test
 	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
@@ -446,5 +458,41 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(2, resultText.length);
 		assertEquals(1, resultClosedAndText.length);
 	}
+    
+    private long countMatchingMetadata(List<NamedRepositoryObject> items, Predicate<JsonObject> match) {
+        return items.stream().map(NamedRepositoryObject::getMetadata).filter(match).count();
+    }
+    
+    private long countMatchingWorkspaceMetadata(List<NamedRepositoryObject> items, Predicate<JsonObject> match) {
+        return items.stream().map(item->item.getParent().getMetadata()).filter(match).count();
+    }
+    
+    @Test
+	public void testRepositorySearchContent() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+        QualifiedName name0 = randomQualifiedName();
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+
+        QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
+        QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), JsonUtil.parseObject("{'Description':'Text Document'}"), null, false);
+        Reference ref2 = service().createDocument(MediaType.APPLICATION_OCTET_STREAM_TYPE, ()->toStream(originalText), JsonUtil.parseObject("{'Description':'Binary Document'}"), null, false);
+        QualifiedName W1doc1Name = name1.add(randomUrlSafeName());
+        QualifiedName W1doc2Name = name1.add(randomUrlSafeName());
+        QualifiedName W2doc1Name = name2.add(randomUrlSafeName());
+        QualifiedName W2doc2Name = name2.add(randomUrlSafeName());
+        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true);
+        service().createDocumentLinkByName(baseId, W1doc2Name, ref2, true);
+        service().createDocumentLinkByName(baseId, W2doc1Name, ref1, true);
+        service().createDocumentLinkByName(baseId, W2doc2Name, ref2, true);
+        // Close workspace 2
+        service().updateWorkspaceByName(baseId, name2, null, State.Closed, JsonUtil.parseObject("{'Description':'Closed Workspace'}"), false);
+        service().updateWorkspaceByName(baseId, name1, null, null, JsonUtil.parseObject("{'Description':'Open Workspace'}"), false);
+		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).collect(Collectors.toList());
+        
+        assertEquals(2, countMatchingWorkspaceMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Closed Workspace")));
+        assertEquals(2, countMatchingMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Text Document")));
+	}
+
 	
 }
