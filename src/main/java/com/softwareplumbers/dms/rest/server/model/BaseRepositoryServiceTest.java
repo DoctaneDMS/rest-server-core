@@ -410,8 +410,8 @@ public abstract class BaseRepositoryServiceTest {
         
         service().createWorkspaceByName(baseId, name1, State.Closed, EMPTY_METADATA);
         service().createWorkspaceByName(baseId, name2, State.Open, EMPTY_METADATA);
-		RepositoryObject[] resultAll = service().catalogueByName(baseId, QualifiedName.ROOT, Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] result = service().catalogueByName(baseId, QualifiedName.ROOT, Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] resultAll = service().catalogueByName(baseId, QualifiedName.of("*"), Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = service().catalogueByName(baseId, QualifiedName.of("*"), Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
 		assertEquals(2, resultAll.length);
 		assertEquals(1, result.length);
 		assertEquals(name0.addAll(name1), ((Workspace)result[0]).getName());
