@@ -293,7 +293,7 @@ public class Workspaces {
                 if (updateType == UpdateType.CREATE)
                     service.createDocumentLinkByName(rootId, wsName, reference, createWorkspace);
                 else
-                    service.updateDocumentLinkByName(rootId, wsName, reference, updateType == UpdateType.CREATE_OR_UPDATE);
+                    service.updateDocumentLinkByName(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 
                 return LOG.logResponse("put", Response.accepted().build());
             }

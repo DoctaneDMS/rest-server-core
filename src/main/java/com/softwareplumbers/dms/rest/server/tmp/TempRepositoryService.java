@@ -535,14 +535,14 @@ public class TempRepositoryService implements RepositoryService {
     }
 	
 	@Override
-	public void updateDocumentLinkByName(String rootId, QualifiedName documentName, Reference reference, boolean create) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference {
+	public void updateDocumentLinkByName(String rootId, QualifiedName documentName, Reference reference, boolean createWorkspace, boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference {
 
 	    LOG.logEntering("createDocumentLinkByName", rootId, documentName, reference);
 
 	    if (documentName == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidObjectName(documentName));
 	    if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
 
-	    WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(documentName.parent, create);
+	    WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(documentName.parent, createWorkspace);
 
 	    Optional<NamedRepositoryObject> obj = workspace.getObject(documentName.part);
 
@@ -552,7 +552,7 @@ public class TempRepositoryService implements RepositoryService {
 	        else
 	            workspace.update(reference, documentName.part);
 	    } else {
-	        if (create)
+	        if (createLink)
 	            workspace.add(reference, documentName.part);
 	        else
 	            throw new InvalidObjectName(documentName);
