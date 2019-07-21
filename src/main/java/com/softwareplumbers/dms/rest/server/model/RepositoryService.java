@@ -190,9 +190,11 @@ public interface RepositoryService {
 	 * @param stream a supplier function that produces a stream of binary data representing the document
 	 * @param metadata a Json object describing the document
 	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
+     * @param createDocument if true, create a new document instead of throwing error if document does not exist
 	 * @return A Reference object that can later be used to retrieve the document
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
+     * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
 	 */
 	public Reference updateDocumentByName(
 			String rootId,
@@ -245,17 +247,20 @@ public interface RepositoryService {
      * @param rootId the Id of the 'root' workspace
      * @param documentName the fully qualified name of the document in a workspace
      * @param reference Reference of document to link to
-     * @param create Allow object creation if object (or workspaces in path) do not exist
-     * @throws InvalidObjectName if replaceExisting is false and an object with the given name already exists
-     * @throws InvalidWorkspace if document link or workspace does not exist and create is false
+     * @param createWorkspace Allow workspace creation if workspace dos not exist
+     * @param createLink if true, create a new document link instead of throwing error if document link does not exist
+     * @throws InvalidWorkspace if document link or workspace does not exist and createWorkspace is false
      * @throws InvalidWorkspaceState if workspace is already closed
-     * @throws InvalidReference 
+     * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
+     * @throws InvalidReference if reference does not refer to a valid document
+     * 
      */
     public void updateDocumentLinkByName(
             String rootId,
             QualifiedName documentName,
             Reference reference,
-            boolean create) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
+            boolean createWorkspace,
+            boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
 
     
 	/** Catalog a repository.

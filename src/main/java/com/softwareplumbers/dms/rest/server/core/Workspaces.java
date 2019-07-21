@@ -143,6 +143,7 @@ public class Workspaces {
         try {
             
             Query filterConstraint = filter != null && filter.length() > 0 ? Query.urlDecode(filter) : Query.UNBOUNDED;
+            LOG.log.fine(()->String.format("Decoded filter: " + filterConstraint));
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
@@ -351,7 +352,7 @@ public class Workspaces {
                 if (updateType == UpdateType.CREATE)
                     service.createDocumentLinkByName(rootId, wsName, reference, createWorkspace);
                 else
-                    service.updateDocumentLinkByName(rootId, wsName, reference, updateType == UpdateType.CREATE_OR_UPDATE);
+                    service.updateDocumentLinkByName(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 
                 return LOG.logResponse("put", Response.accepted().build());
             }

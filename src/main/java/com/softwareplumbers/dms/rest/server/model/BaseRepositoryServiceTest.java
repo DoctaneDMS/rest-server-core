@@ -366,6 +366,35 @@ public abstract class BaseRepositoryServiceTest {
 	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
 	    assertEquals(ref1, doc1.getReference());
 	}
+    
+    @Test
+	public void testUpdateDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName docName = name1.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(ref1, doc1.getReference());
+        service().updateDocumentLinkByName(ROOT_ID, docName, ref2, false, false);
+	    Document doc2 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(ref2, doc2.getReference());
+	}
+    
+    @Test
+	public void testUpdateDocumentLinkInCreateMode() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName docName = name1.add(randomUrlSafeName());
+        service().updateDocumentLinkByName(ROOT_ID, docName, ref1, false, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(ref1, doc1.getReference());
+    }
 	
 	@Test 
 	public void testSearchByDocumentId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId, InvalidObjectName, InvalidReference  {
