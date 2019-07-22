@@ -384,6 +384,41 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
+	public void testUpdateDocumentByName() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        QualifiedName docName = name1.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(ref1, doc1.getReference());
+        service().updateDocumentByName(ROOT_ID, docName, null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
+	    Document doc2 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
+	}
+    
+        
+    /* broadly speaking, when we have a folder id and name, test that we get the same result when reading/updating
+    * the document either using the full path or the relative path from the folder id.
+    */
+    @Test
+	public void testEquivalenceOfNameAndId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        String wsid = service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        String docPart = randomUrlSafeName(); 
+        QualifiedName docName = name1.add(docPart);
+        service().createDocumentLinkByName(wsid, QualifiedName.of(docPart), ref1, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+	    assertEquals(ref1, doc1.getReference());
+        service().updateDocumentByName(wsid, QualifiedName.of(docPart), null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
+	    Document doc2 = (Document)service().getObjectByName(wsid, QualifiedName.of(docPart));
+	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
+	}
+    
+    @Test
 	public void testUpdateDocumentLinkInCreateMode() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
