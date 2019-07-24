@@ -61,8 +61,10 @@ import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 import com.softwareplumbers.keymanager.KeyManager;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import org.glassfish.jersey.client.ClientProperties;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 
@@ -89,7 +91,7 @@ public class TempRepositoryServerTest {
             .register(JsonProcessingFeature.class));
     
     @Autowired
-    CookieAuthenticationService cookieHandler;
+    CookieRequestValidationService cookieHandler;
     @Autowired
     KeyManager<?,?> keyManager;
     
@@ -515,6 +517,33 @@ public class TempRepositoryServerTest {
 		}
 
 	}
+    
+    /** Test that posting a test file returns a non-null ID.
+     * 
+     * This tests that no cookie is required when using dummy authentication for a
+     * repository.
+     */
+	@Test
+	public void postFileTestDummyAuth() throws IllegalStateException, IOException {
+
+    	WebTarget target = client.target("http://localhost:" + port + "/docs/dummy/file");
+    	
+        InputStream file = TestRepository.getTestFile("/test1.txt");
+
+    	Response response = target
+    			.request(MediaType.APPLICATION_JSON_TYPE)
+    			.post(Entity.entity(file, MediaType.TEXT_PLAIN));
+    	
+			
+		if (response.getStatus() == Response.Status.CREATED.getStatusCode()) {
+			JsonObject result = response.readEntity(JsonObject.class);
+			assertNotNull(result.get("id"));
+		} else {
+			System.out.println(response.toString());
+			throw new RuntimeException("Bad post");
+		}
+
+	}
 	
     /** Test that getting a document that was posted returns a document equal to the original.
      * 
@@ -711,7 +740,7 @@ public class TempRepositoryServerTest {
         byte[] signatureBytes = sig.sign();
         
         WebTarget target = client
-            .target("http://localhost:" + port + "/auth/service")
+            .target("http://localhost:" + port + "/auth/tmp/service")
             .queryParam("request", Base64.getUrlEncoder().encodeToString(requestBytes))
             .queryParam("signature", Base64.getUrlEncoder().encodeToString(signatureBytes));
   
@@ -724,6 +753,22 @@ public class TempRepositoryServerTest {
             System.out.println(response.toString());
             throw new RuntimeException("Bad service auth request");
         }
+    }
+    
+    @Test
+    public void testSignonServiceRedirect() {
+        WebTarget target = client
+            .property(ClientProperties.FOLLOW_REDIRECTS, Boolean.FALSE)
+            .target("http://localhost:" + port + "/auth/tmp/signon?relayState=abcdef");
+  
+        Response response = target.request().get();
+            
+        assertEquals(Response.Status.SEE_OTHER.getStatusCode(), response.getStatus());
+        URI location = response.getLocation();
+        //These values come from the services.xml config
+        assertEquals("localhost", location.getHost());
+        assertEquals(6666, location.getPort());
+        assertEquals("relayState=abcdef",location.getQuery());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.dms.rest.server.model.SAMLResponseHandlerService;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.file.FileSystems;
@@ -18,24 +19,11 @@ import net.shibboleth.utilities.java.support.component.ComponentInitializationEx
 import net.shibboleth.utilities.java.support.resolver.ResolverException;
 
 public class AuthCryptoTest {
-    
-    Path file;
-    
-    @Before
-    public void setup() {
-        file = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"), "Doctane_TEST.keystore"); 
-    }
-    
-    @After 
-    public void cleanup() {
-        file.toFile().delete();
-    }
+
 
     @Test
     public void testGetCredential() throws InitializationException, ComponentInitializationException, ResolverException, KeyStoreException {
-        KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager = new KeyManager<>(file.toString(),"",SystemSecretKeys.class, SystemKeyPairs.class);
-        Authentication authResource = new Authentication(new CookieAuthenticationService(keyManager), keyManager);
-        Credential credential = Authentication.getIDPCredential();
+        Credential credential = new SAMLResponseHandlerService().getIDPCredential("https://auth.softwareplumbers.com/auth/realms/doctane-test");
         assertEquals("https://auth.softwareplumbers.com/auth/realms/doctane-test",credential.getEntityId());
     }
 }

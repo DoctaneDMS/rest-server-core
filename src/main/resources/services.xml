@@ -17,10 +17,27 @@
     <bean id="tmp" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
    		<constructor-arg index="0" value="filename"/>
     </bean>
+    
+    <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
+        <property name="RequestValidationService">
+            <bean class="com.softwareplumbers.dms.rest.server.core.CookieRequestValidationService">
+                <constructor-arg index="0" ref="keymgr"/>
+                <constructor-arg index="1" value="tmp"/>
+            </bean>
+        </property>
+    </bean>
    
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
     	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
+    </bean>
+    
+    <bean id="AuthenticationServiceFactory"
+            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthenticationServiceFactory"/>
+        <property name="serviceMappings>
+            <property name="tmp" ref="auth.tmp"/>
+        </property>
     </bean>
 
 </beans>

@@ -18,19 +18,6 @@
    	<constructor-arg index="0" value="filename"/>
     </bean>
     
-    <bean id="cookieValidation" class="com.softwareplumbers.dms.rest.server.core.CookieRequestValidationService" scope="singleton">
-        <constructor-arg index="0" ref="keymgr"/>
-        <constructor-arg index="1" value="tmp"/>
-    </bean>
-    
-    <bean id="signatureValidation" class="com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService" scope="singleton">
-        <constructor-arg index="0" ref="keymgr"/>
-    </bean>
-    
-    <bean id="signonService" class="com.softwareplumbers.dms.rest.server.core.TemplateSignonService" scope="singleton">
-        <constructor-arg index="0" value="http://localhost:6666/abc?relayState={relayState}"/>
-    </bean>
-    
     <bean id="dummyValidation" class="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" scope="singleton">
         <constructor-arg index="0" value="tmp"/>
     </bean>
@@ -39,27 +26,15 @@
         <constructor-arg index="0" ref="dummyValidation"/>
     </bean>
 
-    <bean id="auth.dummy" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
+    <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
         <property name="RequestValidationService" ref="dummyValidation"/>
         <property name="SignonService" ref="dummySignonService"/>
-    </bean>
-
-    <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
-        <property name="RequestValidationService" ref="cookieValidation"/>
-        <property name="SignedRequestValidationService" ref="signatureValidation"/>
-        <property name="SignonService" ref="signonService"/>
         
     </bean>
 
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
         <property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
-        <property name="serviceMappings">
-            <props>
-                <prop key="tmp">tmp</prop>
-                <prop key="dummy">tmp</prop>
-            </props>
-        </property>
     </bean>
    
     <bean id="AuthenticationServiceFactory"
@@ -68,7 +43,6 @@
         <property name="serviceMappings">
             <props>
                 <prop key="tmp">auth.tmp</prop>
-                <prop key="dummy">auth.dummy</prop>
             </props>
         </property>
     </bean>
