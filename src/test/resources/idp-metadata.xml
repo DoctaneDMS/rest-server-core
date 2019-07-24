@@ -14,7 +14,7 @@
    <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
 
       <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-         Location="https://auth.softwareplumbers.com/auth/realms/doctane-test/protocol/saml" />
+         Location="https://auth.softwareplumbers.com/auth/realms/doctane-test/protocol/saml/clients/doctaneAPILocal" />
       <KeyDescriptor use="signing">
         <dsig:KeyInfo>
           <dsig:KeyName>-DPsghzOJEw81Q0scYeZVvZ93BP6md8wFMjMWLMCTww</dsig:KeyName>

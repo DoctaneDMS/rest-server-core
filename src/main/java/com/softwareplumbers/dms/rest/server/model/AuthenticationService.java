@@ -13,7 +13,7 @@ public class AuthenticationService {
     
     private RequestValidationService requestValidationService;
     private SignonService signonService;
-    private SAMLResponseHandlerService samlResponseHandlerService;
+    private SAMLProtocolHandlerService samlResponseHandlerService;
     private SignedRequestValidationService signedRequestValidationService;
     
     public RequestValidationService getRequestValidationService() {
@@ -32,11 +32,11 @@ public class AuthenticationService {
         this.signonService = signonService;
     }
     
-    public SAMLResponseHandlerService getSAMLResponseHandlerService() {
+    public SAMLProtocolHandlerService getSAMLResponseHandlerService() {
         return samlResponseHandlerService;
     }
     
-    public void setSAMLResponseHandlerService(SAMLResponseHandlerService samlResponseHandlerService) {
+    public void setSAMLResponseHandlerService(SAMLProtocolHandlerService samlResponseHandlerService) {
         this.samlResponseHandlerService = samlResponseHandlerService;
     }
     

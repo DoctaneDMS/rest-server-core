@@ -15,9 +15,24 @@
 	</bean>
 
     <bean id="tmp" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
-   		<constructor-arg index="0" value="filename"/>
+        <constructor-arg index="0" value="filename"/>
     </bean>
     
+    <bean id="dummyValidation" class="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" scope="singleton">
+        <constructor-arg index="0" value="tmp"/>
+    </bean>
+            
+    <bean id="auth.dummy" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
+        <property name="RequestValidationService" ref="dummyValidation"/>
+        <property name="SignonService">
+            <bean class="com.softwareplumbers.dms.rest.server.core.DummySignonService">
+                <constructor-arg index="0" ref="dummyValidation"/>
+            </bean>
+        </property>
+    </bean>
+    
+    <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
+
     <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
         <property name="RequestValidationService">
             <bean class="com.softwareplumbers.dms.rest.server.core.CookieRequestValidationService">
@@ -25,19 +40,40 @@
                 <constructor-arg index="1" value="tmp"/>
             </bean>
         </property>
+        <property name="SignedRequestValidationService">
+            <bean class="com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService">
+                <constructor-arg index="0" ref="keymgr"/>
+            </bean>
+        </property>
+        <property name="SignonService">
+            <bean class="com.softwareplumbers.dms.rest.server.core.SAMLSignonService">
+                <constructor-arg index="0" ref="softwarePlumbersSAMLServer"/>
+                <constructor-arg index="1" value="http://localhost:8080/auth/tmp/saml"/>
+            </bean>
+        </property>
+        <property name="SAMLResponseHandlerService" ref="softwarePlumbersSAMLServer"/>
     </bean>
-   
+
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
+        <property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
+        <property name="serviceMappings">
+            <props>
+                <prop key="tmp">tmp</prop>
+                <prop key="dummy">tmp</prop>
+            </props>
+        </property>
     </bean>
-    
+   
     <bean id="AuthenticationServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
     	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthenticationServiceFactory"/>
-        <property name="serviceMappings>
-            <property name="tmp" ref="auth.tmp"/>
+        <property name="serviceMappings">
+            <props>
+                <prop key="tmp">auth.tmp</prop>
+                <prop key="dummy">auth.dummy</prop>
+            </props>
         </property>
     </bean>
-
+ 
 </beans>

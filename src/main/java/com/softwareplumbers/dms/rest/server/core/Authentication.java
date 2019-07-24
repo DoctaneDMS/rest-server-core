@@ -1,8 +1,8 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.dms.rest.server.model.AuthenticationService;
-import com.softwareplumbers.dms.rest.server.model.SAMLResponseHandlerService;
-import com.softwareplumbers.dms.rest.server.model.SAMLResponseHandlerService.SAMLParsingError;
+import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService;
+import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLParsingError;
 import com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService.RequestValidationError;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -106,7 +106,7 @@ public class Authentication {
         LOG.logEntering("handleSamlResponse");
         
         AuthenticationService authService = authenticationServiceFactory.getService(repository);
-        SAMLResponseHandlerService samlResponseHandler = authService.getSAMLResponseHandlerService();
+        SAMLProtocolHandlerService samlResponseHandler = authService.getSAMLResponseHandlerService();
         
         try {     
             

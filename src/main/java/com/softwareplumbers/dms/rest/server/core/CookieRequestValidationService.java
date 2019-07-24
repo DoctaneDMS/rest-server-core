@@ -30,11 +30,11 @@ public class CookieRequestValidationService implements RequestValidationService 
     private static final Log LOG = new Log(CookieRequestValidationService.class);
     
     private final Key jwtSigningKey;
-    private final String cookiePath;
+    private final String repository;
 
-    public CookieRequestValidationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager, String cookiePath) {
+    public CookieRequestValidationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager, String repository) {
         jwtSigningKey = keyManager.getKey(SystemSecretKeys.JWT_SIGNING_KEY);
-        this.cookiePath = cookiePath;
+        this.repository = repository;
     }
     
     public NewCookie generateCookie(String uid) {
@@ -47,8 +47,8 @@ public class CookieRequestValidationService implements RequestValidationService 
             .signWith(jwtSigningKey)
             .compact();
         NewCookie cookie = new NewCookie(
-             "DoctaneUserToken", jwt, 
-             cookiePath, null, Cookie.DEFAULT_VERSION, "Doctane User Token", 
+             "DoctaneUserToken/"+repository, jwt, 
+             "/", null, Cookie.DEFAULT_VERSION, "Doctane User Token", 
              NewCookie.DEFAULT_MAX_AGE, expirationDateAsDate, false, false);
         return LOG.logReturn("generateCookie", cookie);    
     }
@@ -73,7 +73,7 @@ public class CookieRequestValidationService implements RequestValidationService 
     @Override
     public boolean validateRequest(ContainerRequestContext requestContext) {
         LOG.logEntering("validateRequest", Log.fmt(requestContext));
-        Cookie cookie = requestContext.getCookies().get("DoctaneUserToken");
+        Cookie cookie = requestContext.getCookies().get("DoctaneUserToken/"+repository);
         LOG.log.finer(()->"DoctaneUserToken Cookie:" + cookie);
         if (cookie != null) {
             String jws = cookie.getValue();
