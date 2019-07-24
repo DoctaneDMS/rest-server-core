@@ -45,20 +45,22 @@ public class SignedRequestValidationService {
     }
     
     public boolean validateSignature(byte[] serviceRequest, byte[] signature, String account) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, java.security.SignatureException {
+        LOG.logEntering("validateSignature", serviceRequest, signature, account);
         Key key = keyManager.getKey(account);
         if (key == null) return false;
         Signature sig = Signature.getInstance(KeyManager.PUBLIC_KEY_SIGNATURE_ALGORITHM, "SUN");
         sig.initVerify((PublicKey)key);
         sig.update(serviceRequest);
-        return sig.verify(signature);
+        return LOG.logReturn("validateSignature", sig.verify(signature));
     }
     
     public boolean validateInstant(long instant) {
-        return Math.abs(instant - System.currentTimeMillis()) < 60000L;
+        LOG.logEntering("validateInstant", instant);
+        return LOG.logReturn("validateinstant", Math.abs(instant - System.currentTimeMillis()) < 60000L);
     }
     
     public Optional<String> validateSignature(String request, String signature) throws RequestValidationError {
-        
+        LOG.logEntering("validateSignature", request, signature);
         byte[] requestBinary = Base64.getUrlDecoder().decode(request);
         byte[] signatureBinary = Base64.getUrlDecoder().decode(signature);
 
@@ -66,15 +68,14 @@ public class SignedRequestValidationService {
             ByteArrayInputStream is = new ByteArrayInputStream(requestBinary);
             JsonReader reader = Json.createReader(is); 
         ) {
-
             JsonObject requestObject = reader.readObject();
             String account = requestObject.getString("account");
             long instant = requestObject.getJsonNumber("instant").longValueExact();
             
             if (validateInstant(instant) && validateSignature(requestBinary, signatureBinary, account))
-                return Optional.of(account);
+                return LOG.logReturn("validateSignature",Optional.of(account));
             else
-                return Optional.empty();
+                return LOG.logReturn("validateSignature",Optional.empty());
         
         } catch (IOException e) {
             throw LOG.logThrow("validateSignature", new RequestValidationError("could not read request", e));

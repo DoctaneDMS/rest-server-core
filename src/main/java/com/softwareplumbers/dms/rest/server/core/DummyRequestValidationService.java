@@ -6,12 +6,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.dms.rest.server.util.DummySecurityContext;
-import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
 import com.softwareplumbers.dms.rest.server.util.Log;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -30,17 +25,17 @@ public class DummyRequestValidationService implements RequestValidationService {
     
     private static final Log LOG = new Log(DummyRequestValidationService.class);
     
-    private final String cookiePath;
+    private final String repository;
     
-    public DummyRequestValidationService(String cookiePath) {
-        this.cookiePath = cookiePath;
+    public DummyRequestValidationService(String repository) {
+        this.repository = repository;
     }
 
     @Override
     public boolean validateRequest(ContainerRequestContext requestContext) {
         LOG.logEntering("validateRequest", Log.fmt(requestContext));
-        Cookie cookie = requestContext.getCookies().get("DummyDoctaneUserToken");
-        LOG.log.finer(()->"DummyDoctaneUserToken Cookie:" + cookie);
+        Cookie cookie = requestContext.getCookies().get("DoctaneUserToken/"+repository);
+        LOG.log.finer(()->"DoctaneUserToken Cookie:" + cookie);
         String user = "DummyUser";
         if (cookie != null) user = cookie.getValue();
         try {
@@ -49,7 +44,7 @@ public class DummyRequestValidationService implements RequestValidationService {
             ZonedDateTime fromDate = LocalDateTime.now().atZone(ZoneId.systemDefault());
             requestContext.setProperty("validUntil", Date.from(expirationDate.toInstant()));
             requestContext.setProperty("validFrom", Date.from(fromDate.toInstant()));
-            return true;
+            return LOG.logReturn("validateRequest",true);
         } catch (Exception exp) {
             return LOG.logReturn("validateRequest", false);
         }   
@@ -57,12 +52,13 @@ public class DummyRequestValidationService implements RequestValidationService {
 
     @Override
     public Response.ResponseBuilder sendIdentityToken(Response.ResponseBuilder response, String userId) {
+        LOG.logEntering("sendIdentityToken", Log.fmt(response), userId);
         ZonedDateTime expirationDate = LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault());
         NewCookie cookie = new NewCookie(
-             "DummyDoctaneUserToken", userId, 
-             cookiePath, null, Cookie.DEFAULT_VERSION, "Dummy Doctane User Token", 
+             "DoctaneUserToken/"+repository , userId, 
+             null, null, Cookie.DEFAULT_VERSION, "Dummy Doctane User Token", 
              NewCookie.DEFAULT_MAX_AGE, Date.from(expirationDate.toInstant()), false, false);
-        return response.cookie(cookie);
+        return LOG.logReturn("sendIdentityToken", response.cookie(cookie));
     }
     
 }

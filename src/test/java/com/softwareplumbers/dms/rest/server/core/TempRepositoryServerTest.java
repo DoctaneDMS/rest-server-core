@@ -747,7 +747,7 @@ public class TempRepositoryServerTest {
         Response response = target.request().get();
             
         if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-            NewCookie cookie = response.getCookies().get("DoctaneUserToken");
+            NewCookie cookie = response.getCookies().get("DoctaneUserToken/tmp");
             assertNotNull(cookie);
         } else {
             System.out.println(response.toString());

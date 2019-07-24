@@ -29,6 +29,11 @@
                 <constructor-arg index="0" ref="dummyValidation"/>
             </bean>
         </property>
+        <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
+    </bean>
+    
+    <bean id="signedRequestValidationService" class="com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService" scope="singleton">
+                <constructor-arg index="0" ref="keymgr"/>
     </bean>
     
     <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
@@ -40,11 +45,7 @@
                 <constructor-arg index="1" value="tmp"/>
             </bean>
         </property>
-        <property name="SignedRequestValidationService">
-            <bean class="com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService">
-                <constructor-arg index="0" ref="keymgr"/>
-            </bean>
-        </property>
+        <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
         <property name="SignonService">
             <bean class="com.softwareplumbers.dms.rest.server.core.SAMLSignonService">
                 <constructor-arg index="0" ref="softwarePlumbersSAMLServer"/>
@@ -70,7 +71,7 @@
     	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthenticationServiceFactory"/>
         <property name="serviceMappings">
             <props>
-                <prop key="tmp">auth.tmp</prop>
+                <prop key="tmp">auth.dummy</prop>
                 <prop key="dummy">auth.dummy</prop>
             </props>
         </property>
