@@ -233,6 +233,8 @@ public class Workspaces {
 
         } catch (InvalidWorkspace err) {
             return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
+        } catch (InvalidDocumentId err) {
+            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
