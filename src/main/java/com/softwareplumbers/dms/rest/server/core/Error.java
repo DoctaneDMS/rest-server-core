@@ -40,6 +40,12 @@ public class Error {
 				.build();		
 	}
     
+    public static JsonObject mapServiceError(InvalidContentType err) {
+		return Json.createObjectBuilder()
+				.add("error", "Content type is invalid")
+				.build();		
+	}
+    
     public static JsonObject mapServiceError(CannotConvertFormatException err) {
         return Json.createObjectBuilder()
 				.add("error", "Cannot convert " + err.mediaType + " to XML")

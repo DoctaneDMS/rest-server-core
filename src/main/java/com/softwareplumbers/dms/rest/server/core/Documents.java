@@ -43,6 +43,8 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** Handle CRUD operations on documents.
  * 
@@ -208,7 +210,7 @@ public class Documents {
                     .entity(Error.documentNotFound(repository,id,version))
                     .build());    			
     		}
-    	} catch (Throwable e) {
+    	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return LOG.logResponse("getFile", Response
@@ -216,7 +218,11 @@ public class Documents {
                 .type(MediaType.APPLICATION_JSON_TYPE)
                 .entity(Error.reportException(e))
                 .build());
-    	}
+    	} catch (InvalidContentType err) {
+            return LOG.logResponse("get", Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
+        } catch (InvalidReference err) {
+            return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(err)).build());
+        }
     }
         
     /** GET metadata object on path /docs/{repository}/{id}/metadata
@@ -256,11 +262,13 @@ public class Documents {
     		} else {
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.documentNotFound(repository,id,version)).build();    			
     		}
-    	} catch (Throwable e) {
+    	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.reportException(e)).build();
-    	}
+    	} catch (InvalidReference ex) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.reportException(ex)).build();
+        }
     }
 
     /** list workspaces in repository {repository} which document {id} belongs
