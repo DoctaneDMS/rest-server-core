@@ -49,8 +49,11 @@ import com.softwareplumbers.common.abstractquery.Query;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 /** Handle catalog operations on repositories and documents.
@@ -236,6 +239,12 @@ public class Workspaces {
             return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
         } catch (InvalidDocumentId err) {
             return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
+        } catch (UnsupportedEncodingException err) {
+            return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(err)).build());
+        } catch (InvalidObjectName err) {
+            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
+        } catch (InvalidContentType err) {
+            return LOG.logResponse("get", Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
