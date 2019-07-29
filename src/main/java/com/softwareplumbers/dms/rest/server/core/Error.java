@@ -12,12 +12,16 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjec
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.rest.server.util.Log;
+
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 /** Generate error reports in Json */
 public class Error {
+    
+    public static final Log LOG = new Log(Error.class);
 	
 	public static JsonObject repositoryNotFound(String repository) {
 		return Json.createObjectBuilder()
@@ -95,6 +99,7 @@ public class Error {
 	}
 
 	public static JsonObject reportException(Throwable e) {
+	    LOG.logError("reportException", e);
 		return Json.createObjectBuilder().add("error", "Exception " + e.toString()).build();		
 	}
 	

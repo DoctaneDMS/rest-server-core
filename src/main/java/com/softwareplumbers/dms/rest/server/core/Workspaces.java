@@ -177,6 +177,7 @@ public class Workspaces {
                 // Path has no wildcards, so we are returning at most one object
                 RepositoryObject result;
                     if (!wsName.isEmpty() && wsName.getFromEnd(0).startsWith("~")) {
+                        // See core issue #57
                         QualifiedName path = wsName.leftFromEnd(1);
                         if (!path.isEmpty()) {
                             rootId = service.getObjectByName(rootId, path).getId();
