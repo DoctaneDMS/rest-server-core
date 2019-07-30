@@ -25,6 +25,6 @@ publish:
 
 deploy:
   stage: downstream
-    trigger: document-management/rest-server-core
+  trigger: document-management/rest-server-core
   
   
