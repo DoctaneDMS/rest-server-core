@@ -8,6 +8,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.dms.rest.server.core.SystemKeyPairs;
 import com.softwareplumbers.dms.rest.server.core.SystemSecretKeys;
 import com.softwareplumbers.dms.rest.server.util.Log;
+import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.KeyManager;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -44,7 +45,7 @@ public class SignedRequestValidationService {
         this.keyManager = keyManager;
     }
     
-    public boolean validateSignature(byte[] serviceRequest, byte[] signature, String account) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, java.security.SignatureException {
+    public boolean validateSignature(byte[] serviceRequest, byte[] signature, String account) throws NoSuchAlgorithmException, BadKeyException, NoSuchProviderException, InvalidKeyException, java.security.SignatureException {
         LOG.logEntering("validateSignature", serviceRequest, signature, account);
         Key key = keyManager.getKey(account);
         if (key == null) return false;
@@ -79,7 +80,7 @@ public class SignedRequestValidationService {
         
         } catch (IOException e) {
             throw LOG.logThrow("validateSignature", new RequestValidationError("could not read request", e));
-        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | SignatureException e) {
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | BadKeyException | SignatureException e) {
             throw LOG.logThrow("validateSignature", new RequestValidationError("could not validate signature", e));            
         }
     }

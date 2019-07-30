@@ -60,6 +60,7 @@ import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
+import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.KeyManager;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -722,7 +723,7 @@ public class TempRepositoryServerTest {
     }
     
     @Test
-    public void testServiceAccountLogin() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
+    public void testServiceAccountLogin() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, BadKeyException, SignatureException {
         String account = SystemKeyPairs.DEFAULT_SERVICE_ACCOUNT.name();
         KeyPair pair = keyManager.getKeyPair(account);
         JsonObjectBuilder request = Json.createObjectBuilder(); 
