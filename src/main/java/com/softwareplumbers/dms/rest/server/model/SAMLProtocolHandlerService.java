@@ -10,13 +10,20 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -284,6 +291,16 @@ public class SAMLProtocolHandlerService {
         return nameIDPolicy;
     }
     
+    public static OutputStream encode(OutputStream out) {
+        Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+        return new DeflaterOutputStream(Base64.getUrlEncoder().wrap(out), deflater);
+    }
+    
+    public static InputStream decode(InputStream in) {
+        Inflater inflater = new Inflater(true);
+        return new InflaterInputStream(Base64.getUrlDecoder().wrap(in), inflater);
+    }
+    
     public String formatRequest(String ACSUrl) throws SAMLOutputError {
         LOG.logEntering("formatRequest");
         AuthnRequestBuilder authRequestBuilder = new AuthnRequestBuilder();
@@ -296,7 +313,7 @@ public class SAMLProtocolHandlerService {
         authRequest.setDestination(this.idpEndpoint);
         authRequest.setProtocolBinding(SAML2_POST_BINDING);
         ByteArrayOutputStream encoded = new ByteArrayOutputStream();
-        try (OutputStream out = new DeflaterOutputStream(Base64.getUrlEncoder().wrap(encoded))) {
+        try (OutputStream out = encode(encoded)) {
             Marshaller marshaller = marshallerFactory.getMarshaller(authRequest);
             if (marshaller == null) throw new SAMLOutputError("could not create SAML marshaller");
             Element element = marshaller.marshall(authRequest);
@@ -306,9 +323,10 @@ public class SAMLProtocolHandlerService {
             DOMSource source = new DOMSource(element);
             StreamResult result = new StreamResult(out);
             transformer.transform(source, result);
+            out.flush();
         } catch (MarshallingException | TransformerException | IOException e) {
             throw new SAMLOutputError("Error creating SAML request", e);
         }
-        return LOG.logReturn("formatRequest", new String(encoded.toByteArray()));
+        return LOG.logReturn("formatRequest", encoded.toString());
     }
 }

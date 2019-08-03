@@ -7,8 +7,10 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.zip.InflaterInputStream;
@@ -40,10 +42,19 @@ public class SAMLProtocolHandlerTest {
     public void testFormatRequest() throws SAMLInitialisationError, SAMLOutputError, IOException {
         SAMLProtocolHandlerService samlHandler = new SAMLProtocolHandlerService();
         String response = samlHandler.formatRequest("https://api.doctane.com/auth/tmp/saml");
-        InputStream is = new InflaterInputStream(Base64.getUrlDecoder().wrap(new ByteArrayInputStream(response.getBytes())));
+        InputStream is = SAMLProtocolHandlerService.decode(new ByteArrayInputStream(response.getBytes()));
         String decoded = IOUtils.toString(is, Charset.defaultCharset());
         System.out.println(decoded);
         assertTrue("response has correct ACS URI", decoded.contains("AssertionConsumerServiceURL=\"https://api.doctane.com/auth/tmp/saml\""));
+    }
+    
+    @Test
+    public void testEncode() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        OutputStream encodingStream = SAMLProtocolHandlerService.encode(out);
+        encodingStream.write("peter piper picked a peck of pickled peppers".getBytes());
+        encodingStream.close();
+        assertEquals("K0gtSS1SKMgsAJPJ2akpCokKBanJ2Qr5aWCBHKBIQWoBUL4YAA==", out.toString());
     }
 
 
