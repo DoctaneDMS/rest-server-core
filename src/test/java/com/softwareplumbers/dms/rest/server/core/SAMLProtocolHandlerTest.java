@@ -42,6 +42,7 @@ public class SAMLProtocolHandlerTest {
     public void testFormatRequest() throws SAMLInitialisationError, SAMLOutputError, IOException {
         SAMLProtocolHandlerService samlHandler = new SAMLProtocolHandlerService();
         String response = samlHandler.formatRequest("https://api.doctane.com/auth/tmp/saml");
+        System.out.println(response);
         InputStream is = SAMLProtocolHandlerService.decode(new ByteArrayInputStream(response.getBytes()));
         String decoded = IOUtils.toString(is, Charset.defaultCharset());
         System.out.println(decoded);
