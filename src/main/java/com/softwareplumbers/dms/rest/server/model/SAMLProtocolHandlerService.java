@@ -293,12 +293,14 @@ public class SAMLProtocolHandlerService {
     
     public static OutputStream encode(OutputStream out) {
         Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
-        return new DeflaterOutputStream(Base64.getUrlEncoder().wrap(out), deflater);
+        //Wierd. I'd have thought we should user getURLEncoder here, but in the majority
+        //of cases it does not seem to work.
+        return new DeflaterOutputStream(Base64.getEncoder().wrap(out), deflater);
     }
     
     public static InputStream decode(InputStream in) {
         Inflater inflater = new Inflater(true);
-        return new InflaterInputStream(Base64.getUrlDecoder().wrap(in), inflater);
+        return new InflaterInputStream(Base64.getDecoder().wrap(in), inflater);
     }
     
     public String formatRequest(String ACSUrl) throws SAMLOutputError {
@@ -327,6 +329,7 @@ public class SAMLProtocolHandlerService {
         } catch (MarshallingException | TransformerException | IOException e) {
             throw new SAMLOutputError("Error creating SAML request", e);
         }
+        try { encoded.close(); } catch (IOException e) {};
         return LOG.logReturn("formatRequest", encoded.toString());
     }
 }
