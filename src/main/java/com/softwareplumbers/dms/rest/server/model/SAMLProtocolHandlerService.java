@@ -149,8 +149,7 @@ public class SAMLProtocolHandlerService {
     public SAMLProtocolHandlerService() throws SAMLInitialisationError {
         this("https://auth.softwareplumbers.com/auth/realms/doctane-test");
     }
-
-    
+ 
     /** Get the SAML2 nameId from a SAML response
      * @param samlResponse
      * @return the name of the principal encoded in the SAML response
@@ -292,9 +291,12 @@ public class SAMLProtocolHandlerService {
     }
     
     public static OutputStream encode(OutputStream out) {
+        //Note the 'true' parameter appears important for generating SAML requests that can
+        //actually be understood by most SAML implementations.
         Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
         //Wierd. I'd have thought we should user getURLEncoder here, but in the majority
-        //of cases it does not seem to work.
+        //of cases it does not seem to work. Maybe because SAML really expects the POST
+        //binding where the 'regular' base-64 encoding is better.
         return new DeflaterOutputStream(Base64.getEncoder().wrap(out), deflater);
     }
     
@@ -303,14 +305,21 @@ public class SAMLProtocolHandlerService {
         return new InflaterInputStream(Base64.getDecoder().wrap(in), inflater);
     }
     
-    public String formatRequest(String ACSUrl) throws SAMLOutputError {
-        LOG.logEntering("formatRequest");
+    /** Formate a SAML request
+     * 
+     * @param ACSUrl - ACS url to handle SAML responses
+     * @param issuerId - defaults to the entity Id provided in the constructor
+     * @return A formatted SAML request
+     * @throws com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError 
+     */
+    public String formatRequest(String ACSUrl, Optional<String> issuerId) throws SAMLOutputError {
+        LOG.logEntering("formatRequest", ACSUrl, issuerId);
         AuthnRequestBuilder authRequestBuilder = new AuthnRequestBuilder();
         AuthnRequest authRequest = authRequestBuilder.buildObject(SAML2_PROTOCOL, "AuthnRequest", "saml2p");
         authRequest.setAssertionConsumerServiceURL(ACSUrl);
         authRequest.setID(UUID.randomUUID().toString());
         authRequest.setIssueInstant(DateTime.now());
-        authRequest.setIssuer(buildIssuer(this.entityId));
+        authRequest.setIssuer(buildIssuer(issuerId.orElse(this.entityId)));
         authRequest.setNameIDPolicy(buildNameIdPolicy());
         authRequest.setDestination(this.idpEndpoint);
         authRequest.setProtocolBinding(SAML2_POST_BINDING);

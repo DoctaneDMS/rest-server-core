@@ -1,18 +1,22 @@
 <?xml version = "1.0" encoding = "UTF-8"?>
 
 <beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:context="http://www.springframework.org/schema/context"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="
  	http://www.springframework.org/schema/beans
-	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd">
+	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+    
+    <context:annotation-config />
 	
-	<bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
-		<constructor-arg index="0" value="/tmp/doctane-proxy.keystore"/>
-		<constructor-arg index="1" value="password"/>
-		<!-- for some reason specifying a value attribute here does not work -->
-		<constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
-		<constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
-	</bean>
+    <bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
+	<constructor-arg index="0" value="/tmp/doctane-proxy.keystore"/>
+	<constructor-arg index="1" value="password"/>
+	<!-- for some reason specifying a value attribute here does not work -->
+	<constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
+	<constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
+    </bean>
 
     <bean id="tmp" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
         <constructor-arg index="0" value="filename"/>
@@ -48,8 +52,9 @@
         <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
         <property name="SignonService">
             <bean class="com.softwareplumbers.dms.rest.server.core.SAMLSignonService">
-                <constructor-arg index="0" ref="softwarePlumbersSAMLServer"/>
-                <constructor-arg index="1" value="http://localhost:8080/auth/tmp/saml"/>
+                <property name="SAMLProtocolHandlerService" ref="softwarePlumbersSAMLServer"/>
+                <property name="assertionConsumerURI" value="http://localhost:8080/auth/tmp/saml"/>
+                <property name="issuerId" value="doctane-api-saml2"/>
             </bean>
         </property>
         <property name="SAMLResponseHandlerService" ref="softwarePlumbersSAMLServer"/>
@@ -71,7 +76,7 @@
     	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthenticationServiceFactory"/>
         <property name="serviceMappings">
             <props>
-                <prop key="tmp">auth.dummy</prop>
+                <prop key="tmp">auth.tmp</prop>
                 <prop key="dummy">auth.dummy</prop>
             </props>
         </property>

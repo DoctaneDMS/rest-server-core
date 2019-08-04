@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.zip.InflaterInputStream;
 import org.apache.commons.io.IOUtils;
 import static org.junit.Assert.assertTrue;
@@ -29,7 +30,7 @@ public class SAMLProtocolHandlerTest {
     @Test
     public void testGetIDPEndpoint() throws SAMLInitialisationError {       
         SAMLProtocolHandlerService samlHandler = new SAMLProtocolHandlerService();
-        assertEquals("https://auth.softwareplumbers.com/auth/realms/doctane-test/protocol/saml/clients/doctaneAPILocal",samlHandler.getIDPEndpoint());
+        assertEquals("https://auth.softwareplumbers.com/auth/realms/doctane-test/protocol/saml",samlHandler.getIDPEndpoint());
     }
     
     @Test 
@@ -41,7 +42,7 @@ public class SAMLProtocolHandlerTest {
     @Test 
     public void testFormatRequest() throws SAMLInitialisationError, SAMLOutputError, IOException {
         SAMLProtocolHandlerService samlHandler = new SAMLProtocolHandlerService();
-        String response = samlHandler.formatRequest("https://api.doctane.com/auth/tmp/saml");
+        String response = samlHandler.formatRequest("https://api.doctane.com/auth/tmp/saml", Optional.of("doctane-api-saml2"));
         System.out.println(response);
         InputStream is = SAMLProtocolHandlerService.decode(new ByteArrayInputStream(response.getBytes()));
         String decoded = IOUtils.toString(is, Charset.defaultCharset());
