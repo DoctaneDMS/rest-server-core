@@ -27,6 +27,7 @@ import com.softwareplumbers.dms.rest.server.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import javax.json.JsonString;
 import javax.ws.rs.core.MediaType;
 
 class WorkspaceImpl implements Workspace {
@@ -191,8 +192,8 @@ class WorkspaceImpl implements Workspace {
 	
 	public String getContainmentName(Document doc) {
 		JsonObject metadata = doc.getMetadata(); 
-		JsonValue docName = metadata == null ? null : service.getNameAttribute().apply(metadata);
-		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document" : docName.toString() + "_" + children.size();
+		JsonString docName = metadata == null ? null : (JsonString)service.getNameAttribute().apply(metadata);
+		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document" : docName.getString() + "_" + children.size();
 		String ext = "";
 		int separator = baseName.lastIndexOf('.');
 		if (separator >= 0) {
@@ -226,6 +227,31 @@ class WorkspaceImpl implements Workspace {
 		else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
 		LOG.logExiting("add");
 	}
+    
+    public Optional<DocumentLink> findLink(Reference ref) {
+        return children.values()
+                .stream()
+                .filter(obj -> obj.getType() == RepositoryObject.Type.DOCUMENT_LINK)
+                .map(obj -> (DocumentLink)obj)
+                .filter(link -> link.getReference().equals(ref))
+                .findAny();
+    }
+    
+    public String add(Reference ref, boolean returnExisting) throws InvalidWorkspaceState, InvalidReference {
+		LOG.logEntering("add", ref, returnExisting);
+        Optional<DocumentLink> existing = findLink(ref);
+        if (existing.isPresent()) {
+            if (returnExisting) 
+                return LOG.logReturn("add", existing.get().getName().part);
+            else
+                throw LOG.logThrow("add", new InvalidReference(ref));
+        } else {
+            String name = getContainmentName(service.getDocument(ref));
+            add(ref, name);
+            return LOG.logReturn("add", name);
+        }
+        
+    }
 	
 	public void update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
 		LOG.logEntering("add", reference, docName);

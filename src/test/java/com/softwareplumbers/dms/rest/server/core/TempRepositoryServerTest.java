@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.common.QualifiedName;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
@@ -219,6 +220,41 @@ public class TempRepositoryServerTest {
             System.out.println(response.toString());
             throw new RuntimeException("Bad put");
         }
+    }
+    
+        /** Utility function to put a document using the Jersey client API.
+     * 
+     * Test documents are held in src/test/resources in this project. Two files
+     * <I>name</I>.txt and <I>name</I>.json make up a single test document, 
+     * where the json file contains the metadata.
+     * 
+     * @param path Path of document to update (including base, so /docs/tmp/id or /ws/tmp/workspace/docName)
+     * @param id Id of document to link to
+     * @param type UpdateType parameter
+     * @return The result of posting the document link to the test server.
+     * 
+     */
+    public JsonObject postDocumentLink(String path, String id, UpdateType type) throws IOException {
+        WebTarget target = client.target("http://localhost:" + port + path + "?createWorkspace=true&updateType=" + type);
+        
+        JsonObject link = Json.createObjectBuilder()
+            .add("type", "DOCUMENT_LINK")
+            .add("reference", Json.createObjectBuilder()
+                 .add("id", id)
+                 .build())
+            .build();
+        
+        Response response = target
+                .request(MediaType.APPLICATION_JSON)
+                .cookie(cookieHandler.generateCookie("test_user"))
+                .post(Entity.entity(link, MediaType.APPLICATION_JSON_TYPE));
+        
+        if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+            System.out.println(response.toString());
+            throw new RuntimeException("Bad put");
+        }
+        
+        return response.readEntity(JsonObject.class);
     }
     
     /** Utility function to put a workspace using the Jersey client API.
@@ -838,6 +874,17 @@ public class TempRepositoryServerTest {
         assertEquals(1, h1s.getLength());
         NodeList tds = xmlDoc.getElementsByTagName("td");
         assertEquals(4, tds.getLength());
+    }
+    
+    @Test
+    public void testCreateDocumentLinkWithPost() throws IOException, ParseException {
+        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
+        String wsId = response1.getString("id");
+        assertNotNull(wsId);
+        JsonObject response2 = postDocumentLink("/ws/tmp/anotherws2", wsId, UpdateType.CREATE);
+        QualifiedName name = QualifiedName.parse(response2.getString("name"),"/");
+        DocumentImpl doc = getDocumentFromWorkspace("anotherws2/" + name.part);
+        assertEquals(wsId, doc.getId());
     }
 }
 
