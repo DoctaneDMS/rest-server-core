@@ -30,6 +30,13 @@ public class Error {
 				.build();
 	}
 	
+    public static JsonObject badOperation(String cause) {
+		return Json.createObjectBuilder()
+				.add("error", "Bad Operation")
+				.add("cause", cause)
+				.build();
+	}
+        
 	public static JsonObject mapServiceError(InvalidReference err) {
 		return Json.createObjectBuilder()
 				.add("error", "Reference " + err.reference + " is invalid")

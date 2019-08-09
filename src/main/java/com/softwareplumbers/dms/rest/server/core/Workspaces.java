@@ -48,12 +48,16 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import com.softwareplumbers.dms.rest.server.model.DocumentLinkImpl;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.ws.rs.POST;
+import javax.ws.rs.core.UriInfo;
 
 
 /** Handle catalog operations on repositories and documents.
@@ -372,6 +376,88 @@ public class Workspaces {
             LOG.log.severe(err.getMessage());
             return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
         } catch (InvalidObjectName err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+        } catch (InvalidReference err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build();
+        } catch (InvalidWorkspaceState err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();
+        } catch (RuntimeException e) {
+            LOG.log.severe(e.getMessage());
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+        } 
+    }
+
+    /** Create a new document in workspace path /ws/{repository}/{objectName}
+     * 
+     * The objectName is a path (i.e.have several elements separated by '/').If the first
+     * element begins with a '~', what follows is assumed to be a workspace id.If not, we assume it 
+     * is a name and call the service accordingly.Can be used to put an existing document in a workspace. The name of
+     * the document in the workspace is determined by the underlying implementation; this may use metatdata from the 
+     * saved document. The name will be included in the returned data, and is guaranteed to be unique in the workspace.
+     * 
+     * The updateType parameter defaults to CREATE_OR_UPDATE and influences behavior as follows:
+     * 
+     *  | updateType       | Behavior |
+     *  | -----------------|----------|
+     *  | CREATE           | Creates a new document link, error if document exists already in workspace |
+     *  | UPDATE           | Error, use Put to update a document link |
+     *  | CREATE_OR_UPDATE | Create a new document link, do not fail, return name of any existing link to the specified document |
+     * 
+     * @param repository string identifier of a document repository
+     * @param objectName string identifier of a workspace or document
+     * @param createWorkspace if true, proxy will create any parent workspaces specified in the path
+     * @param updateType controls update behavior on actual object referenced by objectName
+     * @param uriInfo URI of request used to build relative response
+     * @param object JSON-format DocumentLink which contains a document reference
+     * @return A Response including JSON-format DocumentLink object with the full path of the created object
+     */
+    @POST
+    @Path("/{repository}/{workspace:[^?]+}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    public Response post(
+            @PathParam("repository") String repository,
+            @PathParam("workspace") String objectName,
+            @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+            @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
+            @Context UriInfo uriInfo,
+            JsonObject object) {
+        LOG.logEntering("post", repository, objectName, createWorkspace, updateType, object);
+        try {
+            RepositoryService service = repositoryServiceFactory.getService(repository);
+
+            if (service == null) 
+                return LOG.logResponse("post", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
+
+            if (objectName == null || objectName.isEmpty())
+                return LOG.logResponse("post", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
+
+            QualifiedName wsName = QualifiedName.parse(objectName, "/");
+            String rootId = ROOT_ID;
+            String firstPart = wsName.get(0);
+
+            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
+            if (firstPart.startsWith("~")) {
+                rootId = firstPart.substring(1);
+                wsName = wsName.rightFromStart(1);
+            } 
+
+            RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
+            
+            if (type == RepositoryObject.Type.WORKSPACE) {
+                return Response.status(Status.BAD_REQUEST).entity(Error.badOperation("Can't post a new workspace - use put")).build();
+            } else {
+                Reference reference = Reference.fromJson(object.getJsonObject("reference"));
+                
+                String name = service.createDocumentLink(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                
+                DocumentLinkImpl link = new DocumentLinkImpl(service, wsName.add(name), reference);
+                URI created = uriInfo.getAbsolutePathBuilder().path(name).build();
+                return LOG.logResponse("post", Response.created(created).entity(link.toJson()).build());
+            }
+        } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
             return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
         } catch (InvalidReference err) {

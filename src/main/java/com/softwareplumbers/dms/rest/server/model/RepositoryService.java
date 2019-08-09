@@ -177,6 +177,26 @@ public interface RepositoryService {
 	        Reference reference,
 	        boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
 	
+	/** Create a link to an existing document by reference.
+	 * 
+	 * Creates a link to an existing document with a new name inside a given workspace. The name is generated
+     * and guaranteed unique in the workspace.
+	 * 
+     * @param rootId the Id of the 'root' workspace
+     * @param workspaceName the fully qualified name of the workspace
+	 * @param reference Reference of document to link to
+	 * @param createWorkspace controls if parent workspace will be created (if it doesn't exist)
+     * @param returnExisting controls if the name of an existing link to the document will be returned, or an error generated
+     * @throws InvalidWorkspace if workspace does not exist
+     * @throws InvalidWorkspaceState if workspace is already closed
+	 * @throws InvalidReference if the supplied reference is not valid
+     * @return the name of the document inside the workspace
+	 */
+	public String createDocumentLink(
+	        String rootId,
+	        QualifiedName workspaceName,
+	        Reference reference,
+	        boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference;
 	
 	/** Update a document in the repository.
 	 * 

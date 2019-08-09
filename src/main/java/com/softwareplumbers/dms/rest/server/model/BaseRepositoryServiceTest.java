@@ -368,6 +368,52 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
+	public void testCreateDocumentLinkGeneratedName() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, name1.add(generatedName));
+	    assertEquals(ref1, doc1.getReference());
+	}
+    
+    @Test
+	public void testCreateDocumentLinkGeneratedNameSequence() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        String originalText2 = randomText();
+        Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText2), EMPTY_METADATA, null, false);
+        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        String generatedName2 = service().createDocumentLink(ROOT_ID, name1, ref2, true, true);
+	    assertNotEquals(generatedName, generatedName2);
+	}
+
+    @Test
+	public void testCreateDocumentLinkGeneratedNameSameObject() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        String generatedName2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+	    assertEquals(generatedName, generatedName2);
+	}
+    
+    @Test(expected = InvalidReference.class)
+	public void testCreateDocumentLinkGeneratedNameSameObjectError() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        String generatedName2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, false); // false - so should be an error
+	    assertEquals(generatedName, generatedName2);
+	}
+    
+    @Test
 	public void testUpdateDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);

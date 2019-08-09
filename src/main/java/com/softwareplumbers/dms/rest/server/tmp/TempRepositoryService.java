@@ -566,5 +566,14 @@ public class TempRepositoryService implements RepositoryService {
 
 	}
 
+    @Override
+    public String createDocumentLink(String rootId, QualifiedName workspaceName, Reference reference, boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
 
+        LOG.logEntering("createDocumentLinkByName", rootId, workspaceName, reference, createWorkspace, returnExisting);
+        
+        if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
+        
+        WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(workspaceName, createWorkspace);
+        return LOG.logReturn("createDocumentLink", workspace.add(reference, returnExisting));
+    }
 }
