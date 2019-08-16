@@ -7,6 +7,8 @@ import javax.json.JsonObjectBuilder;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -36,6 +38,13 @@ public class Error {
 				.add("cause", cause)
 				.build();
 	}
+    
+    public static JsonObject mapServiceError(DocumentFormatException e) {
+		return Json.createObjectBuilder()
+				.add("error", "Document cannot be parsed in the expected manner")
+				.add("cause", e.getMessage())
+				.build();		        
+    }
         
 	public static JsonObject mapServiceError(InvalidReference err) {
 		return Json.createObjectBuilder()

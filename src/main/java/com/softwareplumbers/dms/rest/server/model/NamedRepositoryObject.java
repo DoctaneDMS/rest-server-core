@@ -18,9 +18,9 @@ public interface NamedRepositoryObject extends RepositoryObject {
      */
     QualifiedName getName();
     
-    /** Get the parent workspace of any Named Repository Object 
+    /** Get the parent repository object of any Named Repository Object 
      * 
      * @return the parent workspace
      */
-    Workspace getParent();
+    RepositoryObject getParent();
 }

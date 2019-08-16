@@ -81,5 +81,7 @@
             </props>
         </property>
     </bean>
+    
+    <bean id="documentNavigatorService" class="com.softwareplumbers.dms.rest.server.model.ZipFileNavigatorService"/>
  
 </beans>

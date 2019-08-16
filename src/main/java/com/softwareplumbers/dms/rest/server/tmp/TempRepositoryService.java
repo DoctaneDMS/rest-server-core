@@ -485,11 +485,6 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<DocumentPart> catalogueParts(Reference ref, Query filter) throws InvalidReference {
-		return Stream.empty();
-	}
-
-	@Override
 	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter) {
 		LOG.logEntering("listWorkspaces", id);
 		Set<String> workspaceIds = workspacesByDocument.get(id);
@@ -575,5 +570,20 @@ public class TempRepositoryService implements RepositoryService {
         
         WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(workspaceName, createWorkspace);
         return LOG.logReturn("createDocumentLink", workspace.add(reference, returnExisting));
+    }
+
+    @Override
+    public Stream<DocumentPart> cataloguePartsByName(String rootId, QualifiedName documentName, QualifiedName partName) throws InvalidWorkspace, InvalidObjectName {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public Workspace getWorkspaceByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

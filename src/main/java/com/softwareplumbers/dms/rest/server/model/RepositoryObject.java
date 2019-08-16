@@ -7,7 +7,7 @@ import javax.json.JsonObject;
  */
 public interface RepositoryObject {
 	
-	enum Type { WORKSPACE, DOCUMENT, DOCUMENT_LINK };
+	enum Type { WORKSPACE, DOCUMENT, DOCUMENT_LINK, DOCUMENT_PART };
 
 	/** Get metadata */
 	JsonObject getMetadata();

@@ -7,17 +7,20 @@ import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
 
-public interface DocumentLink extends NamedRepositoryObject, Document {
+public interface DocumentLink extends DocumentPart, Document {
     
     /** Default implementation returns Type.DOCUMENT_LINK */ 
+    @Override
     default Type getType() { return Type.DOCUMENT_LINK; }
     
-    /** Output DocumentLink to Json.
+    /** Output DocumentLink to JSON.
      * 
-     * Json representation does not contain file itself but is understood to contain sufficient information
+     * JSON representation does not contain file itself but is understood to contain sufficient information 
      * to retrieve the file.
      * 
+     * @return A JSON representation of the document link.
      */
+    @Override
     default JsonObject toJson() {
         
         String id = getId();
@@ -26,7 +29,7 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
         MediaType mediaType = getMediaType();
         QualifiedName name = getName();
         Type type = getType();
-        Workspace parent = getParent();
+        RepositoryObject parent = getParent();
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
         

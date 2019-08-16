@@ -4,25 +4,13 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 
 /**  Represents a document returned by DMS.
  * 
  * @author Jonathan Essex
  */
-public interface Document extends RepositoryObject {
+public interface Document extends StreamableRepositoryObject {
 	
-	/** Get the media type of this document file */
-	public MediaType getMediaType();
-	/** Write the data associated with this document to an output stream */
-	public void writeDocument(OutputStream target) throws IOException;
-	/** Get the data associated with this document as an input stream */
-	public InputStream getData() throws IOException;
-	/** Get the length of the document file */
-	public long getLength();
 	/** get the version id for this document */
 	public String getVersion();
 	/** Default implementation returns Type.DOCUMENT */	

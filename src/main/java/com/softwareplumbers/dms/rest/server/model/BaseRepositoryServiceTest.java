@@ -500,7 +500,7 @@ public abstract class BaseRepositoryServiceTest {
         QualifiedName docName = name1.add(randomUrlSafeName());
         service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
 	    NamedRepositoryObject doc1 = service().getObjectByName(ROOT_ID, docName);
-	    assertEquals(name1, doc1.getParent().getName());
+	    assertEquals(name1, ((NamedRepositoryObject)doc1.getParent()).getName());
         JsonObject jsonRep = doc1.toJson();
         assertEquals(EMPTY_METADATA, jsonRep.getJsonObject("parent").getJsonObject("metadata"));
         assertEquals(name1.join("/"), jsonRep.getJsonObject("parent").getString("name"));

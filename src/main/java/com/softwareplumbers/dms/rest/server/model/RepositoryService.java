@@ -366,13 +366,14 @@ public interface RepositoryService {
 	 * will return a stream of Info objects containing a reference to each file in the archive,
 	 * and metadata (which would include the file name).
 	 * 
-	 * @param ref
-	 * @param filter
-	 * @return a stream of Info objects relating to the selected parts of the document
-	 * @throws InvalidReference
+	 * @param rootId root workspace in which to find document
+	 * @param documentName name of document within root workspace
+     * @param partName name of part within document
+	 * @return a stream of DocumentPart objects relating to the selected parts or sub-parts of the document
+	 * @throws InvalidObjectName if the documentName or partName are not valid or not found
+     * @throws InvalidWorkspace if rootId is not a valid workspace
 	 */
-	public Stream<DocumentPart> catalogueParts(Reference ref, Query filter) throws InvalidReference;
-	
+	public Stream<DocumentPart> cataloguePartsByName(String rootId, QualifiedName documentName, QualifiedName partName) throws InvalidWorkspace, InvalidObjectName;
 	
 	/** Create a workspace 
 	 * 
@@ -460,15 +461,40 @@ public interface RepositoryService {
 	 */
 	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
 
-	/** Get current state of workspace or document 
+	/** Get current state of workspace, document, or document part
+     * 
+     * Note: this method should not be called by preference; one of the type-specific methods getWorkspaceByName,
+     * or getDocumentLinkByName, should be used where possible. This is because retrieving
+     * a repository object without knowing its type may be significantly more expensive.
 	 * 
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
-	 * @param name the name of the workspace
-	 * @return a Workspace object containing current workspace state
-	 * @throws InvalidWorkspace if workspace does not already exist
+	 * @param name the name of the workspace, document link, or document part
+	 * @return a named repository object describing the object located by name
+	 * @throws InvalidWorkspace if rootId is not a valid workspace
+     * @throws InvalidObjectName if name is not a valid object name within the root workspace
 	 */
 	public NamedRepositoryObject getObjectByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
-        	
+
+    /** Get the current state of a workspace
+     * 
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
+	 * @param name the name of the workspace
+	 * @return a named repository object describing the object located by name
+	 * @throws InvalidWorkspace if rootId is not a valid workspace
+     * @throws InvalidObjectName if name is not a valid workspace name within the root workspace
+     */
+    public Workspace getWorkspaceByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;  
+    
+    /** Get the current state of a document link
+     * 
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
+	 * @param name the name of the workspace
+	 * @return a Workspace object located by name
+	 * @throws InvalidWorkspace if rootId is not a valid workspace
+     * @throws InvalidObjectName if name is not a valid document name within the root workspace
+     */
+    public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
+        
 	/** Get current state of workspace 
 	 * 
 	 * @param id the id of the requested workspace
