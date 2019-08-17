@@ -72,6 +72,8 @@ import javax.ws.rs.core.UriInfo;
 @Authenticated
 @Path("/ws")
 public class Workspaces {
+    
+    
     ///////////--------- Static member variables --------////////////
 
     private static Log LOG = new Log(Workspaces.class);
