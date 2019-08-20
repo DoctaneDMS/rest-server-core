@@ -86,8 +86,6 @@ class WorkspaceImpl implements Workspace {
         @Override
         public Reference getReference() { return linkedDocument().getReference(); }
         
-        @Override
-        public Workspace getParent() { return WorkspaceImpl.this; }
 	}
 	
 	/**
@@ -137,12 +135,7 @@ class WorkspaceImpl implements Workspace {
 	public String getId() {
 		return id;
 	}
-    
-    @Override
-    public Workspace getParent() {
-        return parent;
-    }
-			
+    			
 	public void setState(State state) {
 	    if (state == null) throw new IllegalArgumentException("state cannot be null");
 		

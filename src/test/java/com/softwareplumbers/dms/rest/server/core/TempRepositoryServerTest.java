@@ -56,8 +56,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
+import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
@@ -66,7 +67,7 @@ import com.softwareplumbers.keymanager.InitializationFailure;
 import com.softwareplumbers.keymanager.KeyManager;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
+import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.client.ClientProperties;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -82,6 +83,7 @@ public class TempRepositoryServerTest {
 		put("docx", MediaType.valueOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
 		put("msg", MediaType.valueOf("application/vnd.ms-outlook"));
         put("doc", MediaType.valueOf("application/msword"));
+        put("zip", MediaType.valueOf("application/zip"));
 	}};
 
 	int port = 8080;
@@ -98,13 +100,15 @@ public class TempRepositoryServerTest {
     @Autowired
     KeyManager<?,?> keyManager;
     
-    /** Utility function to post a document using the Jersey client API.
+    /** *  Utility function to post a document using the Jersey client API.Test documents are held in src/test/resources in this project.Two files
+    <I>name</I>.txt and <I>name</I>.json make up a single test document, 
+ where the json file contains the metadata.
      * 
-     * Test documents are held in src/test/resources in this project. Two files
-     * <I>name</I>.txt and <I>name</I>.json make up a single test document, 
-     * where the json file contains the metadata.
      * 
-     * @Param name Name of test document file (without extension)
+     * @param name Name of test document file (without extension)
+     * @param workspace Path to workspace
+     * @param ext file extension
+     * @throws java.io.IOException
      * @return The result of posting the document to the test server.
      * 
      */
@@ -311,7 +315,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public DocumentImpl getDocument(String id) throws IOException, ParseException {
+    public StreamableRepositoryObjectImpl getDocument(String id) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
 
@@ -353,7 +357,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public DocumentImpl getDocumentFromWorkspace(String path) throws IOException, ParseException {
+    public StreamableRepositoryObjectImpl getDocumentFromWorkspace(String path) throws IOException, ParseException {
         
         WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
 
@@ -367,7 +371,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public DocumentImpl getDocumentFromTarget(WebTarget target) throws IOException, ParseException {
+    public StreamableRepositoryObjectImpl getDocumentFromTarget(WebTarget target) throws IOException, ParseException {
         
         Response response = target
                 .request(MediaType.MULTIPART_FORM_DATA)
@@ -599,7 +603,7 @@ public class TempRepositoryServerTest {
 		
 		assertNotNull(id);
 		
-		Document doc = getDocument(id);
+		StreamableRepositoryObjectImpl doc = getDocument(id);
 		
 		assertNotNull(doc);
 		
@@ -723,7 +727,7 @@ public class TempRepositoryServerTest {
         assertNotNull(wsId);
         JsonObject response2 = getWorkspaceJson("wsname/doc1", JsonObject.class);
         assertEquals(wsId, response2.getString("id"));      
-        DocumentImpl doc = getDocumentFromWorkspace("wsname/doc1");
+        Document doc = (Document)getDocumentFromWorkspace("wsname/doc1");
         assertEquals(wsId, doc.getId());
     }
     
@@ -746,7 +750,7 @@ public class TempRepositoryServerTest {
         String wsId = response1.getString("id");
         assertNotNull(wsId);
         putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
-        DocumentImpl doc = getDocumentFromWorkspace("anotherws/myDoc");
+        Document doc = (Document)getDocumentFromWorkspace("anotherws/myDoc");
         assertEquals(wsId, doc.getId());
     }
 
@@ -847,7 +851,7 @@ public class TempRepositoryServerTest {
     public void testGetDocumentXMLFromWorkspace() throws IOException, ParseException, TransformerException {
         JsonObject response1 = putDocument("testdoc", "/ws/tmp/wsname/doc1", "docx");
         assertNotNull(response1);
-        DocumentImpl doc = getDocumentFromWorkspace("wsname/doc1");
+        StreamableRepositoryObjectImpl doc = getDocumentFromWorkspace("wsname/doc1");
         assertNotNull(doc);
         org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace(MediaType.APPLICATION_XHTML_XML_TYPE, "wsname/doc1");
         NodeList h1s = xmlDoc.getElementsByTagName("h1");
@@ -883,8 +887,18 @@ public class TempRepositoryServerTest {
         assertNotNull(wsId);
         JsonObject response2 = postDocumentLink("/ws/tmp/anotherws2", wsId, UpdateType.CREATE);
         QualifiedName name = QualifiedName.parse(response2.getString("name"),"/");
-        DocumentImpl doc = getDocumentFromWorkspace("anotherws2/" + name.part);
+        Document doc = (Document)getDocumentFromWorkspace("anotherws2/" + name.part);
         assertEquals(wsId, doc.getId());
+    }
+    
+    @Test
+    public void testGetZipFilePart() throws IOException, ParseException {
+        JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
+        StreamableRepositoryObjectImpl doc = getDocumentFromWorkspace("/wsname3/testzip/~/test/test1.txt");
+        byte[] original = IOUtils.resourceToByteArray("test1.txt");
+        byte[] unzipped = IOUtils.toByteArray(doc.getData());
+        assertEquals(original, unzipped);
+        
     }
 }
 

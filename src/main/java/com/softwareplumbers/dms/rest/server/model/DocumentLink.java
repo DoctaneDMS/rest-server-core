@@ -6,6 +6,10 @@ import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
+import java.math.BigDecimal;
+import javax.json.JsonArrayBuilder;
 
 public interface DocumentLink extends DocumentPart, Document {
     
@@ -21,7 +25,7 @@ public interface DocumentLink extends DocumentPart, Document {
      * @return A JSON representation of the document link.
      */
     @Override
-    default JsonObject toJson() {
+    default JsonObject toJson(RepositoryService service, DocumentNavigatorService navigator, int parentLevels, int childLevels) {
         
         String id = getId();
         String version = getVersion();
@@ -29,9 +33,27 @@ public interface DocumentLink extends DocumentPart, Document {
         MediaType mediaType = getMediaType();
         QualifiedName name = getName();
         Type type = getType();
-        RepositoryObject parent = getParent();
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
+        
+        if (parentLevels > 0) {
+            QualifiedName parentName = getName().parent;
+            if (!parentName.isEmpty()) {
+                try {
+                    RepositoryObject parent = service.getObjectByName(Constants.ROOT_ID, getName().parent);
+                    builder.add("parent", parent.toJson(service, navigator, parentLevels-1, 0));
+                } catch (InvalidObjectName | InvalidWorkspace err) {
+                    throw new RuntimeException(err);
+                }
+            }
+        }
+        
+        if (childLevels > 0 && navigator.canNavigate(this)) {
+            JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
+            navigator.catalogParts(this, QualifiedName.ROOT)
+                .forEach(part -> childrenBuilder.add(part.toJson(service, navigator, 0, childLevels-1)));
+            builder.add("parts", childrenBuilder);
+        }
         
         // Base fields  
         if (id != null) builder.add("id", id);
@@ -42,7 +64,6 @@ public interface DocumentLink extends DocumentPart, Document {
         // Document fields
         if (mediaType != null) builder.add("mediaType", mediaType.toString());
         if (version != null) builder.add("version", version);
-        if (parent != null) builder.add("parent", parent.toJson());
         builder.add("length", getLength());
         return builder.build();
 

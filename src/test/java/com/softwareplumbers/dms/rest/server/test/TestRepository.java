@@ -16,6 +16,7 @@ import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObject;
 import com.softwareplumbers.dms.rest.server.tmp.TempRepositoryServiceTest;
 
 public class TestRepository {
@@ -45,7 +46,7 @@ public class TestRepository {
 		}
 	}
 	
-	public static boolean docEquals(String name, Document document) throws IOException {
+	public static boolean docEquals(String name, StreamableRepositoryObject document) throws IOException {
 		byte[] testfile = IOUtils.toByteArray(getTestFile("/" + name + ".txt"));
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		document.writeDocument(stream);

@@ -6,6 +6,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /** Document Navigation Service.
@@ -16,19 +17,27 @@ import java.util.stream.Stream;
  */
 public interface DocumentNavigatorService { 
     
-    public static class DocumentFormatException extends Exception {
+    public static class DocumentFormatException extends RuntimeException {
         public DocumentFormatException(String msg, Exception cause) {
             super(msg, cause);
         }
     }
     
     public static class PartNotFoundException extends Exception {
-        public PartNotFoundException(Document document, QualifiedName part) {
-            super(String.format("Could not find part %s in document %s", part, document.getId()));
+        public final StreamableRepositoryObject document;
+        public final QualifiedName part;
+        public PartNotFoundException(StreamableRepositoryObject document, QualifiedName part) {
+            super(String.format("Could not find part %s in document %s", part, document));
+            this.document = document;
+            this.part = part;
         }
     }
     
-    DocumentPart getPartByName(Document document, QualifiedName partName) throws DocumentFormatException, PartNotFoundException;
-    Stream<DocumentPart> catalogParts(Document document, QualifiedName partName) throws DocumentFormatException;
-    boolean canNavigate(Document document);
+    default DocumentPart getPartByName(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException, PartNotFoundException {
+        return getOptionalPartByName(document,partName).orElseThrow(()->new PartNotFoundException(document, partName));
+    }
+    
+    Optional<DocumentPart> getOptionalPartByName(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException;
+    Stream<DocumentPart> catalogParts(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException;
+    boolean canNavigate(StreamableRepositoryObject document);
 }

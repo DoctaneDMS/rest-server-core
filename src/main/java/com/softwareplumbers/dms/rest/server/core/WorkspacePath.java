@@ -6,6 +6,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.rest.server.model.Constants;
 
 /** Class representing workspace path.
  * 
@@ -71,7 +72,7 @@ public class WorkspacePath {
     }
 
     public static WorkspacePath valueOf(String path) {
-        String rootId = null;
+        String rootId = Constants.ROOT_ID;
         QualifiedName staticPath = QualifiedName.ROOT;
         QualifiedName queryPath = QualifiedName.ROOT;
         QualifiedName partPath = QualifiedName.ROOT;
@@ -89,7 +90,7 @@ public class WorkspacePath {
             } 
             if (isId(pathElement)) {
                 String id = pathElement.substring(1);
-                if (staticPath.isEmpty() && queryPath.isEmpty()) {
+                if (staticPath.isEmpty() && queryPath.isEmpty() && rootId == Constants.ROOT_ID) {
                     rootId = id;
                 } else {
                     documentId = id;
@@ -106,4 +107,13 @@ public class WorkspacePath {
         return new WorkspacePath(rootId, staticPath, queryPath, documentId, partPath);
     }
     
+    public String toString() {
+        StringBuilder result = new StringBuilder();
+        if (rootId != null) result.append("/").append(rootId);
+        if (staticPath != QualifiedName.ROOT) result.append("/").append(staticPath.join("/"));
+        if (queryPath != QualifiedName.ROOT) result.append("/").append(queryPath.join("/"));
+        if (documentId != null) result.append("/").append(documentId);
+        if (partPath != QualifiedName.ROOT) result.append("/").append(partPath.join("/"));
+        return result.toString();
+    }
 }

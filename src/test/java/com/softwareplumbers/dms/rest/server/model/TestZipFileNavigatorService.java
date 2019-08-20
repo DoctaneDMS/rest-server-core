@@ -30,9 +30,6 @@ public class TestZipFileNavigatorService {
         DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->getClass().getResourceAsStream("/testzip.zip"), EMPTY_METADATA);
         List<DocumentPart> parts = nav.catalogParts(zipDoc).collect(Collectors.toList());
         assertEquals(3, parts.size());
-        assertEquals(zipDoc, parts.get(0).getParent());
-        assertEquals(zipDoc, parts.get(1).getParent());
-        assertEquals(zipDoc, parts.get(2).getParent());
         assertEquals("testdoc.docx", parts.get(0).getName().part);
         assertEquals("testdoc_outlook2010.msg", parts.get(1).getName().part);
         assertEquals("test1.txt", parts.get(2).getName().part);
@@ -46,9 +43,6 @@ public class TestZipFileNavigatorService {
         DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
         List<DocumentPart> parts = nav.catalogParts(zipDoc).collect(Collectors.toList());
         assertEquals(5, parts.size());
-        assertEquals(parts.get(0), parts.get(1).getParent());
-        assertEquals(parts.get(0), parts.get(2).getParent());
-        assertEquals(parts.get(3), parts.get(4).getParent());
         assertEquals("test1.txt", parts.get(1).getName().part);
         assertEquals("test2.txt", parts.get(2).getName().part);
         assertEquals("testdoc.docx", parts.get(4).getName().part);
@@ -70,7 +64,7 @@ public class TestZipFileNavigatorService {
     
     @Test(expected = DocumentNavigatorService.PartNotFoundException.class)
     public void testCantFindZipPart() throws IOException, DocumentNavigatorService.DocumentFormatException, DocumentNavigatorService.PartNotFoundException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
+        StreamableRepositoryObjectImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
         DocumentPart testDocx = nav.getPartByName(zipDoc, QualifiedName.of("booyah", "subdir", "testdoc.docx"));
     }
     

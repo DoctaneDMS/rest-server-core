@@ -492,21 +492,6 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testDocumentLinkParent() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
-        String originalText = randomText();
-        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
-        QualifiedName docName = name1.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
-	    NamedRepositoryObject doc1 = service().getObjectByName(ROOT_ID, docName);
-	    assertEquals(name1, ((NamedRepositoryObject)doc1.getParent()).getName());
-        JsonObject jsonRep = doc1.toJson();
-        assertEquals(EMPTY_METADATA, jsonRep.getJsonObject("parent").getJsonObject("metadata"));
-        assertEquals(name1.join("/"), jsonRep.getJsonObject("parent").getString("name"));
-	}
-    
-    @Test
 	public void testRepositorySearchByMediaType() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
@@ -572,11 +557,7 @@ public abstract class BaseRepositoryServiceTest {
     private long countMatchingMetadata(List<NamedRepositoryObject> items, Predicate<JsonObject> match) {
         return items.stream().map(item->item.getMetadata()).filter(match).count();
     }
-    
-    private long countMatchingWorkspaceMetadata(List<NamedRepositoryObject> items, Predicate<JsonObject> match) {
-        return items.stream().map(item->item.getParent().getMetadata()).filter(match).count();
-    }
-    
+        
     @Test
 	public void testRepositorySearchContent() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
         QualifiedName name0 = randomQualifiedName();
@@ -600,7 +581,6 @@ public abstract class BaseRepositoryServiceTest {
         service().updateWorkspaceByName(baseId, name1, null, null, JsonUtil.parseObject("{'Description':'Open Workspace'}"), false);
 		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).collect(Collectors.toList());
         
-        assertEquals(2, countMatchingWorkspaceMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Closed Workspace")));
         assertEquals(2, countMatchingMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Text Document")));
 	}
 

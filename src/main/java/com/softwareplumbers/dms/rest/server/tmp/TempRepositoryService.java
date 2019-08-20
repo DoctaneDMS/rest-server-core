@@ -20,10 +20,10 @@ import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
+import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
-import com.softwareplumbers.dms.rest.server.model.DocumentPart;
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
 import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
 import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
@@ -573,17 +573,27 @@ public class TempRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Stream<DocumentPart> cataloguePartsByName(String rootId, QualifiedName documentName, QualifiedName partName) throws InvalidWorkspace, InvalidObjectName {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
     public Workspace getWorkspaceByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        NamedRepositoryObject object = getObjectByName(rootId, name);
+        if (object.getType() == RepositoryObject.Type.WORKSPACE) return (Workspace)object;
+        throw new InvalidObjectName(name);
     }
 
     @Override
     public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        NamedRepositoryObject object = getObjectByName(rootId, name);
+        if (object.getType() == RepositoryObject.Type.DOCUMENT_LINK) return (DocumentLink)object;
+        throw new InvalidObjectName(name);
+    }
+
+    @Override
+    public DocumentLink getDocumentLink(String workspaceId, QualifiedName path, String documentId) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId {
+ 		LOG.logEntering("getDocumentLink", documentId, workspaceId);
+		WorkspaceImpl workspace = workspacesById.get(workspaceId);
+		if (workspace == null) throw LOG.logThrow("getDocumentLink", new InvalidWorkspace(workspaceId));
+        workspace = workspace.getWorkspace(path).orElseThrow(()->new InvalidObjectName(path));
+		DocumentLink result = workspace.getById(documentId);
+		if (result == null) throw LOG.logThrow("getDocumentLink",new InvalidDocumentId(documentId));
+		return LOG.logReturn("getDocumentLink", result);    
     }
 }

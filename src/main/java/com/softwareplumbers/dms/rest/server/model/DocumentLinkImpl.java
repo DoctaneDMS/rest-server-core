@@ -12,22 +12,17 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidRefer
 
 public class DocumentLinkImpl implements DocumentLink {
     
-    protected final Reference ref;
     protected final QualifiedName name;
-    protected final RepositoryService service;
+    protected final Document document;
     
-    public DocumentLinkImpl(RepositoryService service, QualifiedName name, Reference ref) {
-        this.ref = ref;
+    /**
+     *
+     * @param name
+     * @param document
+     */
+    public DocumentLinkImpl(QualifiedName name, Document document) {
+        this.document = document;
         this.name = name;
-        this.service = service;
-    }
-    
-    private Document getDocument() {
-        try {
-            return service.getDocument(ref);
-        } catch (InvalidReference e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Override
@@ -37,60 +32,42 @@ public class DocumentLinkImpl implements DocumentLink {
 
     @Override
     public JsonObject getMetadata() {
-        return getDocument().getMetadata();
+        return document.getMetadata();
     }
 
     @Override
     public String getId() {
-        return ref.id;
+        return document.getId();
     }
 
     @Override
     public MediaType getMediaType() {
-        return getDocument().getMediaType();
+        return document.getMediaType();
     }
 
     @Override
     public void writeDocument(OutputStream target) throws IOException {
-        getDocument().writeDocument(target);
+        document.writeDocument(target);
     }
 
     @Override
     public long getLength() {
-        return getDocument().getLength();
+        return document.getLength();
     }
 
     @Override
     public String getVersion() {
-        return getDocument().getVersion();
-    }
-    
-    public DocumentLinkImpl toStatic() {
-        return new DocumentLinkImpl(service, name, getReference());
-    }
-
-    public DocumentLinkImpl toDynamic() {
-        return new DocumentLinkImpl(service, name, new Reference(ref.id));
+        return document.getVersion();
     }
 
 	@Override
 	public InputStream getData() throws IOException {
-		return getDocument().getData();
+		return document.getData();
 	}
     
     /** Return a short string describing document */
     @Override
     public String toString() {
         return String.format("DocumentLink { name: %s, type: %s, length %d }", getName().join("/"), getMediaType().toString(), getLength() );
-    }
-
-    @Override
-    public Workspace getParent() {
-        try {
-            return (Workspace)service.getObjectByName(null, name.parent);
-        } catch (RepositoryService.InvalidObjectName | RepositoryService.InvalidWorkspace e) {
-            // logically shouldn't happen
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -106,17 +106,32 @@ public interface RepositoryService {
 	 */
 	public Document getDocument(Reference reference) throws InvalidReference;
 
-	/** Get a document from an Id and a workspace Id.
+	/** *  Get a document from an Id and a workspace Id.Gets the most recent version of a document in the given workspace.
 	 * 
-	 * Gets the most recent version of a document in the given workspace.
  	 * 
 	 * @param id the Id of the requested document
 	 * @param workspaceId workspace to get the document from
 	 * @return the requested document
-	 * @throws InvalidReference if there is no document matching the reference in the repository 
+     * @throws InvalidWorkspace if the is no workspace matching the id
+	 * @throws InvalidDocumentId if there is no document matching the reference in the repository 
+     * @deprecated 
 	 */
 	public DocumentLink getDocument(String id, String workspaceId) throws InvalidWorkspace, InvalidDocumentId;
 
+	/** Get a document from an Id and a workspace Id.
+	 * 
+	 * Gets the most recent version of a document in the given workspace.
+ 	 * 
+	 * @param documentId the Id of the requested document
+     * @param path path relative to workspaceId on which we expect to find document
+	 * @param workspaceId workspace to get the document from
+	 * @return the requested document
+     * @throws InvalidWorkspace if the is no workspace matching the id
+	 * @throws InvalidDocumentId if there is no document matching the reference in the repository 
+     * @throws InvalidObjectName if path does not specify a valid workspace
+	 */
+	public DocumentLink getDocumentLink(String workspaceId, QualifiedName path, String documentId) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId;
+    
 	/** Create a new document in the repository
 	 * 
 	 * @param mediaType the type of document
@@ -358,23 +373,7 @@ public interface RepositoryService {
 	 * @throws InvalidReference no document exists with the given id
 	 */
 	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference;
-	
-	/** Catalog all the parts of a document.
-	 * 
-	 * The exact meaning of this call may depend on the type of document. A zip file,
-	 * for example, will typically be composed of a number of separate files; this method
-	 * will return a stream of Info objects containing a reference to each file in the archive,
-	 * and metadata (which would include the file name).
-	 * 
-	 * @param rootId root workspace in which to find document
-	 * @param documentName name of document within root workspace
-     * @param partName name of part within document
-	 * @return a stream of DocumentPart objects relating to the selected parts or sub-parts of the document
-	 * @throws InvalidObjectName if the documentName or partName are not valid or not found
-     * @throws InvalidWorkspace if rootId is not a valid workspace
-	 */
-	public Stream<DocumentPart> cataloguePartsByName(String rootId, QualifiedName documentName, QualifiedName partName) throws InvalidWorkspace, InvalidObjectName;
-	
+		
 	/** Create a workspace 
 	 * 
 	 * Workspaces may be open, finalized or closed; catalog operations on a closed or finalized

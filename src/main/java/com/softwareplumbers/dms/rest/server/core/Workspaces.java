@@ -49,11 +49,16 @@ import com.softwareplumbers.common.abstractquery.Query;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import com.softwareplumbers.dms.rest.server.model.DocumentLinkImpl;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.ws.rs.POST;
@@ -88,6 +93,8 @@ public class Workspaces {
     ///////////---------  member variables --------////////////
 
     private RepositoryServiceFactory repositoryServiceFactory;
+    private DocumentNavigatorService navigator;
+
     
     ///////////---------  methods --------////////////
 
@@ -99,6 +106,11 @@ public class Workspaces {
     @Autowired
     public void setRepositoryServiceFactory(RepositoryServiceFactory serviceFactory) {
         this.repositoryServiceFactory = serviceFactory;
+    }
+    
+    @Autowired
+    public void setDocumentNavigatorService(DocumentNavigatorService documentNavigatorService) {
+        this.navigator = documentNavigatorService;
     }
 
     /** GET information from a workspace path /ws/{repository}/{path}
@@ -142,12 +154,12 @@ public class Workspaces {
     @Path("/{repository}/{workspace:[^?]+}")
     public Response get(
         @PathParam("repository") String repository,
-        @PathParam("workspace") String workspaceName,
+        @PathParam("workspace") WorkspacePath workspacePath,
         @QueryParam("filter") String filter,
         @QueryParam("contentType") @DefaultValue("*/*") String contentType,
         @Context HttpHeaders headers
     ) {
-        LOG.logEntering("get", repository, workspaceName, filter, contentType, headers.getAcceptableMediaTypes());
+        LOG.logEntering("get", repository, workspacePath, filter, contentType, headers.getAcceptableMediaTypes());
         
         try {
             
@@ -158,86 +170,85 @@ public class Workspaces {
             if (service == null) 
                 return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
 
-            QualifiedName wsName = QualifiedName.parse(workspaceName, "/");
-            String rootId = ROOT_ID;
-            String firstPart = wsName.get(0);
-
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repository
-            if (firstPart.startsWith("~")) {
-                rootId = firstPart.substring(1);
-                wsName = wsName.rightFromStart(1);
-            } 
-            
-
-            // We are looking for object(s) on a path. If path contains wildcards, we need a search operation
-            if (wsName.indexFromEnd(part->part.contains("*") || part.contains("?")) >= 0) {
+            if (!workspacePath.queryPath.isEmpty()) {
                 Stream<NamedRepositoryObject> results;
-                if (wsName.part.startsWith("~")) {
-                    results = service.listWorkspaces(wsName.part.substring(1), wsName)
+                QualifiedName fullPath = workspacePath.staticPath.addAll(workspacePath.queryPath);
+                if (workspacePath.documentId != null) {
+                    results = service.listWorkspaces(workspacePath.documentId, fullPath)
                         .map(item->(NamedRepositoryObject)item);
                 } else {
-                    results = service.catalogueByName(rootId, wsName, filterConstraint, false);
+                    results = service.catalogueByName(workspacePath.rootId, fullPath, filterConstraint, false);
+                }
+                if (!workspacePath.partPath.isEmpty()) {
+                    results = results
+                        .filter(obj->obj.getType() == RepositoryObject.Type.DOCUMENT_LINK)
+                        .map(link->navigator.getOptionalPartByName(((DocumentLink)link), workspacePath.partPath))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get);
                 }
                 JsonArrayBuilder response = Json.createArrayBuilder();
-                results.forEach(item -> response.add(item.toJson()));
+                results.forEach(item -> response.add(item.toJson(service, navigator, 1, 0)));
                 return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(response.build()).build());
             } else {
   
                 // Path has no wildcards, so we are returning at most one object
-                RepositoryObject result;
-                    if (!wsName.isEmpty() && wsName.getFromEnd(0).startsWith("~")) {
-                        // See core issue #57
-                        QualifiedName path = wsName.leftFromEnd(1);
-                        if (!path.isEmpty()) {
-                            rootId = service.getObjectByName(rootId, path).getId();
-                        }
-                        String documentId = wsName.getFromEnd(0).substring(1);
-                        result = service.getDocument(documentId, rootId);
-                    } else {
-                        result = service.getObjectByName(rootId, wsName);
-                    }
-                    if (result != null) {                       
-                    	switch (result.getType()) {
-                    		case WORKSPACE:
-                    			return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());                    			
-                    		case DOCUMENT:                    			
-                    		case DOCUMENT_LINK:
-                                    List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
-                                    MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  
-                                    if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE)  {
-                                        Document document = (Document)result;
-                                        FormDataBodyPart metadata = new FormDataBodyPart();
-                                        metadata.setName("metadata");
-                                        metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                                        metadata.setEntity(document.toJson());
-                                        FormDataBodyPart file = new FormDataBodyPart();
-                                        file.setName("file");
-                                        file.setMediaType(document.getMediaType());
-                                        file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                                        file.setEntity(new DocumentOutput(document));
-                                        MultiPart response = new MultiPart()
-                                            .bodyPart(metadata)
-                                            .bodyPart(file);                                   
-                                        return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
-                                    } else if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
-                                        Document document = (Document)result;
-                                        return LOG.logResponse("get", Response.ok()
-                                            .type(MediaType.APPLICATION_XHTML_XML_TYPE)
-                                            .entity(new XMLOutput(document)).build());                                	
-                                    } else if (requestedMediaType == MediaType.APPLICATION_JSON_TYPE) {
-                                        return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
-                                    } else {
-                                        Document document = (Document)result;
-                                        return LOG.logResponse("get", Response.ok()
-                                            .header("content-disposition", "attachment; filename=" + URLEncoder.encode(wsName.part, StandardCharsets.UTF_8.name()))
-                                            .type(document.getMediaType())
-                                            .entity(new DocumentOutput(document)).build());
-                                    }
-                               default:
-                        	   throw new RuntimeException("Unknown result type:" + result.getType());
+                NamedRepositoryObject result;
+                if (workspacePath.documentId != null) {
+                    result = service.getDocumentLink(workspacePath.rootId, workspacePath.staticPath, workspacePath.documentId);
+                } else {
+                    result = service.getObjectByName(workspacePath.rootId, workspacePath.staticPath);
+                }
+                if (result != null) {                       
+                    switch (result.getType()) {
+                        case WORKSPACE:
+                            if (workspacePath.partPath.isEmpty()) {
+                        		return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,navigator,1,0)).build());                    		
+                            } else {
+                                return LOG.logResponse("get", Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.badOperation("Workspaces do not have document parts")).build());
+                            }
+                    	case DOCUMENT_LINK:
+                            String documentName = workspacePath.staticPath.part;
+                            if (!workspacePath.partPath.isEmpty()) {
+                                result = navigator.getPartByName(((DocumentLink)result), workspacePath.partPath);
+                                documentName = workspacePath.partPath.part;
+                            }
+                            List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
+                            MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  
+                            if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE)  {
+                                StreamableRepositoryObject document = (StreamableRepositoryObject)result;
+                                FormDataBodyPart metadata = new FormDataBodyPart();
+                                metadata.setName("metadata");
+                                metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                                metadata.setEntity(document.toJson(service, navigator, 1, 0));
+                                FormDataBodyPart file = new FormDataBodyPart();
+                                file.setName("file");
+                                file.setMediaType(document.getMediaType());
+                                file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                                file.setEntity(new DocumentOutput(document));
+                                MultiPart response = new MultiPart()
+                                    .bodyPart(metadata)
+                                    .bodyPart(file);                                   
+                                return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
+                            } else if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
+                                Document document = (Document)result;
+                                return LOG.logResponse("get", Response.ok()
+                                    .type(MediaType.APPLICATION_XHTML_XML_TYPE)
+                                    .entity(new XMLOutput(document)).build());                                	
+                            } else if (requestedMediaType == MediaType.APPLICATION_JSON_TYPE) {
+                                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service, navigator, 1, 0)).build());
+                            } else {
+                                Document document = (Document)result;
+                                return LOG.logResponse("get", Response.ok()
+                                    .header("content-disposition", "attachment; filename=" + URLEncoder.encode(documentName, StandardCharsets.UTF_8.name()))
+                                    .type(document.getMediaType())
+                                    .entity(new DocumentOutput(document)).build());
+                            }
+                        default:
+                            throw new RuntimeException("Unknown result type:" + result.getType());
                     	}
                 } else {
-                    return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.objectNotFound(repository, wsName)).build());
+                    return LOG.logResponse("get", 
+                        Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.objectNotFound(repository, workspacePath)).build());
                 }
             }
 
@@ -251,7 +262,11 @@ public class Workspaces {
             return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
         } catch (InvalidContentType err) {
             return LOG.logResponse("get", Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
-        } catch (Throwable e) {
+        } catch (DocumentFormatException err) {
+            return LOG.logResponse("get", Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
+        } catch (PartNotFoundException err) {
+            return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.mapServiceError(err)).build());
+        }catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("get", Response.status(Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(Error.reportException(e)).build());
@@ -454,10 +469,10 @@ public class Workspaces {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 
                 String name = service.createDocumentLink(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
-                
-                DocumentLinkImpl link = new DocumentLinkImpl(service, wsName.add(name), reference);
+                // TODO: service.createDocumentLink should probably return a DocumentLink
+                DocumentLinkImpl link = new DocumentLinkImpl(wsName.add(name), service.getDocument(reference));
                 URI created = uriInfo.getAbsolutePathBuilder().path(name).build();
-                return LOG.logResponse("post", Response.created(created).entity(link.toJson()).build());
+                return LOG.logResponse("post", Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());

@@ -4,9 +4,11 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type;
 
 import javax.json.Json;
+import javax.json.JsonArrayBuilder;
 
 /** Representation of a Workspace in a repository 
  *
@@ -23,6 +25,8 @@ public interface Workspace extends NamedRepositoryObject {
 	/** Possible states of a workspace */
 	enum State { Open, Closed, Finalized }
 	
+	/** Get id of object */
+	String getId();
 
 	/** Get the state of a workspace */
 	State getState();
@@ -31,7 +35,7 @@ public interface Workspace extends NamedRepositoryObject {
 	default Type getType() { return Type.WORKSPACE; }
 	
 	/** Get the default Json representation for a workspace */
-	default JsonObject toJson() {
+	default JsonObject toJson(RepositoryService repository, DocumentNavigatorService navigator, int parentLevels, int childLevels) {
 		
 		QualifiedName name = getName();
 		State state = getState();
@@ -40,6 +44,29 @@ public interface Workspace extends NamedRepositoryObject {
 		Type type = getType();
 
 	    JsonObjectBuilder builder = Json.createObjectBuilder(); 
+        
+        if (parentLevels > 0) {
+            QualifiedName parentName = getName().parent;
+            if (!parentName.isEmpty()) {
+                try {
+                    RepositoryObject parent = repository.getObjectByName(Constants.ROOT_ID, getName().parent);
+                    builder.add("parent", parent.toJson(repository, navigator, parentLevels-1, 0));
+                } catch (RepositoryService.InvalidObjectName | RepositoryService.InvalidWorkspace err) {
+                    throw new RuntimeException(err);
+                }
+            }
+        }
+        
+        if (childLevels > 0) {
+            try {
+                JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
+                repository.catalogueByName(Constants.ROOT_ID, name, Query.UNBOUNDED, false)
+                    .forEach(part -> childrenBuilder.add(part.toJson(repository, navigator, 0, childLevels-1)));
+                builder.add("parts", childrenBuilder);
+            } catch (RepositoryService.InvalidWorkspace err) {
+                throw new RuntimeException(err);
+            }
+        }
 
 	    // Base fields  
 	    if (id != null) builder.add("id", id);

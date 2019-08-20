@@ -21,6 +21,7 @@ import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Spliterator;
 import java.util.TreeMap;
 import javax.json.JsonObject;
@@ -38,7 +39,6 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         private RepositoryObject parent;
         private QualifiedName name;
         private byte[] bytes;
-        private long id;
         private MediaType mediaType;
 
         @Override
@@ -47,18 +47,8 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         }
 
         @Override
-        public RepositoryObject getParent() {
-            return parent;
-        }
-
-        @Override
         public JsonObject getMetadata() {
             return Constants.EMPTY_METADATA;
-        }
-
-        @Override
-        public String getId() {
-            return Long.toHexString(id);
         }
 
         @Override
@@ -81,8 +71,7 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
             return bytes.length;
         }   
         
-        public ZipFilePart(RepositoryObject parent, long id, QualifiedName name, MediaType mediaType, byte[] bytes) throws IOException {
-            this.id = id;
+        public ZipFilePart(RepositoryObject parent, QualifiedName name, MediaType mediaType, byte[] bytes) throws IOException {
             this.name = name;
             this.mediaType = mediaType;
             this.bytes = bytes;
@@ -92,16 +81,15 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         public static ZipFilePart from(RepositoryObject parent, long id, QualifiedName name, MediaType mediaType, InputStream bytes) throws IOException {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             IOUtils.copy(bytes, buffer);
-            return new ZipFilePart(parent, id, name, mediaType, buffer.toByteArray());
+            return new ZipFilePart(parent, name, mediaType, buffer.toByteArray());
         }
     }
 
     @Override
-    public DocumentPart getPartByName(Document document, QualifiedName partName) throws DocumentFormatException, PartNotFoundException {
+    public Optional<DocumentPart> getOptionalPartByName(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException {
         return catalogParts(document)
                 .filter(part -> Objects.equals(part.getName(), partName))
-                .findAny()
-                .orElseThrow(()->new PartNotFoundException(document, partName));
+                .findAny();
     }
     
     private static class ZipIterator implements Iterator<DocumentPart>, Closeable {
@@ -111,7 +99,7 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         private ZipInputStream zifs;
         private int index = 0;
         
-        public ZipIterator(Document document) throws IOException {
+        public ZipIterator(StreamableRepositoryObject document) throws IOException {
             this.zifs = new ZipInputStream(document.getData());
             this.currentEntry = zifs.getNextEntry();
             this.directory.put(QualifiedName.ROOT, document);
@@ -146,7 +134,7 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         }
     }
 
-    public Stream<DocumentPart> catalogParts(Document document) throws DocumentFormatException {
+    public Stream<DocumentPart> catalogParts(StreamableRepositoryObject document) throws DocumentFormatException {
         try {
         ZipIterator zi = new ZipIterator(document);
         return StreamSupport
@@ -158,12 +146,12 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
     }
 
     @Override
-    public Stream<DocumentPart> catalogParts(Document document, QualifiedName partName) throws DocumentFormatException {
+    public Stream<DocumentPart> catalogParts(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException {
         return catalogParts(document).filter(part -> Objects.equals(part.getName().parent, partName));
     }
 
     @Override
-    public boolean canNavigate(Document document) {
+    public boolean canNavigate(StreamableRepositoryObject document) {
         return document.getMediaType().equals(MediaTypes.ZIP);
     }
     

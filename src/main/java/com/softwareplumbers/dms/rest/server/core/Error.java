@@ -4,11 +4,10 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -90,7 +89,14 @@ public class Error {
 				.build();		
 	}
 	
-	
+	public static JsonObject mapServiceError(PartNotFoundException err) {
+		return Json.createObjectBuilder()
+				.add("error", "Object part " + err.part + " is not valid")
+				.add("name", err.part.toString())
+				.build();		
+	}
+
+    
 	public static JsonObject mapServiceError(InvalidDocumentId err) {
 		return Json.createObjectBuilder()
 				.add("error", "Document " + err.id + " is not found")
@@ -112,6 +118,15 @@ public class Error {
 	}
 
 	public static JsonObject objectNotFound(String repository, QualifiedName name) {
+		JsonObjectBuilder builder = Json.createObjectBuilder()
+				.add("error", "Object " + name + " does not exist in repository " + repository)
+				.add("name", name.toString())
+				.add("repository", repository);
+				
+		return builder.build();
+	}
+
+    public static JsonObject objectNotFound(String repository, WorkspacePath name) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
 				.add("error", "Object " + name + " does not exist in repository " + repository)
 				.add("name", name.toString())
