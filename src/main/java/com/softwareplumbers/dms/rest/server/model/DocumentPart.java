@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
 import static com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type.DOCUMENT_PART;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -8,6 +9,8 @@ import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
 
 public interface DocumentPart extends NamedRepositoryObject, StreamableRepositoryObject {
+    
+    StreamableRepositoryObject getDocument();
     	
     /** Get type of object
      * @return DOCUMENT_PART */
@@ -37,9 +40,9 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
             QualifiedName parentName = getName().parent;
             if (!parentName.isEmpty()) {
                 try {
-                    RepositoryObject parent = service.getObjectByName(Constants.ROOT_ID, getName().parent);
+                    RepositoryObject parent = navigator.getPartByName(getDocument(), getName().parent);
                     builder.add("parent", parent.toJson(service, navigator, parentLevels-1, 0));
-                } catch (RepositoryService.InvalidObjectName | RepositoryService.InvalidWorkspace err) {
+                } catch (PartNotFoundException err) {
                     throw new RuntimeException(err);
                 }
             }

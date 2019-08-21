@@ -11,7 +11,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import java.math.BigDecimal;
 import javax.json.JsonArrayBuilder;
 
-public interface DocumentLink extends DocumentPart, Document {
+public interface DocumentLink extends NamedRepositoryObject, Document {
     
     /** Default implementation returns Type.DOCUMENT_LINK */ 
     @Override

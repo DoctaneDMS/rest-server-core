@@ -14,6 +14,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
 import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
@@ -98,15 +99,14 @@ class WorkspaceImpl implements Workspace {
 	private TreeMap<String, NamedRepositoryObject> children;
 	private State state;
 	private JsonObject metadata;
-	
-	
+    private DocumentNavigatorService navigator;
 	
 	private static String generateName() {
 		return UUID.randomUUID().toString();
 	}
 
 	
-	public WorkspaceImpl(TempRepositoryService service, WorkspaceImpl parent, String id, String name, State state, JsonObject metadata) {
+	public WorkspaceImpl(TempRepositoryService service, DocumentNavigatorService navigator, WorkspaceImpl parent, String id, String name, State state, JsonObject metadata) {
 		if (state == null) throw new IllegalArgumentException("state cannot be null");
 		if (service == null) throw new IllegalArgumentException("service cannot be null");
 		if (id == null) throw new IllegalArgumentException("Id cannot be null");
@@ -381,7 +381,7 @@ class WorkspaceImpl implements Workspace {
 			.map(e -> e.getValue());
 		
 		if (remainingName.isEmpty()) {
-		    return matchingChildren.filter(item->filter.containsItem(item.toJson()));
+		    return matchingChildren.filter(item->filter.containsItem(item.toJson(service, navigator, 1, 0)));
 		} else {
 			return matchingChildren
 			    .filter(child -> child.getType() == Type.WORKSPACE)
@@ -400,7 +400,7 @@ class WorkspaceImpl implements Workspace {
 		WorkspaceImpl childWorkspace = null;
 		if (child == null) {
 			if (createWorkspace) {
-				childWorkspace = new WorkspaceImpl(service, this, UUID.randomUUID().toString(), firstPart, State.Open, TempRepositoryService.EMPTY_METADATA);
+				childWorkspace = new WorkspaceImpl(service, navigator, this, UUID.randomUUID().toString(), firstPart, State.Open, TempRepositoryService.EMPTY_METADATA);
 				children.put(firstPart, childWorkspace);
 				service.registerWorkspace(childWorkspace);
 			} else 
@@ -434,7 +434,7 @@ class WorkspaceImpl implements Workspace {
 			if (localParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
 		}
 
-		WorkspaceImpl child = new WorkspaceImpl(service, localParent, id, localName, state, metadata);
+		WorkspaceImpl child = new WorkspaceImpl(service, navigator, localParent, id, localName, state, metadata);
 		
 		localParent.children.put(localName, child);
 		service.registerWorkspace(child);

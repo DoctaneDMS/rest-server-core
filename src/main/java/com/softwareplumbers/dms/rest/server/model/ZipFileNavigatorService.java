@@ -36,7 +36,7 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         
     private static class ZipFilePart implements DocumentPart {
         
-        private RepositoryObject parent;
+        private StreamableRepositoryObject document;
         private QualifiedName name;
         private byte[] bytes;
         private MediaType mediaType;
@@ -60,6 +60,11 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         public void writeDocument(OutputStream target) throws IOException {
             target.write(bytes);
         }
+        
+        @Override
+        public StreamableRepositoryObject getDocument() {
+            return document;
+        }
 
         @Override
         public InputStream getData() throws IOException {
@@ -71,17 +76,17 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
             return bytes.length;
         }   
         
-        public ZipFilePart(RepositoryObject parent, QualifiedName name, MediaType mediaType, byte[] bytes) throws IOException {
+        public ZipFilePart(StreamableRepositoryObject document, QualifiedName name, MediaType mediaType, byte[] bytes) throws IOException {
             this.name = name;
             this.mediaType = mediaType;
             this.bytes = bytes;
-            this.parent = parent;
+            this.document = document;
         }
         
-        public static ZipFilePart from(RepositoryObject parent, long id, QualifiedName name, MediaType mediaType, InputStream bytes) throws IOException {
+        public static ZipFilePart from(StreamableRepositoryObject document, long id, QualifiedName name, MediaType mediaType, InputStream bytes) throws IOException {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             IOUtils.copy(bytes, buffer);
-            return new ZipFilePart(parent, name, mediaType, buffer.toByteArray());
+            return new ZipFilePart(document, name, mediaType, buffer.toByteArray());
         }
     }
 
@@ -94,15 +99,15 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
     
     private static class ZipIterator implements Iterator<DocumentPart>, Closeable {
 
-        private Map<QualifiedName, RepositoryObject> directory = new TreeMap<>();
+        private StreamableRepositoryObject zipfile;
         private ZipEntry currentEntry;
         private ZipInputStream zifs;
         private int index = 0;
         
-        public ZipIterator(StreamableRepositoryObject document) throws IOException {
-            this.zifs = new ZipInputStream(document.getData());
+        public ZipIterator(StreamableRepositoryObject zipfile) throws IOException {
+            this.zifs = new ZipInputStream(zipfile.getData());
             this.currentEntry = zifs.getNextEntry();
-            this.directory.put(QualifiedName.ROOT, document);
+            this.zipfile = zipfile;
         }
         
         @Override
@@ -115,12 +120,10 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
             try {
                 QualifiedName name = QualifiedName.parse(currentEntry.getName(), "/");
                 MediaType type = MediaTypes.getTypeFromFilename(name.part);
-                RepositoryObject parent = directory.get(name.parent);
-                ZipFilePart result = ZipFilePart.from(parent, index, name, type, zifs);
+                ZipFilePart result = ZipFilePart.from(zipfile, index, name, type, zifs);
                 index++;
                 zifs.closeEntry();
                 currentEntry = zifs.getNextEntry();
-                directory.put(name, result);
                 return result;
             } catch (IOException e) {
                 throw new RuntimeException("Could not retrieve next entry in zip stream", e);
@@ -130,7 +133,6 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         @Override
         public void close() throws IOException {
             zifs.close();
-            directory.clear();
         }
     }
 

@@ -24,6 +24,7 @@ import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
 import com.softwareplumbers.dms.rest.server.model.InputStreamSupplier;
 import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
 import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
@@ -56,7 +57,8 @@ public class TempRepositoryService implements RepositoryService {
 	private final TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
 	private final TreeMap<String, WorkspaceImpl> workspacesById = new TreeMap<>();
 	private final TreeMap<String, Set<String>> workspacesByDocument = new TreeMap<>();
-	WorkspaceImpl root = new WorkspaceImpl(this, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
+    private final DocumentNavigatorService navigator;
+	public WorkspaceImpl root;
 	private final QualifiedName nameAttribute;
 	
 	private WorkspaceImpl getRoot(String rootId) throws InvalidWorkspace {
@@ -68,12 +70,15 @@ public class TempRepositoryService implements RepositoryService {
 		return myRoot;
 	}
 	
-	public TempRepositoryService(QualifiedName nameAttribute) {
+	public TempRepositoryService(DocumentNavigatorService navigator, QualifiedName nameAttribute) {
 		this.nameAttribute = nameAttribute;
+        this.navigator = navigator;
+        this.root = new WorkspaceImpl(this, navigator, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
+
 	}
 	
-	public TempRepositoryService(String nameAttribute) {
-		this.nameAttribute = QualifiedName.parse(nameAttribute, "/");
+	public TempRepositoryService(DocumentNavigatorService navigator, String nameAttribute) {
+		this(navigator, QualifiedName.parse(nameAttribute, "/"));
 	}
 	
 	/** Return attribute value used as default name when adding a document to a workspace
@@ -160,7 +165,7 @@ public class TempRepositoryService implements RepositoryService {
 		
 		if (workspace == null) {
 			if (workspaceId == null) workspaceId = UUID.randomUUID().toString();
-			workspace = new WorkspaceImpl(this, null, workspaceId, null, State.Open, EMPTY_METADATA);
+			workspace = new WorkspaceImpl(this, navigator, null, workspaceId, null, State.Open, EMPTY_METADATA);
 			workspacesById.put(workspaceId, workspace);
 		}
 		
@@ -366,7 +371,7 @@ public class TempRepositoryService implements RepositoryService {
 	
 	public void clear() {
 		store.clear();
-		root = new WorkspaceImpl(this, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
+		root = new WorkspaceImpl(this, navigator, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
 		workspacesById.clear();
 		workspacesByDocument.clear();
 	}
@@ -424,7 +429,7 @@ public class TempRepositoryService implements RepositoryService {
 	    if (!workspacesById.containsKey(id)) {
 			if (createWorkspace) {
 			    if (state == null) state = State.Open;
-				workspacesById.put(id, new WorkspaceImpl(this, null, id, null, state, metadata));
+				workspacesById.put(id, new WorkspaceImpl(this, navigator, null, id, null, state, metadata));
 			} else
 				throw new InvalidWorkspace(id);
 		}

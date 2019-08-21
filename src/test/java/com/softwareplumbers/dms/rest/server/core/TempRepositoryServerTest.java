@@ -59,7 +59,9 @@ import org.w3c.dom.NodeList;
 import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
+import com.softwareplumbers.dms.rest.server.model.DocumentPartImpl;
 import com.softwareplumbers.dms.rest.server.model.Reference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.test.TestRepository;
 import com.softwareplumbers.keymanager.BadKeyException;
@@ -69,6 +71,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.client.ClientProperties;
+import org.junit.Assert;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 
@@ -379,6 +382,7 @@ public class TempRepositoryServerTest {
                 .get();
         
         JsonObject metadata = null;
+        JsonObject data = null;
         InputStream is = null;
         MediaType mediaType = null;
         Reference reference = null;
@@ -389,9 +393,8 @@ public class TempRepositoryServerTest {
                 String cd = part.getHeaders().getFirst("Content-Disposition");
                 String name = new FormDataContentDisposition(cd).getName();
                 if (name.equals("metadata")) {
-                    JsonObject data = part.getEntityAs(JsonObject.class);
+                    data = part.getEntityAs(JsonObject.class);
                     metadata = data.getJsonObject("metadata");
-                    reference = new Reference(data.getString("id"), data.getString("version"));
                 }
                 if (name.equals("file")) {
                     mediaType = part.getMediaType();
@@ -400,11 +403,14 @@ public class TempRepositoryServerTest {
             }
             if (metadata != null && is != null) {
                 InputStream doc_source = is;
-                return new DocumentImpl(reference, mediaType, ()->doc_source, metadata);
+                if (data.getString("type").equals(RepositoryObject.Type.DOCUMENT_PART.toString()))
+                    return new DocumentPartImpl(null, QualifiedName.parse(data.getString("name"),"/"), mediaType, ()->doc_source, metadata);                    
+                else
+                    return new DocumentImpl(new Reference(data.getString("id"), data.getString("version")), mediaType, ()->doc_source, metadata);
             }
         } 
 
-        throw new RuntimeException("Bad get" + response.getEntity());
+        throw new RuntimeException("Bad status " + response.getStatusInfo().getReasonPhrase());
     } 
     
     /** Utility function to get a document from the local test server
@@ -895,10 +901,9 @@ public class TempRepositoryServerTest {
     public void testGetZipFilePart() throws IOException, ParseException {
         JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
         StreamableRepositoryObjectImpl doc = getDocumentFromWorkspace("/wsname3/testzip/~/test/test1.txt");
-        byte[] original = IOUtils.resourceToByteArray("test1.txt");
+        byte[] original = IOUtils.resourceToByteArray("/test1.txt");
         byte[] unzipped = IOUtils.toByteArray(doc.getData());
-        assertEquals(original, unzipped);
-        
+        assertArrayEquals(original, unzipped);   
     }
 }
 
