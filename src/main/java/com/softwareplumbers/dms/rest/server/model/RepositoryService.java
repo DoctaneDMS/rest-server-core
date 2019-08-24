@@ -345,7 +345,9 @@ public interface RepositoryService {
 	 * (or the entire repository if the workspace is set to null).
 	 * </p><p>
 	 * Results can be filtered using a 'Query' object to filter for documents with metadata matching
-	 * the specified query. The path provided may contain the wildcard characters * and ?. 
+	 * the specified query. The path provided may also contain the wildcard characters * and ?. In this
+     * case the operation returns all objects which have a name fully matching the path. In essence, the
+     * path 'abc/def' (with no wildcards) returns the exact same result as 'abc/def/*'.
 	 * </p><p>
 	 * By default catalog operation works on only the most recent version of any document in a workspace
 	 * or repository. If the most recent version does not match the filter, no reference to that document
