@@ -334,26 +334,6 @@ public class TempRepositoryService implements RepositoryService {
 		buf.setCharAt(end, (char)(string.charAt(end) + 1));
 		return buf.toString();
 	}
-	
-	static String wildcardToRegex(String string) {
-		StringBuffer buffer = new StringBuffer();
-		for (int i = 0; i < string.length(); i++) {
-			char c = string.charAt(i);
-			switch (c) {
-				case '.': 
-					buffer.append("\\.");
-					break;
-				case '?': 
-					buffer.append(".");
-					break;
-				case '*': 
-					buffer.append(".*");
-					break;
-				default: buffer.append(c);
-			}
-		}
-		return buffer.toString();
-	}
 		
 	/** Catalog a repository.
 	 * 
