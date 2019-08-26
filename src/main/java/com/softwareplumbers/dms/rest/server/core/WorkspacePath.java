@@ -6,6 +6,8 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
+
 import com.softwareplumbers.dms.rest.server.model.Constants;
 
 /** Class representing workspace path.
@@ -63,8 +65,7 @@ public class WorkspacePath {
      * @return true if element is a query element
      */
     public static boolean isQueryElement(String element) {
-        //TODO: escape logic
-        return element.contains("*") || element.contains("?");
+        return !Parsers.parseUnixWildcard(element).isSimple();
     }
 
     public static boolean isPartDelimeter(String element) {

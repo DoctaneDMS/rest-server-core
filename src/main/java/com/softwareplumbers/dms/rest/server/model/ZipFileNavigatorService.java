@@ -6,13 +6,12 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
+import com.softwareplumbers.common.abstractpattern.visitor.Builders;
+import com.softwareplumbers.common.abstractpattern.visitor.Visitor.PatternSyntaxException;
 import com.softwareplumbers.dms.rest.server.core.MediaTypes;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Spliterators;
@@ -20,89 +19,22 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Spliterator;
-import java.util.TreeMap;
-import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.IOUtils;
 
-/**
+/** Implementation of DocumentNavigatorService over ZipFiles.
  *
- * @author jonathan.local
+ * @author Jonathan Essex
  */
 public class ZipFileNavigatorService implements DocumentNavigatorService {
-        
-    private static class ZipFilePart implements DocumentPart {
-        
-        private StreamableRepositoryObject document;
-        private QualifiedName name;
-        private byte[] bytes;
-        private MediaType mediaType;
-
-        @Override
-        public QualifiedName getName() {
-            return name;
-        }
-
-        @Override
-        public JsonObject getMetadata() {
-            return Constants.EMPTY_METADATA;
-        }
-
-        @Override
-        public MediaType getMediaType() {
-            return mediaType;
-        }
-
-        @Override
-        public void writeDocument(OutputStream target) throws IOException {
-            target.write(bytes);
-        }
-        
-        @Override
-        public StreamableRepositoryObject getDocument() {
-            return document;
-        }
-
-        @Override
-        public InputStream getData() throws IOException {
-            return new ByteArrayInputStream(bytes);
-        }
-
-        @Override
-        public long getLength() {
-            return bytes.length;
-        }   
-        
-        public ZipFilePart(StreamableRepositoryObject document, QualifiedName name, MediaType mediaType, byte[] bytes) throws IOException {
-            this.name = name;
-            this.mediaType = mediaType;
-            this.bytes = bytes;
-            this.document = document;
-        }
-        
-        public static ZipFilePart from(StreamableRepositoryObject document, long id, QualifiedName name, MediaType mediaType, InputStream bytes) throws IOException {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            IOUtils.copy(bytes, buffer);
-            return new ZipFilePart(document, name, mediaType, buffer.toByteArray());
-        }
-    }
-
-    @Override
-    public Optional<DocumentPart> getOptionalPartByName(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException {
-        return catalogParts(document)
-                .filter(part -> Objects.equals(part.getName(), partName))
-                .findAny();
-    }
-    
+            
     private static class ZipIterator implements Iterator<DocumentPart>, Closeable {
 
         private StreamableRepositoryObject zipfile;
         private ZipEntry currentEntry;
         private ZipInputStream zifs;
-        private int index = 0;
         
         public ZipIterator(StreamableRepositoryObject zipfile) throws IOException {
             this.zifs = new ZipInputStream(zipfile.getData());
@@ -120,8 +52,7 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
             try {
                 QualifiedName name = QualifiedName.parse(currentEntry.getName(), "/");
                 MediaType type = MediaTypes.getTypeFromFilename(name.part);
-                ZipFilePart result = ZipFilePart.from(zipfile, index, name, type, zifs);
-                index++;
+                DocumentPartImpl result = new DocumentPartImpl(zipfile, name, type, IOUtils.toByteArray(zifs), Constants.EMPTY_METADATA);
                 zifs.closeEntry();
                 currentEntry = zifs.getNextEntry();
                 return result;
@@ -136,6 +67,13 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         }
     }
 
+    @Override
+    public Optional<DocumentPart> getOptionalPartByName(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException {
+        return catalogParts(document)
+                .filter(part -> Objects.equals(part.getName(), partName))
+                .findAny();
+    }
+    
     public Stream<DocumentPart> catalogParts(StreamableRepositoryObject document) throws DocumentFormatException {
         try {
         ZipIterator zi = new ZipIterator(document);
@@ -149,7 +87,17 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
 
     @Override
     public Stream<DocumentPart> catalogParts(StreamableRepositoryObject document, QualifiedName partName) throws DocumentFormatException {
-        return catalogParts(document).filter(part -> Objects.equals(part.getName().parent, partName));
+        try {
+            boolean isSimple = partName.apply(true, (a, element) -> a && Parsers.parseUnixWildcard(element).isSimple());
+            if (!isSimple) {
+                QualifiedName template = partName.transform(element -> Parsers.parseUnixWildcard(element).build(Builders.toRegex()));
+                return catalogParts(document).filter(part -> part.getName().matches(template, true));
+            } else {
+                return catalogParts(document).filter(part -> Objects.equals(part.getName().parent, partName));
+            }
+        } catch (PatternSyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

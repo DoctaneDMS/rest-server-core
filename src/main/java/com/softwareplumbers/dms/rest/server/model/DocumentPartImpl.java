@@ -17,15 +17,15 @@ import javax.ws.rs.core.MediaType;
 public class DocumentPartImpl extends StreamableRepositoryObjectImpl implements DocumentPart {
     
     private final QualifiedName name;
-    private final Document document;
+    private final StreamableRepositoryObject document;
     
-    public DocumentPartImpl(Document document, QualifiedName name, MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
+    public DocumentPartImpl(StreamableRepositoryObject document, QualifiedName name, MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
         super(mediaType, doc_src, metadata);
         this.name = name;
         this.document = document;
     }
     
-    public DocumentPartImpl(Document document, QualifiedName name, MediaType mediaType, byte[] data, JsonObject metadata) {
+    public DocumentPartImpl(StreamableRepositoryObject document, QualifiedName name, MediaType mediaType, byte[] data, JsonObject metadata) {
         super(mediaType, data, metadata);
         this.name = name;
         this.document = document;
@@ -61,7 +61,7 @@ public class DocumentPartImpl extends StreamableRepositoryObjectImpl implements 
     }
     
     @Override
-    public Document getDocument() {
+    public StreamableRepositoryObject getDocument() {
         return document;
     }
     

@@ -11,6 +11,10 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractpattern.Pattern;
+import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
+import com.softwareplumbers.common.abstractpattern.visitor.Builders;
+import com.softwareplumbers.common.abstractpattern.visitor.Visitor;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentLink;
@@ -114,7 +118,7 @@ class WorkspaceImpl implements Workspace {
 		this.id = id;
 		this.name = name == null ? generateName() : name;
 		this.state = state;
-		this.children = new TreeMap<String, NamedRepositoryObject>();
+		this.children = new TreeMap<>();
 		this.parent = parent;
 		this.metadata = metadata == null ? TempRepositoryService.EMPTY_METADATA : metadata;
 	}
@@ -184,8 +188,8 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public String getContainmentName(Document doc) {
-		JsonObject metadata = doc.getMetadata(); 
-		JsonString docName = metadata == null ? null : (JsonString)service.getNameAttribute().apply(metadata);
+		JsonObject docMetadata = doc.getMetadata(); 
+		JsonString docName = docMetadata == null ? null : (JsonString)service.getNameAttribute().apply(docMetadata);
 		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document" : docName.getString() + "_" + children.size();
 		String ext = "";
 		int separator = baseName.lastIndexOf('.');
@@ -239,9 +243,9 @@ class WorkspaceImpl implements Workspace {
             else
                 throw LOG.logThrow("add", new InvalidReference(ref));
         } else {
-            String name = getContainmentName(service.getDocument(ref));
-            add(ref, name);
-            return LOG.logReturn("add", name);
+            String cname = getContainmentName(service.getDocument(ref));
+            add(ref, cname);
+            return LOG.logReturn("add", cname);
         }
         
     }
@@ -351,33 +355,35 @@ class WorkspaceImpl implements Workspace {
 		
 		if (workspaceName == QualifiedName.ROOT) return catalogue(filter, searchHistory);
 
-		String firstPart = workspaceName.get(0);
+		Pattern pattern = Parsers.parseUnixWildcard(workspaceName.get(0));
 		QualifiedName remainingName = workspaceName.rightFromStart(1);
+        String lowerBound = pattern.lowerBound();
 
-		int star = firstPart.indexOf('*'); 
-		int questionMark = firstPart.indexOf('?'); 
-		int firstWildcard = star < 0 || questionMark < 0 ? Math.max(star, questionMark) : Math.min(star, questionMark);
-
-		if (firstWildcard < 0) {
-			NamedRepositoryObject child = children.get(firstPart);
+		if (pattern.isSimple()) {
+			NamedRepositoryObject child = children.get(lowerBound);
 			return (child == null || child.getType() != Type.WORKSPACE) 
 				? Stream.empty() 
 				: ((WorkspaceImpl)child).catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
 		}
 		
 		SortedMap<String,NamedRepositoryObject> submap = children;
-			
-		if (firstWildcard > 0) {
-			String lowerBound = firstPart.substring(0, firstWildcard);
-			String upperBound = TempRepositoryService.nextSeq(lowerBound);
+
+		if (lowerBound.length() > 0) {
+            String upperBound = TempRepositoryService.nextSeq(lowerBound);
 			submap = children.subMap(lowerBound, upperBound);
 		}
+        
+        java.util.regex.Pattern regex;
+        
+        try {
+            regex = pattern.build(Builders.toPattern());
+        } catch (Visitor.PatternSyntaxException ex) {
+            throw new RuntimeException(ex);
+        }
 			
-		String pattern = TempRepositoryService.wildcardToRegex(firstPart);
-		
 		Stream<NamedRepositoryObject> matchingChildren = submap.entrySet()
 			.stream()
-			.filter(e -> e.getKey().matches(pattern))
+			.filter(e -> regex.matcher(e.getKey()).matches())
 			.map(e -> e.getValue());
 		
 		if (remainingName.isEmpty()) {
