@@ -573,8 +573,8 @@ public class TempRepositoryService implements RepositoryService {
 
     @Override
     public DocumentLink getDocumentLink(String workspaceId, QualifiedName path, String documentId) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId {
- 		LOG.logEntering("getDocumentLink", documentId, workspaceId);
-		WorkspaceImpl workspace = workspacesById.get(workspaceId);
+ 		LOG.logEntering("getDocumentLink", workspaceId, path, documentId);
+		WorkspaceImpl workspace = getRoot(workspaceId);
 		if (workspace == null) throw LOG.logThrow("getDocumentLink", new InvalidWorkspace(workspaceId));
         workspace = workspace.getWorkspace(path).orElseThrow(()->new InvalidObjectName(path));
 		DocumentLink result = workspace.getById(documentId);
