@@ -584,5 +584,26 @@ public abstract class BaseRepositoryServiceTest {
         assertEquals(2, countMatchingMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Text Document")));
 	}
 
-	
+    @Test
+	public void testGetDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference, InvalidDocumentId, IOException {
+        QualifiedName name0 = randomQualifiedName();
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+
+        // Create a random document
+        String originalText = randomText();        
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), JsonUtil.parseObject("{'Description':'Text Document'}"), null, false);
+
+        // Add document to a random folder
+        QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
+        QualifiedName W1doc1Name = name1.add(randomUrlSafeName());
+        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true);
+        
+        // Get the document back again
+        DocumentLink link = service().getDocumentLink(baseId, name1, ref1.id);        
+        assertEquals(originalText, getDocText(link));
+
+        // Get the document back again using implicit root
+        DocumentLink link2 = service().getDocumentLink(null, name0.addAll(name1), ref1.id);
+        assertEquals(originalText, getDocText(link2));
+    }
 }
