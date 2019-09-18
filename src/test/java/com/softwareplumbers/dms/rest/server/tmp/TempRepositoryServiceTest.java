@@ -12,6 +12,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService;
@@ -25,10 +26,12 @@ import com.softwareplumbers.dms.rest.server.test.TestRepository;
 public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	
 	public TempRepositoryService service;
+    public ZipFileNavigatorService navigator;
 	
 	@Before
 	public void createService() {
 		service = new TempRepositoryService(new ZipFileNavigatorService(), QualifiedName.of("filename"));
+        navigator = new ZipFileNavigatorService();
 	}
 	
 	public TestRepository getTestRepository() {
@@ -100,6 +103,11 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	public RepositoryService service() {
 		return service;
 	}
+    
+    @Override
+    public DocumentNavigatorService navigator() {
+        return navigator;
+    }
 
 	@Override
 	public Reference randomDocumentReference() {
