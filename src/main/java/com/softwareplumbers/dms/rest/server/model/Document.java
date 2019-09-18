@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.common.QualifiedName;
+import java.math.BigDecimal;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -37,10 +38,11 @@ public interface Document extends StreamableRepositoryObject {
         MediaType mediaType = getMediaType();
         Type type = getType();
         String version = getVersion();
+        boolean navigable = navigator != null && navigator.canNavigate(this);
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
         
-        if (childLevels > 0 && navigator.canNavigate(this)) {
+        if (childLevels > 0 && navigable) {
             JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
             navigator.catalogParts(this, QualifiedName.ROOT)
                 .forEach(part -> childrenBuilder.add(part.toJson(repository, navigator, 0, childLevels-1)));
@@ -55,6 +57,7 @@ public interface Document extends StreamableRepositoryObject {
         if (mediaType != null) builder.add("mediaType", mediaType.toString());
         if (version != null) builder.add("version", version);
         builder.add("length", getLength());
+        builder.add("navigable", navigable);
         return builder.build();
     }
 };

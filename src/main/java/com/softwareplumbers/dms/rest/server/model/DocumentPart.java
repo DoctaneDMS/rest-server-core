@@ -2,6 +2,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
 import static com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type.DOCUMENT_PART;
+import java.math.BigDecimal;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -32,6 +33,7 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
         MediaType mediaType = getMediaType();
         QualifiedName name = getName();
         Type type = getType();
+        boolean navigable = navigator != null && navigator.canNavigate(this);
 
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
@@ -48,7 +50,7 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
             }
         }
         
-        if (childLevels > 0 && navigator.canNavigate(this)) {
+        if (childLevels > 0 && navigable) {
             JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
             navigator.catalogParts(this, QualifiedName.ROOT)
                 .forEach(part -> childrenBuilder.add(part.toJson(service, navigator, 0, childLevels-1)));
@@ -63,6 +65,7 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
         // Document fields
         if (mediaType != null) builder.add("mediaType", mediaType.toString());
         builder.add("length", getLength());
+        builder.add("navigable", navigable);
         return builder.build();
     }
 }

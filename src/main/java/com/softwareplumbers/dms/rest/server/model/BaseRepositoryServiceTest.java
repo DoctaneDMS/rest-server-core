@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 public abstract class BaseRepositoryServiceTest {
 	
 	public abstract RepositoryService service();
+    public abstract DocumentNavigatorService navigator();
 	
 	public static final String[] NAMES = { "julien", "peter", "fairfax", "austen", "celtic", "a", "the", "halibut", "eaten" };
 	public static final String CHARACTERS = "-._";
@@ -606,4 +607,14 @@ public abstract class BaseRepositoryServiceTest {
         DocumentLink link2 = service().getDocumentLink(null, name0.addAll(name1), ref1.id);
         assertEquals(originalText, getDocText(link2));
     }
+    
+    @Test
+    public void testJsonRepresentation() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Document doc1 = (Document)service().getDocument(ref1);
+        JsonObject json = doc1.toJson(service(), navigator(), 0, 0);
+	}
 }

@@ -33,7 +33,8 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
         MediaType mediaType = getMediaType();
         QualifiedName name = getName();
         Type type = getType();
-        
+        boolean navigable = navigator != null && navigator.canNavigate(this);
+
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
         
         if (parentLevels > 0) {
@@ -48,7 +49,7 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
             }
         }
         
-        if (childLevels > 0 && navigator.canNavigate(this)) {
+        if (childLevels > 0 && navigable) {
             JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
             navigator.catalogParts(this, QualifiedName.ROOT)
                 .forEach(part -> childrenBuilder.add(part.toJson(service, navigator, 0, childLevels-1)));
@@ -65,6 +66,7 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
         if (mediaType != null) builder.add("mediaType", mediaType.toString());
         if (version != null) builder.add("version", version);
         builder.add("length", getLength());
+        builder.add("navigable", navigable);
         return builder.build();
 
     }
