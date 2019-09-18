@@ -361,9 +361,9 @@ class WorkspaceImpl implements Workspace {
 
 		if (pattern.isSimple()) {
 			NamedRepositoryObject child = children.get(lowerBound);
-			return (child == null || child.getType() != Type.WORKSPACE) 
-				? Stream.empty() 
-				: ((WorkspaceImpl)child).catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
+			if (child == null) return Stream.empty();
+            if (child.getType() == Type.WORKSPACE) return ((WorkspaceImpl)child).catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
+            return Stream.of(child);
 		}
 		
 		SortedMap<String,NamedRepositoryObject> submap = children;

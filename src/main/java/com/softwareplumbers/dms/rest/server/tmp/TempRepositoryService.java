@@ -341,7 +341,7 @@ public class TempRepositoryService implements RepositoryService {
 	@Override
 	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName workspaceName, Query filter, boolean searchHistory) throws InvalidWorkspace {
 
-		LOG.logEntering("catalogueByName", filter, searchHistory);
+		LOG.logEntering("catalogueByName", workspaceName, filter, searchHistory);
 
 		if (workspaceName == null) LOG.logThrow("catalogueByName", new InvalidWorkspace("null"));
 		

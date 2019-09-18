@@ -170,7 +170,7 @@ public class Workspaces {
             if (service == null) 
                 return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
 
-            if (!workspacePath.queryPath.isEmpty()) {
+            if (!workspacePath.queryPath.isEmpty() || !workspacePath.queryPartPath.isEmpty()) {
                 Stream<NamedRepositoryObject> results;
                 QualifiedName fullPath = workspacePath.staticPath.addAll(workspacePath.queryPath);
                 if (workspacePath.documentId != null) {
@@ -179,13 +179,11 @@ public class Workspaces {
                 } else {
                     results = service.catalogueByName(workspacePath.rootId, fullPath, filterConstraint, false);
                 }
-                if (!workspacePath.partPath.isEmpty()) {
+                if (!workspacePath.queryPartPath.isEmpty() || !workspacePath.staticPartPath.isEmpty()) {
                     results = results
                         .filter(obj->obj.getType() == RepositoryObject.Type.DOCUMENT_LINK)
-                        .map(link->navigator.getOptionalPartByName(((DocumentLink)link), workspacePath.partPath))
-                        .filter(Optional::isPresent)
-                        .map(Optional::get);
-                }
+                        .flatMap(link->navigator.catalogParts(((DocumentLink)link), workspacePath.staticPartPath.addAll(workspacePath.queryPartPath)));
+                } 
                 JsonArrayBuilder response = Json.createArrayBuilder();
                 results.forEach(item -> response.add(item.toJson(service, navigator, 1, 0)));
                 return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(response.build()).build());
@@ -201,16 +199,16 @@ public class Workspaces {
                 if (result != null) {                       
                     switch (result.getType()) {
                         case WORKSPACE:
-                            if (workspacePath.partPath.isEmpty()) {
+                            if (workspacePath.staticPartPath.isEmpty()) {
                         		return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,navigator,1,0)).build());                    		
                             } else {
                                 return LOG.logResponse("get", Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.badOperation("Workspaces do not have document parts")).build());
                             }
                     	case DOCUMENT_LINK:
                             String documentName = workspacePath.staticPath.part;
-                            if (!workspacePath.partPath.isEmpty()) {
-                                result = navigator.getPartByName(((DocumentLink)result), workspacePath.partPath);
-                                documentName = workspacePath.partPath.part;
+                            if (!workspacePath.staticPartPath.isEmpty()) {
+                                result = navigator.getPartByName(((DocumentLink)result), workspacePath.staticPartPath);
+                                documentName = workspacePath.staticPartPath.part;
                             }
                             List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
                             MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  

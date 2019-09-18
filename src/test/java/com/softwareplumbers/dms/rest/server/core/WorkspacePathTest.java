@@ -19,7 +19,8 @@ public class WorkspacePathTest {
     @Test
     public void testSimplePath() {
         WorkspacePath path = WorkspacePath.valueOf("/xyz/abc/234");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.ROOT, path.queryPath);
         assertNull(path.documentId);
         assertNull(path.rootId);
@@ -30,7 +31,8 @@ public class WorkspacePathTest {
     @Test
     public void testSimplePathWithRootId() {
         WorkspacePath path = WorkspacePath.valueOf("~xyx/abc/234");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.ROOT, path.queryPath);
         assertNull(path.documentId);
         assertEquals("xyx", path.rootId);
@@ -40,7 +42,8 @@ public class WorkspacePathTest {
     @Test
     public void testQueryPath1() {
         WorkspacePath path = WorkspacePath.valueOf("xyx/ab*c/234");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.of("ab*c","234"), path.queryPath);
         assertNull(path.documentId);
         assertNull(path.rootId);
@@ -50,7 +53,8 @@ public class WorkspacePathTest {
     @Test
     public void testQueryPath2() {
         WorkspacePath path = WorkspacePath.valueOf("xyx/ab?c/*");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.of("ab?c","*"), path.queryPath);
         assertNull(path.documentId);
         assertNull(path.rootId);
@@ -60,7 +64,8 @@ public class WorkspacePathTest {
     @Test
     public void testQueryPathRootId() {
         WorkspacePath path = WorkspacePath.valueOf("~xyx/ab?c/*");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.of("ab?c","*"), path.queryPath);
         assertNull(path.documentId);
         assertEquals("xyx", path.rootId);
@@ -70,7 +75,8 @@ public class WorkspacePathTest {
     @Test
     public void testSimplePathWithParts() {
         WorkspacePath  path = WorkspacePath.valueOf("/abc/xyz/~/234/ghi");
-        assertEquals(QualifiedName.of("234","ghi"), path.partPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
+        assertEquals(QualifiedName.of("234","ghi"), path.staticPartPath);
         assertEquals(QualifiedName.ROOT, path.queryPath);
         assertNull(path.documentId);
         assertNull(path.rootId);
@@ -80,7 +86,8 @@ public class WorkspacePathTest {
     @Test
     public void testSimplePathWithDocumentId() {
         WorkspacePath  path = WorkspacePath.valueOf("/abc/~sdfg");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.ROOT, path.queryPath);
         assertEquals("sdfg", path.documentId);
         assertNull(path.rootId);
@@ -90,7 +97,8 @@ public class WorkspacePathTest {
     @Test
     public void testQueryPathWithDocumentId() {
         WorkspacePath  path = WorkspacePath.valueOf("/abc/*/~sdfg");
-        assertEquals(QualifiedName.ROOT, path.partPath);
+        assertEquals(QualifiedName.ROOT, path.staticPartPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
         assertEquals(QualifiedName.of("*"), path.queryPath);
         assertEquals("sdfg", path.documentId);
         assertNull(path.rootId);
@@ -100,7 +108,8 @@ public class WorkspacePathTest {
     @Test
     public void testDocumentIdWithParts() {
         WorkspacePath  path = WorkspacePath.valueOf("/abc/~sdfg/234/ghi");
-        assertEquals(QualifiedName.of("234","ghi"), path.partPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
+        assertEquals(QualifiedName.of("234","ghi"), path.staticPartPath);
         assertEquals(QualifiedName.ROOT, path.queryPath);
         assertEquals("sdfg", path.documentId);
         assertNull(path.rootId);
@@ -110,11 +119,22 @@ public class WorkspacePathTest {
     @Test
     public void testWorkpaceIdDocumentIdWithParts() {
         WorkspacePath  path = WorkspacePath.valueOf("~123/abc/def/s*/x*/~sdfg/234/ghi");
-        assertEquals(QualifiedName.of("234","ghi"), path.partPath);
+        assertEquals(QualifiedName.ROOT, path.queryPartPath);
+        assertEquals(QualifiedName.of("234","ghi"), path.staticPartPath);
         assertEquals(QualifiedName.of("s*","x*"), path.queryPath);
         assertEquals("sdfg", path.documentId);
         assertEquals("123", path.rootId);
         assertEquals(QualifiedName.of("abc","def"), path.staticPath);        
     }
     
+    @Test
+    public void testWorkpaceIdDocumentIdWithQueryParts() {
+        WorkspacePath  path = WorkspacePath.valueOf("~123/abc/def/s*/x*/~sdfg/234/ghi?");
+        assertEquals(QualifiedName.of("ghi?"), path.queryPartPath);
+        assertEquals(QualifiedName.of("234"), path.staticPartPath);
+        assertEquals(QualifiedName.of("s*","x*"), path.queryPath);
+        assertEquals("sdfg", path.documentId);
+        assertEquals("123", path.rootId);
+        assertEquals(QualifiedName.of("abc","def"), path.staticPath);        
+    }
 }

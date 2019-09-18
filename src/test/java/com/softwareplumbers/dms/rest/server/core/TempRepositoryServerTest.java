@@ -909,10 +909,10 @@ public class TempRepositoryServerTest {
     @Test
     public void testGetZipFileParts() throws IOException, ParseException {
         JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
-        StreamableRepositoryObjectImpl doc = getDocumentFromWorkspace("/wsname3/testzip/~/test/test1.txt");
-        byte[] original = IOUtils.resourceToByteArray("/test1.txt");
-        byte[] unzipped = IOUtils.toByteArray(doc.getData());
-        assertArrayEquals(original, unzipped);   
+        JsonArray result = getWorkspaceJson("/wsname3/testzip/~/test/*", JsonArray.class);
+        assertEquals(3, result.size());   
+        JsonArray result2 = getWorkspaceJson("/wsname3/testzip/~/test/subdir/*", JsonArray.class);
+        assertEquals(1, result2.size());   
     }
 }
 

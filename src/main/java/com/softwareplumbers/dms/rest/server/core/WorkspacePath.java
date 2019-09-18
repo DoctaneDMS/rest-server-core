@@ -38,14 +38,16 @@ public class WorkspacePath {
     public final QualifiedName staticPath;
     public final QualifiedName queryPath;
     public final String documentId;
-    public final QualifiedName partPath;
+    public final QualifiedName staticPartPath;
+    public final QualifiedName queryPartPath;
 
-    public WorkspacePath(String rootId, QualifiedName staticPath, QualifiedName queryPath, String documentId, QualifiedName partPath) {
+    public WorkspacePath(String rootId, QualifiedName staticPath, QualifiedName queryPath, String documentId, QualifiedName staticPartPath, QualifiedName queryPartPath) {
         this.rootId = rootId;
         this.staticPath = staticPath;
         this.queryPath = queryPath;
         this.documentId = documentId;
-        this.partPath = partPath;
+        this.staticPartPath = staticPartPath;
+        this.queryPartPath = queryPartPath;
     }
 
     /** Detect whether a path element is an id.
@@ -75,8 +77,9 @@ public class WorkspacePath {
     public static WorkspacePath valueOf(String path) {
         String rootId = Constants.ROOT_ID;
         QualifiedName staticPath = QualifiedName.ROOT;
+        QualifiedName staticPartPath = QualifiedName.ROOT;
         QualifiedName queryPath = QualifiedName.ROOT;
-        QualifiedName partPath = QualifiedName.ROOT;
+        QualifiedName queryPartPath = QualifiedName.ROOT;
         String documentId = null;
         boolean seenPartDelimeter = false;
         for (String pathElement : path.split("/")) {
@@ -86,7 +89,10 @@ public class WorkspacePath {
                 continue;
             } 
             if (seenPartDelimeter || documentId != null) {
-                partPath = partPath.add(pathElement);
+                if (!queryPartPath.isEmpty() || isQueryElement(pathElement))
+                    queryPartPath = queryPartPath.add(pathElement);
+                else
+                    staticPartPath = staticPartPath.add(pathElement);
                 continue;
             } 
             if (isId(pathElement)) {
@@ -105,7 +111,7 @@ public class WorkspacePath {
             
             staticPath = staticPath.add(pathElement);
         }
-        return new WorkspacePath(rootId, staticPath, queryPath, documentId, partPath);
+        return new WorkspacePath(rootId, staticPath, queryPath, documentId, staticPartPath, queryPartPath);
     }
     
     public String toString() {
@@ -114,7 +120,8 @@ public class WorkspacePath {
         if (staticPath != QualifiedName.ROOT) result.append("/").append(staticPath.join("/"));
         if (queryPath != QualifiedName.ROOT) result.append("/").append(queryPath.join("/"));
         if (documentId != null) result.append("/").append(documentId);
-        if (partPath != QualifiedName.ROOT) result.append("/").append(partPath.join("/"));
+        if (staticPartPath != QualifiedName.ROOT) result.append("/").append(staticPartPath.join("/"));
+        if (queryPartPath != QualifiedName.ROOT) result.append("/").append(queryPartPath.join("/"));
         return result.toString();
     }
 }
