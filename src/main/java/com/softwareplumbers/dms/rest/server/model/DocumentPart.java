@@ -2,14 +2,18 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
 import static com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type.DOCUMENT_PART;
-import java.math.BigDecimal;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-import javax.ws.rs.core.MediaType;
 
-public interface DocumentPart extends NamedRepositoryObject, StreamableRepositoryObject {
+/** Part of a document 
+ * 
+ * Can represent either an individual document element or an assembly of such elements.
+ * 
+ * @author jonathan.local
+ */
+public interface DocumentPart extends NamedRepositoryObject {
     
     StreamableRepositoryObject getDocument();
     	
@@ -30,10 +34,9 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
     default JsonObject toJson(RepositoryService service, DocumentNavigatorService navigator, int parentLevels, int childLevels) {
         
         JsonObject metadata = getMetadata();
-        MediaType mediaType = getMediaType();
         QualifiedName name = getName();
         Type type = getType();
-        boolean navigable = navigator != null && navigator.canNavigate(this);
+        boolean navigable = navigator != null && navigator.canNavigate(this.getDocument(), name);
 
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
@@ -52,7 +55,7 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
         
         if (childLevels > 0 && navigable) {
             JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
-            navigator.catalogParts(this, QualifiedName.ROOT)
+            navigator.catalogParts(getDocument(), name)
                 .forEach(part -> childrenBuilder.add(part.toJson(service, navigator, 0, childLevels-1)));
             builder.add("parts", childrenBuilder);
         }
@@ -62,9 +65,6 @@ public interface DocumentPart extends NamedRepositoryObject, StreamableRepositor
         if (type != null) builder.add("type", type.toString());
         // Named Repository Item fields
         if (name != null) builder.add("name", name.join("/"));
-        // Document fields
-        if (mediaType != null) builder.add("mediaType", mediaType.toString());
-        builder.add("length", getLength());
         builder.add("navigable", navigable);
         return builder.build();
     }

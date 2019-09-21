@@ -7,7 +7,7 @@ import javax.json.JsonObject;
  */
 public interface RepositoryObject {
 	
-	enum Type { WORKSPACE, DOCUMENT, DOCUMENT_LINK, DOCUMENT_PART };
+	enum Type { WORKSPACE, DOCUMENT, DOCUMENT_LINK, DOCUMENT_PART, STREAMABLE_DOCUMENT_PART };
 
 	/** Get metadata
      * @return metadata associated with this repository object */

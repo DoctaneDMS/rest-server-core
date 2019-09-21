@@ -51,8 +51,13 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         public DocumentPart next() {
             try {
                 QualifiedName name = QualifiedName.parse(currentEntry.getName(), "/");
-                MediaType type = MediaTypes.getTypeFromFilename(name.part);
-                DocumentPartImpl result = new DocumentPartImpl(zipfile, name, type, IOUtils.toByteArray(zifs), Constants.EMPTY_METADATA);
+                DocumentPart result;
+                if (currentEntry.isDirectory()) {
+                    result = new DocumentPartImpl(zipfile, name, Constants.EMPTY_METADATA);
+                } else  {
+                    MediaType type = MediaTypes.getTypeFromFilename(name.part);
+                    result = new StreamableDocumentPartImpl(zipfile, name, type, IOUtils.toByteArray(zifs), Constants.EMPTY_METADATA);
+                }
                 zifs.closeEntry();
                 currentEntry = zifs.getNextEntry();
                 return result;
@@ -105,4 +110,10 @@ public class ZipFileNavigatorService implements DocumentNavigatorService {
         return document.getMediaType().equals(MediaTypes.ZIP);
     }
     
+    @Override
+    public boolean canNavigate(StreamableRepositoryObject document, QualifiedName partName) {
+        return canNavigate(document) && catalogParts(document)
+                .anyMatch(part -> Objects.equals(part.getName().parent, partName));
+                
+    }
 }

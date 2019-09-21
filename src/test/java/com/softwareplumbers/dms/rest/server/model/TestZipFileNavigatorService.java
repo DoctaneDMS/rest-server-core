@@ -33,9 +33,9 @@ public class TestZipFileNavigatorService {
         assertEquals("testdoc.docx", parts.get(0).getName().part);
         assertEquals("testdoc_outlook2010.msg", parts.get(1).getName().part);
         assertEquals("test1.txt", parts.get(2).getName().part);
-        assertEquals(MediaTypes.MICROSOFT_WORD_XML, parts.get(0).getMediaType());
-        assertEquals(MediaTypes.MICROSOFT_OUTLOOK, parts.get(1).getMediaType());
-        assertEquals(MediaType.TEXT_PLAIN_TYPE, parts.get(2).getMediaType());
+        assertEquals(MediaTypes.MICROSOFT_WORD_XML, ((StreamableDocumentPart)parts.get(0)).getMediaType());
+        assertEquals(MediaTypes.MICROSOFT_OUTLOOK, ((StreamableDocumentPart)parts.get(1)).getMediaType());
+        assertEquals(MediaType.TEXT_PLAIN_TYPE, ((StreamableDocumentPart)parts.get(2)).getMediaType());
     }
     
     @Test
@@ -46,9 +46,9 @@ public class TestZipFileNavigatorService {
         assertEquals("test1.txt", parts.get(1).getName().part);
         assertEquals("test2.txt", parts.get(2).getName().part);
         assertEquals("testdoc.docx", parts.get(4).getName().part);
-        assertEquals(MediaType.TEXT_PLAIN_TYPE, parts.get(1).getMediaType());
-        assertEquals(MediaType.TEXT_PLAIN_TYPE, parts.get(2).getMediaType());
-        assertEquals(MediaTypes.MICROSOFT_WORD_XML, parts.get(4).getMediaType());
+        assertEquals(MediaType.TEXT_PLAIN_TYPE, ((StreamableDocumentPart)parts.get(1)).getMediaType());
+        assertEquals(MediaType.TEXT_PLAIN_TYPE, ((StreamableDocumentPart)parts.get(2)).getMediaType());
+        assertEquals(MediaTypes.MICROSOFT_WORD_XML, ((StreamableDocumentPart)parts.get(4)).getMediaType());
     }
     
     @Test

@@ -59,7 +59,7 @@ import org.w3c.dom.NodeList;
 import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl;
 import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
-import com.softwareplumbers.dms.rest.server.model.DocumentPartImpl;
+import com.softwareplumbers.dms.rest.server.model.StreamableDocumentPartImpl;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
@@ -71,7 +71,6 @@ import java.net.URI;
 import java.net.URLEncoder;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.client.ClientProperties;
-import org.junit.Assert;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 
@@ -403,8 +402,8 @@ public class TempRepositoryServerTest {
             }
             if (metadata != null && is != null) {
                 InputStream doc_source = is;
-                if (data.getString("type").equals(RepositoryObject.Type.DOCUMENT_PART.toString()))
-                    return new DocumentPartImpl(null, QualifiedName.parse(data.getString("name"),"/"), mediaType, ()->doc_source, metadata);                    
+                if (data.getString("type").equals(RepositoryObject.Type.STREAMABLE_DOCUMENT_PART.toString()))
+                    return new StreamableDocumentPartImpl(null, QualifiedName.parse(data.getString("name"),"/"), mediaType, ()->doc_source, metadata);                    
                 else
                     return new DocumentImpl(new Reference(data.getString("id"), data.getString("version")), mediaType, ()->doc_source, metadata);
             }
@@ -914,5 +913,14 @@ public class TempRepositoryServerTest {
         JsonArray result2 = getWorkspaceJson("/wsname3/testzip/~/test/subdir/*", JsonArray.class);
         assertEquals(1, result2.size());   
     }
+    
+    @Test
+    public void testGetZipFileDirectoryPart() throws IOException, ParseException {
+        JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
+        JsonObject dir = getWorkspaceJson("/wsname3/testzip/~/test/subdir", JsonObject.class);
+        assertEquals(RepositoryObject.Type.DOCUMENT_PART.toString(), dir.getString("type"));   
+        assertEquals(true, dir.getBoolean("navigable"));   
+    }
+
 }
 

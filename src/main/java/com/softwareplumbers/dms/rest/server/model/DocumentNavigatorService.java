@@ -81,4 +81,12 @@ public interface DocumentNavigatorService {
      * @return true if this navigator can be used to access the sub-parts of the given document.
      */
     boolean canNavigate(StreamableRepositoryObject document);
+    
+    /** Test to see whether a part returned by this document navigator has sub-parts
+     * 
+     * @param document
+     * @param partName name of part
+     * @return true if the named part can be further navigated by this document navigator. 
+     */
+    boolean canNavigate(StreamableRepositoryObject document, QualifiedName partName);
 }
