@@ -1,7 +1,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
-import static com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type.DOCUMENT_PART;
+import static com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type.*;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -36,28 +36,44 @@ public interface DocumentPart extends NamedRepositoryObject {
         JsonObject metadata = getMetadata();
         QualifiedName name = getName();
         Type type = getType();
-        boolean navigable = navigator != null && navigator.canNavigate(this.getDocument(), name);
+        StreamableRepositoryObject document = this.getDocument();
 
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
 
-        if (parentLevels > 0) {
-            QualifiedName parentName = getName().parent;
-            if (!parentName.isEmpty()) {
-                try {
-                    RepositoryObject parent = navigator.getPartByName(getDocument(), getName().parent);
-                    builder.add("parent", parent.toJson(service, navigator, parentLevels-1, 0));
-                } catch (PartNotFoundException err) {
-                    throw new RuntimeException(err);
+        if (navigator != null) {
+            boolean navigable = navigator.canNavigate(document, name);
+
+            if (parentLevels > 0) {
+                QualifiedName parentName = name.parent;
+                if (!parentName.isEmpty()) {
+                    try {
+                        RepositoryObject parent = navigator.getPartByName(document, name.parent);
+                        builder.add("parent", parent.toJson(service, navigator, parentLevels-1, 0));
+                    } catch (PartNotFoundException err) {
+                        throw new RuntimeException(err);
+                    }
                 }
             }
+
+            if (childLevels > 0 && navigable) {
+                JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
+                navigator.catalogParts(document, name)
+                    .forEach(part -> childrenBuilder.add(part.toJson(service, navigator, 0, childLevels-1)));
+                builder.add("parts", childrenBuilder);
+            }
+            builder.add("navigable", navigable);
         }
         
-        if (childLevels > 0 && navigable) {
-            JsonArrayBuilder childrenBuilder = Json.createArrayBuilder();
-            navigator.catalogParts(getDocument(), name)
-                .forEach(part -> childrenBuilder.add(part.toJson(service, navigator, 0, childLevels-1)));
-            builder.add("parts", childrenBuilder);
+        switch (document.getType()) {
+            case DOCUMENT_LINK: 
+                builder.add("document", ((DocumentLink)document).getName().join("/"));
+                break;
+            case DOCUMENT:
+                builder.add("document", ((Document)document).getReference().toJson());
+                break;
+            default:
+                throw new RuntimeException("document part cannot be a part of a " + document.getType());
         }
         
         // Base fields  
@@ -65,7 +81,6 @@ public interface DocumentPart extends NamedRepositoryObject {
         if (type != null) builder.add("type", type.toString());
         // Named Repository Item fields
         if (name != null) builder.add("name", name.join("/"));
-        builder.add("navigable", navigable);
         return builder.build();
     }
 }

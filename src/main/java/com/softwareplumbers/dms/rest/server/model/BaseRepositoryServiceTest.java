@@ -18,6 +18,7 @@ import org.junit.Test;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.JsonUtil;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.rest.server.core.MediaTypes;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
@@ -26,6 +27,8 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -616,5 +619,19 @@ public abstract class BaseRepositoryServiceTest {
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
         Document doc1 = (Document)service().getDocument(ref1);
         JsonObject json = doc1.toJson(service(), navigator(), 0, 0);
+        assertEquals(ref1.id, json.getString("id"));
+        assertEquals(ref1.version, json.getString("version"));
+        assertEquals(MediaType.TEXT_PLAIN, json.getString("mediaType"));
+        assertEquals(false, json.getBoolean("navigable"));
+	}
+    
+    @Test
+    public void testJsonRepresentationDocumentPart() throws IOException, DocumentFormatException, PartNotFoundException {
+        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
+        DocumentPart testDocx = navigator().getPartByName(zipDoc, QualifiedName.of("test", "subdir", "testdoc.docx"));
+        JsonObject json = testDocx.toJson(service(), navigator(), 0, 0);
+        assertEquals("test", json.getJsonObject("document").getString("id"));
+        assertEquals(MediaTypes.MICROSOFT_WORD_XML.toString(), json.getString("mediaType"));
+        assertEquals(false, json.getBoolean("navigable"));
 	}
 }
