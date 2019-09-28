@@ -627,7 +627,7 @@ public abstract class BaseRepositoryServiceTest {
     
     @Test
     public void testJsonRepresentationDocumentPart() throws IOException, DocumentFormatException, PartNotFoundException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
+        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP, ()->BaseRepositoryServiceTest.class.getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
         DocumentPart testDocx = navigator().getPartByName(zipDoc, QualifiedName.of("test", "subdir", "testdoc.docx"));
         JsonObject json = testDocx.toJson(service(), navigator(), 0, 0);
         assertEquals("test", json.getJsonObject("document").getString("id"));
