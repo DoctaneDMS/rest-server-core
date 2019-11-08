@@ -378,7 +378,11 @@ public class Workspaces {
     
                 return LOG.logResponse("put", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
             } else {
-                Reference reference = Reference.fromJson(object.getJsonObject("reference"));
+                Reference reference = Reference.fromJson(object.getJsonObject("reference"));                
+                JsonObject metadata = object.getJsonObject("metadata");
+                if (metadata != null && !metadata.isEmpty()) {
+                    service.updateDocument(reference.id, null, null, metadata, null, false);
+                }
                 
                 if (updateType == UpdateType.CREATE)
                     service.createDocumentLinkByName(rootId, wsName, reference, createWorkspace);
@@ -388,6 +392,9 @@ public class Workspaces {
                 return LOG.logResponse("put", Response.accepted().build());
             }
         } catch (InvalidWorkspace err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+        } catch (InvalidDocumentId err) {
             LOG.log.severe(err.getMessage());
             return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
         } catch (InvalidObjectName err) {
@@ -465,7 +472,10 @@ public class Workspaces {
                 return Response.status(Status.BAD_REQUEST).entity(Error.badOperation("Can't post a new workspace - use put")).build();
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
-                
+                JsonObject metadata = object.getJsonObject("metadata");
+                if (metadata != null && !metadata.isEmpty()) {
+                    service.updateDocument(reference.id, null, null, metadata, null, false);
+                }
                 String name = service.createDocumentLink(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 // TODO: service.createDocumentLink should probably return a DocumentLink
                 DocumentLinkImpl link = new DocumentLinkImpl(wsName.add(name), service.getDocument(reference));
@@ -475,7 +485,10 @@ public class Workspaces {
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
             return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
-        } catch (InvalidReference err) {
+        } catch (InvalidDocumentId err) {
+            LOG.log.severe(err.getMessage());
+            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+        }catch (InvalidReference err) {
             LOG.log.severe(err.getMessage());
             return Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build();
         } catch (InvalidWorkspaceState err) {
