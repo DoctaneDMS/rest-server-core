@@ -288,21 +288,21 @@ public class Workspaces {
         @PathParam("repository") String repository,
         @QueryParam("id") String documentId
     ) {
-        LOG.logEntering("get", repository);
+        LOG.logEntering("getWorkspaces", repository);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
-                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+                return LOG.logResponse("getWorkspaces", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
             JsonArrayBuilder result = Json.createArrayBuilder();
             service.listWorkspaces(documentId, null).map(DocumentLink::toJson).forEach(value -> result.add(value));
             //TODO: must be able to do this in a stream somehow.
-            return Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build();
+            return LOG.logResponse("getWorkspaces", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("getWorkspaces", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         }
     }
 
@@ -342,10 +342,10 @@ public class Workspaces {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
-                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+                return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
             if (objectName == null || objectName.isEmpty())
-                return Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build();
+                return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
 
             QualifiedName wsName = QualifiedName.parse(objectName, "/");
             String rootId = ROOT_ID;
@@ -393,22 +393,22 @@ public class Workspaces {
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidDocumentId err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidObjectName err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidReference err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build());
         } catch (InvalidWorkspaceState err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("put", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         } 
     }
 
@@ -469,7 +469,7 @@ public class Workspaces {
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
             
             if (type == RepositoryObject.Type.WORKSPACE) {
-                return Response.status(Status.BAD_REQUEST).entity(Error.badOperation("Can't post a new workspace - use put")).build();
+                return LOG.logResponse("post", Response.status(Status.BAD_REQUEST).entity(Error.badOperation("Can't post a new workspace - use put")).build());
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 JsonObject metadata = object.getJsonObject("metadata");
@@ -484,19 +484,19 @@ public class Workspaces {
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidDocumentId err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         }catch (InvalidReference err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build());
         } catch (InvalidWorkspaceState err) {
             LOG.log.severe(err.getMessage());
-            return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("put", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("put", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         } 
     }
 
@@ -531,12 +531,12 @@ public class Workspaces {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
-                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+                return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
             QualifiedName pathName = QualifiedName.parse(path, "/");
 
             if (pathName == null || pathName.isEmpty())
-                return Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build();
+                return LOG.logResponse("putDocument", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
 
             String wsId = null;
             String firstPart = pathName.get(0);
@@ -558,17 +558,17 @@ public class Workspaces {
                     createDocument
                     );
 
-            return Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build();
+            return LOG.logResponse("putDocument", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
         } catch (InvalidWorkspace err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidObjectName err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidWorkspaceState err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("putDocument", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         } 
     }
     
@@ -588,7 +588,7 @@ public class Workspaces {
             RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
-                return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+                return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
             QualifiedName wsName = QualifiedName.parse(path, "/");
             String rootId = ROOT_ID;
@@ -608,19 +608,19 @@ public class Workspaces {
                 service.deleteObjectByName(rootId, wsName);
             }
 
-            return Response.status(Status.NO_CONTENT).build();
+            return LOG.logResponse("deleteDocument", Response.status(Status.NO_CONTENT).build());
         } catch (InvalidWorkspace err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidObjectName err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidWorkspaceState err) {
-            return Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("deleteDocument", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
         } catch (InvalidDocumentId err) {
-            return Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build();
+            return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+            return LOG.logResponse("deleteDocument", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
         }
     }    
 }
