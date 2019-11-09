@@ -86,6 +86,7 @@ public class TempRepositoryServerTest {
 		put("msg", MediaType.valueOf("application/vnd.ms-outlook"));
         put("doc", MediaType.valueOf("application/msword"));
         put("zip", MediaType.valueOf("application/zip"));
+        put("eml", MediaType.valueOf("message/rfc822"));
 	}};
 
 	int port = 8080;
@@ -883,6 +884,15 @@ public class TempRepositoryServerTest {
         assertEquals(1, h1s.getLength());
         NodeList tds = xmlDoc.getElementsByTagName("td");
         assertEquals(4, tds.getLength());
+    }
+    
+    @Test
+    public void testGetEMLDocumentXMLFromWorkspaceWithContentType() throws IOException, ParseException, TransformerException {
+        JsonObject response1 = putDocument("testEmail", "/ws/tmp/wsname/doc5", "eml");
+        assertNotNull(response1);
+        org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace(MediaType.WILDCARD_TYPE, "wsname/doc5?contentType=" + URLEncoder.encode(MediaType.APPLICATION_XHTML_XML, "UTF-8"));
+        NodeList tds = xmlDoc.getElementsByTagName("td");
+        assertEquals(27, tds.getLength());
     }
     
     @Test
