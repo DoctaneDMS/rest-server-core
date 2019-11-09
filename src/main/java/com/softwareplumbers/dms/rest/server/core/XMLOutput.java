@@ -25,6 +25,7 @@ import com.softwareplumbers.dms.rest.server.model.DocumentLink;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.tika.parser.microsoft.OfficeParser;
+import org.apache.tika.parser.mail.RFC822Parser;
 
 /** Adapts a document into XHTML output using TIKA */
 public class XMLOutput implements StreamingOutput {
@@ -58,6 +59,8 @@ public class XMLOutput implements StreamingOutput {
                     parser = new OOXMLParser();
                 else if (MediaTypes.isLegacyOfficeDoc(document.getMediaType(), name))
                     parser = new OfficeParser();
+                else if (MediaTypes.isRFC822Message(document.getMediaType(), name))
+                    parser = new RFC822Parser();
                 else
                     throw new CannotConvertFormatException(type, name);
             

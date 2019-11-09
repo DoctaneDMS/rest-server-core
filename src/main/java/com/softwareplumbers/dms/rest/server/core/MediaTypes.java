@@ -21,6 +21,7 @@ public class MediaTypes {
        this.addMimeTypes("type=application/vnd.ms-outlook exts=msg");
        this.addMimeTypes("type=application/msword exts=doc,dot");
        this.addMimeTypes("type=application/vnd.openxmlformats-officedocument.wordprocessingml.document exts=docx,dotx");
+       this.addMimeTypes("type=message/rfc822 exts=eml");
     }};
     
     /** Microsoft Word XML media type (aka DOCX) */
@@ -31,12 +32,16 @@ public class MediaTypes {
     public static final MediaType MICROSOFT_OUTLOOK = MediaType.valueOf("application/vnd.ms-outlook"); 
     /** Zip media type */
     public static final MediaType ZIP = MediaType.valueOf("application/zip");
+    /** RFC 822 Mime Type (aka EML) */
+    public static final MediaType RFC822 = MediaType.valueOf("message/rfc822");
     
     /** List of Open Office XML types which the Tika Open Office XML parser can handle */
-    private static List<MediaType> OPEN_OFFICE_XML_TYPES = Arrays.asList(MICROSOFT_WORD_XML);
+    private static final List<MediaType> OPEN_OFFICE_XML_TYPES = Arrays.asList(MICROSOFT_WORD_XML);
     /** List of Open Office XML types which the Tika Office parser can handle */
-    private static List<MediaType> OFFICE_TYPES = Arrays.asList(MICROSOFT_OUTLOOK, MICROSOFT_WORD);
-
+    private static final List<MediaType> OFFICE_TYPES = Arrays.asList(MICROSOFT_OUTLOOK, MICROSOFT_WORD);
+    /** List of RFC822 types which the Tika TFC822 parser can handle */
+    private static final List<MediaType> RFC822_TYPES = Arrays.asList(RFC822);
+    
    /** Test if one media type is a subset of another.
     * 
     * Media types overlap; for example '*//*' would be a superset of all media types, and 'image/*' is a superset
@@ -116,6 +121,10 @@ public class MediaTypes {
      */
     public static boolean isLegacyOfficeDoc(MediaType type, String name) {
         return OFFICE_TYPES.contains(type) || name != null && OFFICE_TYPES.contains(getTypeFromFilename(name));
+    }
+    
+    public static boolean isRFC822Message(MediaType type, String name) {
+        return RFC822_TYPES.contains(type) || name != null && RFC822_TYPES.contains(getTypeFromFilename(name));
     }
     
   
