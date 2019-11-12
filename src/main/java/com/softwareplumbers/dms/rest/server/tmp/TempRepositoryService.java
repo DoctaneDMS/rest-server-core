@@ -302,7 +302,9 @@ public class TempRepositoryService implements RepositoryService {
         // IMPORTANT breaking change in support of #55 and #24.
         // The query namespace now includes all fields in the document link, including the parent folder, mediaType, etc.
         // Medatadata fields that used to be in the root of the query namespace must now be prefixed with 'metadata'.
-		final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.toJson());
+		final Predicate<Document> filterPredicate = filter == null ? info -> true : info -> { 
+            return filter.containsItem(info.toJson()); 
+        };
 
 		Stream<Document> infos = store.values().stream().map(doc->(Document)doc);
 
