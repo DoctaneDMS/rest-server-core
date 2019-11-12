@@ -11,6 +11,7 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
+import org.apache.tika.parser.txt.TXTParser;
 import org.apache.tika.parser.microsoft.ooxml.OOXMLParser;
 
 import org.xml.sax.SAXException;
@@ -59,14 +60,18 @@ public class XMLOutput implements StreamingOutput {
                     parser = new OOXMLParser();
                 else if (MediaTypes.isLegacyOfficeDoc(document.getMediaType(), name))
                     parser = new OfficeParser();
-                else if (MediaTypes.isRFC822Message(document.getMediaType(), name))
+                else if (MediaTypes.isRFC822Message(document.getMediaType(), name)) 
                     parser = new RFC822Parser();
+                else if (MediaTypes.isText(document.getMediaType(), name))
+                    parser = new TXTParser();
                 else
                     throw new CannotConvertFormatException(type, name);
             
 				handler = factory.newTransformerHandler();
 				handler.setResult(saxOutput);
-    	        parser.parse(stream, handler, new Metadata(), new ParseContext());
+                Metadata metadata = new Metadata();
+    	        parser.parse(stream, handler, metadata, new ParseContext());
+                System.out.println(metadata);
     	    } catch (CannotConvertFormatException e) {
     	    	throw new WebApplicationException(e, Response.status(Response.Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.mapServiceError(e)).build());
 			} catch (TransformerConfigurationException | SAXException | TikaException e) {

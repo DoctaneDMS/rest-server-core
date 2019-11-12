@@ -41,6 +41,8 @@ public class MediaTypes {
     private static final List<MediaType> OFFICE_TYPES = Arrays.asList(MICROSOFT_OUTLOOK, MICROSOFT_WORD);
     /** List of RFC822 types which the Tika TFC822 parser can handle */
     private static final List<MediaType> RFC822_TYPES = Arrays.asList(RFC822);
+    /** List of Text types which the Tika Text parser can handle */
+    private static final List<MediaType> TEXT_TYPES = Arrays.asList(MediaType.TEXT_PLAIN_TYPE);
     
    /** Test if one media type is a subset of another.
     * 
@@ -127,7 +129,10 @@ public class MediaTypes {
         return RFC822_TYPES.contains(type) || name != null && RFC822_TYPES.contains(getTypeFromFilename(name));
     }
     
-  
+    public static boolean isText(MediaType type, String name) {
+        return TEXT_TYPES.contains(type) || name != null && TEXT_TYPES.contains(getTypeFromFilename(name));
+    }
+    
     /** *  Compute best media type from supplied type and filename 
      *
      * Computes a media type from the supplied filename.If the computed type is a subset of the supplied type,
