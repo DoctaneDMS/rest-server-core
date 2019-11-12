@@ -1,6 +1,11 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
+import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** Base interface for named repository objects such as workspaces and document links.
  * 
@@ -16,5 +21,14 @@ public interface NamedRepositoryObject extends RepositoryObject {
      * 
      * @return the qualified name of this repository object
      */
-    QualifiedName getName();    
+    QualifiedName getName();  
+    
+    default Optional<NamedRepositoryObject> getParent(RepositoryService service) {
+        if (QualifiedName.ROOT == getName()) return null;
+        try {
+            return Optional.of(service.getObjectByName(null, getName().parent));
+        } catch (InvalidWorkspace | InvalidObjectName err) {
+            return Optional.empty();
+        }
+    }
 }
