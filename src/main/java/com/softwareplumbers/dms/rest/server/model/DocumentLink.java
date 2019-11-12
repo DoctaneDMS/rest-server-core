@@ -9,6 +9,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import java.math.BigDecimal;
+import java.util.Optional;
 import javax.json.JsonArrayBuilder;
 
 public interface DocumentLink extends NamedRepositoryObject, Document {
@@ -38,15 +39,8 @@ public interface DocumentLink extends NamedRepositoryObject, Document {
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
         
         if (parentLevels > 0) {
-            QualifiedName parentName = getName().parent;
-            if (!parentName.isEmpty()) {
-                try {
-                    RepositoryObject parent = service.getObjectByName(Constants.ROOT_ID, getName().parent);
-                    builder.add("parent", parent.toJson(service, navigator, parentLevels-1, 0));
-                } catch (InvalidObjectName | InvalidWorkspace err) {
-                    throw new RuntimeException(err);
-                }
-            }
+            Optional<NamedRepositoryObject> parent = getParent(service);
+            if (parent.isPresent()) builder.add("parent", parent.get().toJson(service, navigator, parentLevels-1, 0));
         }
         
         if (childLevels > 0 && navigable) {

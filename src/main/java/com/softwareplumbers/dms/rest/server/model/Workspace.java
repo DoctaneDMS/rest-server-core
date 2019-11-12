@@ -6,6 +6,7 @@ import javax.json.JsonObjectBuilder;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type;
+import java.util.Optional;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -46,15 +47,8 @@ public interface Workspace extends NamedRepositoryObject {
 	    JsonObjectBuilder builder = Json.createObjectBuilder(); 
         
         if (parentLevels > 0) {
-            QualifiedName parentName = getName().parent;
-            if (!parentName.isEmpty()) {
-                try {
-                    RepositoryObject parent = repository.getObjectByName(Constants.ROOT_ID, getName().parent);
-                    builder.add("parent", parent.toJson(repository, navigator, parentLevels-1, 0));
-                } catch (RepositoryService.InvalidObjectName | RepositoryService.InvalidWorkspace err) {
-                    throw new RuntimeException(err);
-                }
-            }
+            Optional<NamedRepositoryObject> parent = getParent(repository);
+            if (parent.isPresent()) builder.add("parent", parent.get().toJson(repository, navigator, parentLevels-1, 0));
         }
         
         if (childLevels > 0) {
