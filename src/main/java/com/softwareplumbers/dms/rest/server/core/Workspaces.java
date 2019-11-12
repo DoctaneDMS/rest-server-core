@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
@@ -186,7 +187,9 @@ public class Workspaces {
                 } 
                 JsonArrayBuilder response = Json.createArrayBuilder();
                 results.forEach(item -> response.add(item.toJson(service, navigator, 1, 0)));
-                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(response.build()).build());
+                JsonArray responseObj = response.build();
+                LOG.log.finest(()->responseObj.toString());
+                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
             } else {
   
                 // Path has no wildcards, so we are returning at most one object

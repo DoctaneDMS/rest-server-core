@@ -139,10 +139,12 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     runtime group: 'io.jsonwebtoken', name: 'jjwt-impl', version: '0.10.5'
     runtime group: 'io.jsonwebtoken', name: 'jjwt-jackson', version: '0.10.5'
+    runtime group: 'org.glassfish', name: 'javax.json', version: '1.1.2'
     compile group: 'org.opensaml', name: 'opensaml-saml-impl', version: '3.3.0'
     compile group: 'org.apache.tika', name:'tika-core', version:'2.0-SNAPSHOT'
     compile group: 'org.apache.tika', name:'tika-parser-office-module', version:'2.0-SNAPSHOT'
     compile group: 'org.apache.tika', name:'tika-parser-web-module', version:'2.0-SNAPSHOT'
+    compile group: 'org.apache.tika', name:'tika-parser-text-module', version:'2.0-SNAPSHOT'
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }
