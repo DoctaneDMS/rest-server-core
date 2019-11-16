@@ -27,30 +27,57 @@ public interface AuthorizationService {
         return ObjectAccessRole.valueOf(dar.toString());
     }
     
+    /** 
+     *  Get the Access Control List for a document.
+     * 
+     * If getDocumentACL(ref).contains(Value.from(userMetadata)) returns true, 
+     * the user has can perform the given role on the referenced document.
+     * 
+     * @param ref Reference to get ACL for
+     * @param role Role to get ACL for
+     * @return An access control list that can be used to determine if a user has the given role for the referenced document
+     * @throws InvalidReference
+     */
+    Query getDocumentACL(Reference ref, DocumentAccessRole role) throws InvalidReference;
+    
     /** Get the Access Control List for a document.
      * 
      * If getDocumentACL(ref).contains(Value.from(userMetadata)) returns true, the user has can perform the given role
      * on the referenced document.
      * 
      * 
-     * @param ref Reference to get ACL for
+     * @param doc Document to get ACL for
      * @param role Role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the referenced document
      */
-    Query getDocumentACL(Reference ref, DocumentAccessRole role) throws InvalidReference;
+    Query getDocumentACL(Document doc, DocumentAccessRole role);
+    
+    /** Get the Access Control List for a Repository Object (Workspace or Document).
+     * 
+     * If getObjectACL(rootId, path).contains(Value.from(userMetadata)) returns 
+     * true, the user has can perform the given role on the referenced repository object.
+     * 
+     * 
+     * @param rootId Id of search root
+     * @param path path from root to object
+     * @param role to get ACL for
+     * @return An access control list that can be used to determine if a user has the given role for the object
+     * @throws InvalidObjectName
+     * @throws InvalidWorkspace
+     */
+    Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
     
     /**  Get the Access Control List for a Repository Object (Workspace or Document).
      * 
      * If getObjectACL(rootId, path).contains(Value.from(userMetadata)) returns true, the user has can perform the given
      * role on the referenced repository object.
      * 
-     * @param rootId Id of search root
-     * @param path path from root to object
+     * @param object object to get ACL
      * @param role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the object
      */
-    Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
-    
+    Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role);
+
     /** Get An Access Constraint for the given user searching on the given path.
      * 
      * Allows search operations to be constrained based on a user's permissions.
