@@ -7,6 +7,9 @@ package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import javax.json.JsonObject;
 
 /** Authorization service.
@@ -34,7 +37,7 @@ public interface AuthorizationService {
      * @param role Role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the referenced document
      */
-    Query getDocumentACL(Reference ref, DocumentAccessRole role);
+    Query getDocumentACL(Reference ref, DocumentAccessRole role) throws InvalidReference;
     
     /**  Get the Access Control List for a Repository Object (Workspace or Document).
      * 
@@ -46,7 +49,7 @@ public interface AuthorizationService {
      * @param role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the object
      */
-    Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role);
+    Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
     
     /** Get An Access Constraint for the given user searching on the given path.
      * 
