@@ -20,6 +20,10 @@ public interface AuthorizationService {
     public enum DocumentAccessRole { CREATE, READ, UPDATE }
     public enum ObjectAccessRole { CREATE, READ, UPDATE, DELETE }
     
+    public static ObjectAccessRole castRole(DocumentAccessRole dar) {
+        return ObjectAccessRole.valueOf(dar.toString());
+    }
+    
     /** Get the Access Control List for a document.
      * 
      * If getDocumentACL(ref).contains(Value.from(userMetadata)) returns true, the user has can perform the given role
