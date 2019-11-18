@@ -93,6 +93,21 @@ public interface AuthorizationService {
      */
     Query getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate);
     
+    
+    /** Get An Access Constraint for the given user searching on the given path.
+     * 
+     * Allows search operations to be constrained based on a user's permissions.
+     * 
+     * getAccessConstraint(userMetadata, rootId, pathTemplate).contains(Value.from(repositoryObject)) will return
+     * false for any repositoryObject on the paths specified by (rootId, pathTemplate) if the specified user
+     * does not have permission to view that repository object.
+     * 
+     * @param userMetadata User metadata for user performing the search
+     * @param searchRoot Origin of search (search returns only children of provided object).
+     * @return An access constraint which can filter out search results for which the user has no permission to view
+     */
+    Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot);
+    
     /** Get metadata for a given user Id.
      * 
      * Metadata may represent application specific permissions in a way entirely defined by the application; the
