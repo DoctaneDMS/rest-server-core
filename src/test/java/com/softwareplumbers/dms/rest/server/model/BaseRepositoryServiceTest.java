@@ -164,7 +164,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test 
 	public void testListWorkspacesInvalidWorkspaceId() throws InvalidDocumentId {
-		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id, QualifiedName.of("*")).count());
+		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id, QualifiedName.of("*"), Query.UNBOUNDED).count());
 	}
 
 	@Test
@@ -310,7 +310,7 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState {
 		Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, randomWorkspaceId(), true);
-		assertEquals(1, service().listWorkspaces(ref.id, QualifiedName.of("*")).count());
+		assertEquals(1, service().listWorkspaces(ref.id, QualifiedName.of("*"), Query.UNBOUNDED).count());
 	}
 	
 	@Test
@@ -377,8 +377,8 @@ public abstract class BaseRepositoryServiceTest {
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
-        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, name1.add(generatedName));
+        DocumentLink newLink = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, newLink.getName());
 	    assertEquals(ref1, doc1.getReference());
 	}
     
@@ -390,9 +390,9 @@ public abstract class BaseRepositoryServiceTest {
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
         String originalText2 = randomText();
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText2), EMPTY_METADATA, null, false);
-        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-        String generatedName2 = service().createDocumentLink(ROOT_ID, name1, ref2, true, true);
-	    assertNotEquals(generatedName, generatedName2);
+        DocumentLink link1 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        DocumentLink link2 = service().createDocumentLink(ROOT_ID, name1, ref2, true, true);
+	    assertNotEquals(link1.getName(), link2.getName());
 	}
 
     @Test
@@ -401,9 +401,9 @@ public abstract class BaseRepositoryServiceTest {
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
-        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-        String generatedName2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-	    assertEquals(generatedName, generatedName2);
+        DocumentLink link1 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        DocumentLink link2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+	    assertEquals(link1.getName(), link2.getName());
 	}
     
     @Test(expected = InvalidReference.class)
@@ -412,9 +412,9 @@ public abstract class BaseRepositoryServiceTest {
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
-        String generatedName = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-        String generatedName2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, false); // false - so should be an error
-	    assertEquals(generatedName, generatedName2);
+        DocumentLink link1 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        DocumentLink link2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, false); // false - so should be an error
+	    assertEquals(link1.getName(), link2.getName());
 	}
     
     @Test
@@ -491,7 +491,7 @@ public abstract class BaseRepositoryServiceTest {
 	    Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
 	    service().createDocumentLinkByName(ROOT_ID, name1.add("one"), ref1, true);
 	    service().createDocumentLinkByName(ROOT_ID, name2.add("two"), ref1, true);
-	    Stream<DocumentLink> result = service().listWorkspaces(ref1.id, null);
+	    Stream<DocumentLink> result = service().listWorkspaces(ref1.id, null, Query.UNBOUNDED);
 	    assertEquals(2, result.count());
 	}
     

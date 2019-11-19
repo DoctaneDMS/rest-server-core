@@ -11,6 +11,7 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjec
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import javax.json.JsonObject;
+import javax.ws.rs.core.MediaType;
 
 /** Authorization service.
  * 
@@ -20,7 +21,7 @@ import javax.json.JsonObject;
  */
 public interface AuthorizationService {
     
-    public enum DocumentAccessRole { CREATE, READ, UPDATE }
+    public enum DocumentAccessRole { READ, UPDATE }
     public enum ObjectAccessRole { CREATE, READ, UPDATE, DELETE }
     
     public static ObjectAccessRole castRole(DocumentAccessRole dar) {
@@ -52,11 +53,15 @@ public interface AuthorizationService {
      */
     Query getDocumentACL(Document doc, DocumentAccessRole role);
     
+    Query getDocumentCreationACL(MediaType mediaType, JsonObject metadata);
+    
     /** Get the Access Control List for a Repository Object (Workspace or Document).
      * 
      * If getObjectACL(rootId, path).contains(Value.from(userMetadata)) returns 
      * true, the user has can perform the given role on the referenced repository object.
      * 
+     * For the 'CREATE' role, path may not reference a valid object, we are asking for ACL
+     * controlling creation of an object at the specified path.
      * 
      * @param rootId Id of search root
      * @param path path from root to object
@@ -77,6 +82,8 @@ public interface AuthorizationService {
      * @return An access control list that can be used to determine if a user has the given role for the object
      */
     Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role);
+    
+    Query getObjectACL(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidReference;
 
     /** Get An Access Constraint for the given user searching on the given path.
      * 

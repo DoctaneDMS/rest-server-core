@@ -41,6 +41,10 @@ public class Log {
 	public final void logError(String method, Throwable err) {
 	    log.log(Level.WARNING, "Error in" + method, err);
 	}
+    
+    public final void logWarning(String method, String text, Object ...args) {
+        log.log(Level.WARNING, "Warning in " + method, String.format(text, args));
+    }
 
 	public final <T extends Throwable> T logRethrow(String method, T r) {
 		log.log(Level.FINER, method + " Rethrowing: " + r);

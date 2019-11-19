@@ -1,5 +1,9 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
+import com.softwareplumbers.dms.rest.server.model.AuthorizationService.DocumentAccessRole;
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 
 import java.io.InputStream;
@@ -43,8 +47,8 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.json.JsonValue;
+import javax.ws.rs.container.ContainerRequestContext;
 
 /** Handle CRUD operations on documents.
  * 
@@ -68,6 +72,7 @@ public class Documents {
 	///////////---------  member variables --------////////////
 
 	private RepositoryServiceFactory repositoryServiceFactory;
+    private AuthorizationServiceFactory authorizationServiceFactory;
     
 	///////////---------  methods --------////////////
 	    
@@ -81,6 +86,11 @@ public class Documents {
         this.repositoryServiceFactory = serviceFactory;
     }
     
+    @Autowired
+    public void setAuthorizationServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
+        this.authorizationServiceFactory = authorizationServiceFactory;
+    }
+
     /** GET a document on path /docs/{repository}/{id}
      * 
      * Retrieves a specific document by its unique identifier. On success, a multipart
@@ -104,13 +114,16 @@ public class Documents {
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
-    	@QueryParam("workspaceId") String workspaceId
+    	@QueryParam("workspaceId") String workspaceId,
+        @Context ContainerRequestContext requestContext
     ) {
         LOG.logEntering("get", repository, id, version, workspaceId);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
     		
     		if (version != null && workspaceId != null)
@@ -119,10 +132,16 @@ public class Documents {
     		Document document;
     		if (workspaceId == null)
     			document = service.getDocument(new Reference(id, version));
-    		else
+            else {
     			document = service.getDocument(id, workspaceId);
+                LOG.logWarning("get", "API call used deprecated workspaceId parameter");
+            }
     		
     		if (document != null) { 
+                Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
+                if (!acl.containsItem(userMetadata))
+                    return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
+                
     			FormDataBodyPart metadata = new FormDataBodyPart();
     			metadata.setName("metadata");
     			metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
@@ -172,19 +191,25 @@ public class Documents {
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
         @QueryParam("contentType") @DefaultValue("*/*") MediaType contentType,
-        @Context HttpHeaders headers
+        @Context HttpHeaders headers,
+        @Context ContainerRequestContext requestContext
     ) {
         LOG.logEntering("getFile", repository, id, version, contentType);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return LOG.logResponse("getFile", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
     		Document document = service.getDocument(new Reference(id, version));
             		
             if (document != null) { 
- 
+                Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
+                if (!acl.containsItem(userMetadata))
+                    return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
+
         		StreamingOutput responseStream = null;	
                 List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), contentType);
                 MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_FILE_RESULT_TYPES);  
@@ -241,17 +266,25 @@ public class Documents {
     public Response getMetadata(
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
-    	@QueryParam("version") String version) {
+    	@QueryParam("version") String version,
+        @Context ContainerRequestContext requestContext
+    ) {
         LOG.logEntering("getMetadata", repository, id, version);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.repositoryNotFound(repository)).build();
 
     		Document document = service.getDocument(new Reference(id, version));
         
     		if (document != null) { 
+                Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
+                if (!acl.containsItem(userMetadata))
+                    return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
+
     			return Response
     				.status(Status.OK) 
                     .type(MediaType.APPLICATION_JSON_TYPE)
@@ -286,18 +319,23 @@ public class Documents {
     public Response getWorkspaces(
         @PathParam("repository") String repository, 
         @PathParam("id") String id,
-        @QueryParam("version") String version) {
+        @QueryParam("version") String version,
+        @Context ContainerRequestContext requestContext
+    ) {
         LOG.logEntering("getWorkspaces", repository, id, version);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-            if (service == null) 
+    		if (service == null || authorizationService == null) 
                 return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
 
-                JsonArrayBuilder results = Json.createArrayBuilder();
-                Stream<DocumentLink> links = service.listWorkspaces(id, null);
-                if (links != null) links.forEach(item -> results.add(item.toJson()));
-                return Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build();
+            Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, null, QualifiedName.ROOT);
+            JsonArrayBuilder results = Json.createArrayBuilder();
+            Stream<DocumentLink> links = service.listWorkspaces(id, null, accessConstraint);
+            if (links != null) links.forEach(item -> results.add(item.toJson()));
+            return Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build();
                     
         } catch (Throwable e) {
             LOG.log.severe(e.getMessage());
@@ -326,13 +364,16 @@ public class Documents {
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
     	@FormDataParam("file") FormDataBodyPart file_part,
     	@QueryParam("workspace") String workspace,
-    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+        @Context ContainerRequestContext requestContext        
     	) {
         LOG.logEntering("post", repository, Log.fmt(metadata_part), Log.fmt(file_part), workspace, createWorkspace);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
     		if (metadata_part == null) 
@@ -345,13 +386,23 @@ public class Documents {
     			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingContentType()).build();
             
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
-
+            
+            if (workspace != null) {
+                LOG.logWarning("post", "API call used deprecated workspace parameter");
+            }
+            
+            JsonObject metadata = metadata_part.getEntityAs(JsonObject.class);
+            
+            Query acl = authorizationService.getDocumentCreationACL(computedMediaType, metadata);
+            if (!acl.containsItem(userMetadata))
+                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, computedMediaType, metadata)));
+            
     		Reference reference = 
     			service
     				.createDocument(
     					computedMediaType,
     					()->file_part.getEntityAs(InputStream.class),
-						metadata_part.getEntityAs(JsonObject.class),
+						metadata,
 						workspace,
 						createWorkspace
 					);
@@ -388,14 +439,26 @@ public class Documents {
     	@PathParam("repository") String repository,
     	@QueryParam("workspace") String workspace,
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
-    	@Context HttpServletRequest request
+    	@Context HttpServletRequest request,
+        @Context ContainerRequestContext requestContext        
     	) {
         LOG.logEntering("postFile", repository, workspace, createWorkspace, Log.fmt(request));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
+
+            if (workspace != null) {
+                LOG.logWarning("postFile", "API call used deprecated workspace parameter");
+            }
+            
+            MediaType mediaType = MediaType.valueOf(request.getContentType());
+            Query acl = authorizationService.getDocumentCreationACL(mediaType, JsonValue.EMPTY_JSON_OBJECT);
+            if (!acl.containsItem(userMetadata))
+                return LOG.logResponse("postFile", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, mediaType, JsonValue.EMPTY_JSON_OBJECT)));
 
     		Reference reference = 
     			service
@@ -441,13 +504,16 @@ public class Documents {
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
     	@FormDataParam("file") FormDataBodyPart file_part,
     	@QueryParam("workspace") String workspace,
-    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace
-    	) {
+    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+        @Context ContainerRequestContext requestContext        
+    ) {
         LOG.logEntering("put", repository, id, Log.fmt(metadata_part), Log.fmt(file_part), workspace, createWorkspace);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
     		if (metadata_part == null) 
@@ -457,8 +523,13 @@ public class Documents {
     			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingFile()).build();
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
+            
+            Query acl = authorizationService.getDocumentACL(new Reference(id), DocumentAccessRole.UPDATE);
+            if (!acl.containsItem(userMetadata))
+                return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
+
            
-    		Reference reference = 
+            Reference reference = 
     			service
     				.updateDocument(
     					id,
@@ -506,15 +577,22 @@ public class Documents {
     	@PathParam("id") String id,
     	@QueryParam("workspace") String workspace,
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
-    	@Context HttpServletRequest request
-    	) {
+    	@Context HttpServletRequest request,
+        @Context ContainerRequestContext requestContext
+    ) {
         LOG.logEntering("updateFile", repository, id, workspace, createWorkspace, Log.fmt(request));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
-    					
+    		
+            Query acl = authorizationService.getDocumentACL(new Reference(id), DocumentAccessRole.UPDATE);
+            if (!acl.containsItem(userMetadata))
+                return LOG.logResponse("updateFile", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
+
     		Reference reference = 
     			service
     				.updateDocument(
@@ -562,16 +640,23 @@ public class Documents {
     	@PathParam("id") String id,
     	@QueryParam("workspace") String workspace,
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+        @Context ContainerRequestContext requestContext,
     	JsonObject metadata
     	) {
         LOG.logEntering("updateMetadata", repository, id, workspace, createWorkspace, metadata);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
-    		if (service == null) 
+    		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
-    		Reference reference = 
+    		Query acl = authorizationService.getDocumentACL(new Reference(id), DocumentAccessRole.UPDATE);
+            if (!acl.containsItem(userMetadata))
+                return LOG.logResponse("updateMetadata", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
+
+            Reference reference = 
     			service
     				.updateDocument(
     					id,

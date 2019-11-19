@@ -472,7 +472,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter) {
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter) {
 		LOG.logEntering("listWorkspaces", id);
 		Set<String> workspaceIds = workspacesByDocument.get(id);
 		if (workspaceIds == null) return LOG.logReturn("listWorkspaces", Stream.empty());
@@ -484,7 +484,7 @@ public class TempRepositoryService implements RepositoryService {
 				} catch (InvalidDocumentId e) {
 					throw new RuntimeException("unexpected " + e);
 				}
-			})		
+			}).filter(item->filter.containsItem(item.toJson(this, navigator, 1, 0)))
 		);
 	}
 
@@ -549,7 +549,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
     @Override
-    public String createDocumentLink(String rootId, QualifiedName workspaceName, Reference reference, boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+    public DocumentLink createDocumentLink(String rootId, QualifiedName workspaceName, Reference reference, boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
 
         LOG.logEntering("createDocumentLinkByName", rootId, workspaceName, reference, createWorkspace, returnExisting);
         

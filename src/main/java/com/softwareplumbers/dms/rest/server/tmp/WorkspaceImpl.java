@@ -212,17 +212,20 @@ class WorkspaceImpl implements Workspace {
 		LOG.logExiting("add");
 	}
 	
-	public void add(Reference reference, String docName) throws InvalidWorkspaceState {
+	public DocumentLink add(Reference reference, String docName) throws InvalidWorkspaceState {
 		LOG.logEntering("add", reference, docName);
 		if (state == State.Open) {
 			if (!service.referenceExists(this, reference)) {
 				Reference latest = new Reference(reference.id);
-				this.children.put(docName, new DocumentInfo(docName,latest,false));
+                DocumentInfo result = new DocumentInfo(docName,latest,false);
+				this.children.put(docName, result);
 				service.registerWorkspaceReference(this, latest);
-			}
+                return LOG.logReturn("add", result);
+			} else {
+                return LOG.logReturn("add", (DocumentLink)this.children.get(docName));
+            }
 		}
 		else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
-		LOG.logExiting("add");
 	}
     
     public Optional<DocumentLink> findLink(Reference ref) {
@@ -234,20 +237,18 @@ class WorkspaceImpl implements Workspace {
                 .findAny();
     }
     
-    public String add(Reference ref, boolean returnExisting) throws InvalidWorkspaceState, InvalidReference {
+    public DocumentLink add(Reference ref, boolean returnExisting) throws InvalidWorkspaceState, InvalidReference {
 		LOG.logEntering("add", ref, returnExisting);
         Optional<DocumentLink> existing = findLink(ref);
         if (existing.isPresent()) {
             if (returnExisting) 
-                return LOG.logReturn("add", existing.get().getName().part);
+                return LOG.logReturn("add", existing.get());
             else
                 throw LOG.logThrow("add", new InvalidReference(ref));
         } else {
             String cname = getContainmentName(service.getDocument(ref));
-            add(ref, cname);
-            return LOG.logReturn("add", cname);
-        }
-        
+            return LOG.logReturn("add", add(ref, cname));
+        }        
     }
 	
 	public void update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {

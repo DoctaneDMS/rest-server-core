@@ -13,6 +13,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
+import javax.annotation.Priority;
 
 /** Authentication filter.
  * 
@@ -23,6 +24,7 @@ import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
  */
 @Provider
 @Authenticated
+@Priority(1)
 @Component
 public class AuthenticationFilter implements ContainerRequestFilter {
     

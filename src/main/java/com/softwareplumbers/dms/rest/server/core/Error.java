@@ -5,15 +5,19 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
+import com.softwareplumbers.dms.rest.server.model.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
+import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
+import java.math.BigDecimal;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -164,6 +168,41 @@ public class Error {
 		return Json.createObjectBuilder().add("error", "Cannot specify both version and workspace when getting a document").build();				
 	}
     
+    public static JsonObject unauthorized(Query acl, NamedRepositoryObject obj) {
+        return unauthorized(acl, obj.getName());
+    }
+
+    public static JsonObject unauthorized(Query acl, Document doc) {
+        return unauthorized(acl, doc.getId());
+    }
+    
+    public static JsonObject unauthorized(Query acl, String id) {
+        return Json.createObjectBuilder()
+            .add("error", "No rights to access document with id " + id)
+            .add("acl", acl.toJSON())
+            .build();        
+    }
+    
+    public static JsonObject unauthorized(Query acl, MediaType type, JsonObject metadata) {
+        return Json.createObjectBuilder()
+            .add("error", "No rights to create document")
+            .add("acl", acl.toJSON())
+            .add("mediaType", type.toString())
+            .add("metadata", metadata)
+            .build();        
+    }
+
+    public static JsonObject unauthorized(Query acl, QualifiedName obj, String documentId) {
+        return unauthorized(acl, obj.add("~" + documentId));
+    }
+    
+    public static JsonObject unauthorized(Query acl, QualifiedName obj) {
+        return Json.createObjectBuilder()
+            .add("error", "No rights to access object " + obj)
+            .add("acl", acl.toJSON())
+            .build();
+    }
+
     public static Response errorResponse(Status status, JsonObject error) {
         return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(error).build();
     }

@@ -48,9 +48,10 @@
     <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
         <property name="RequestValidationService" ref="cookieValidation"/>
         <property name="SignedRequestValidationService" ref="signatureValidation"/>
-        <property name="SignonService" ref="signonService"/>
-        
+        <property name="SignonService" ref="signonService"/>        
     </bean>
+    
+    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.PublicAuthorizationService" scope="singleton"/>
 
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
@@ -70,6 +71,17 @@
             <props>
                 <prop key="tmp">auth.tmp</prop>
                 <prop key="dummy">auth.dummy</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <bean id="AuthorizationServiceFactory"
+            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthorizationServiceFactory"/>
+        <property name="serviceMappings">
+            <props>
+                <prop key="tmp">authz.public</prop>
+                <prop key="dummy">authz.public</prop>
             </props>
         </property>
     </bean>

@@ -205,9 +205,9 @@ public interface RepositoryService {
      * @throws InvalidWorkspace if workspace does not exist
      * @throws InvalidWorkspaceState if workspace is already closed
 	 * @throws InvalidReference if the supplied reference is not valid
-     * @return the name of the document inside the workspace
+     * @return the new DocumentLink object
 	 */
-	public String createDocumentLink(
+	public DocumentLink createDocumentLink(
 	        String rootId,
 	        QualifiedName workspaceName,
 	        Reference reference,
@@ -541,5 +541,5 @@ public interface RepositoryService {
 	 * @param pathFilter wildcard path which can be used to cut down number of responses
 	 * @return A Stream of DocumentLink objects, each of which links this document to a workspace.
 	 */
-	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter); // throws InvalidDocumentId;
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter); // throws InvalidDocumentId;
 }
