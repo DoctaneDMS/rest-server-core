@@ -2,9 +2,6 @@ package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.core.SystemKeyPairs;
-import java.math.BigDecimal;
-import static org.junit.Assert.assertEquals;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -15,7 +12,7 @@ import static org.junit.Assert.assertThat;
 
 import org.junit.Test;
 
-public class TestLocalAuthenticationService {
+public class TestLocalAuthorizationService {
     
     private final JsonObject USER_METADATA_SERVICE_ACCOUNT = Json.createObjectBuilder()
         .add("serviceAccount", true)
