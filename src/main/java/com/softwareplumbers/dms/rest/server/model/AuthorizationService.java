@@ -7,6 +7,7 @@ package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
@@ -83,7 +84,21 @@ public interface AuthorizationService {
      */
     Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role);
     
-    Query getObjectACL(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidReference;
+    /**  Get the Access Control List for a Repository Object (DocumentLink).
+     * 
+     * If getObjectACL(rootId, path).contains(Value.from(userMetadata)) returns true, the user has can perform the given
+     * role on the referenced repository object.
+     * 
+     * @param rootId id of initial workspace in path
+     * @param path path to folder
+     * @param documentId of document in folder
+     * @param role to get ACL for
+     * @return An access control list that can be used to determine if a user has the given role for the object
+     * @throws InvalidObjectName if path is not valid
+     * @throws InvalidWorkspace if root id is not valid
+     * @throws InvalidDocumentId if documentId is not valid
+     */
+    Query getObjectACL(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId;
 
     /** Get An Access Constraint for the given user searching on the given path.
      * 

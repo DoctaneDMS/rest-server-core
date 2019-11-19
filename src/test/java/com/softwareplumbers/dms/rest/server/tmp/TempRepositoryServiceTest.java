@@ -45,9 +45,7 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 		assertTrue(TestRepository.docEquals("test2", repository.doc2));
 		assertTrue(TestRepository.docEquals("test3", repository.doc3));
 	}
-	
-
-	
+		
 	@Test(expected = InvalidReference.class)
 	public void testRepositoryFetchWithInvalidVersion() throws IOException, InvalidReference {
 		TestRepository repository = getTestRepository();
@@ -118,8 +116,5 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	public String randomWorkspaceId() {
 		return UUID.randomUUID().toString();
 	}
-	
-
-	
 
 }
