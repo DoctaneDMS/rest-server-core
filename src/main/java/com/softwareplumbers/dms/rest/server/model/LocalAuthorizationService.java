@@ -31,6 +31,10 @@ public class LocalAuthorizationService implements AuthorizationService {
             this.localUsers.put(entry.getKey(), reader.readObject());
         }
     }
+    
+    void addLocalUser(String username, JsonObject userMetadata) {
+        localUsers.put(username, userMetadata);
+    }
 
     @Override
     public Query getDocumentACL(Reference ref, DocumentAccessRole role) {
