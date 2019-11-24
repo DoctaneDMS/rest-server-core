@@ -80,13 +80,14 @@ public interface AuthorizationService {
      * 
      * @param rootId Id of search root
      * @param path path from root to object
+     * @param type type of repository object
      * @param metadata metadata of object
      * @param role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the object
      * @throws InvalidObjectName
      * @throws InvalidWorkspace
      */
-    Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
+    Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
     
     /**  Get the Access Control List for a Repository Object (Workspace or Document).
      * 
@@ -98,7 +99,7 @@ public interface AuthorizationService {
      */
     default Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
         try {
-            return getObjectACL(null, object.getName(), object.getMetadata(), role);
+            return getObjectACL(null, object.getName(), object.getType(), object.getMetadata(), role);
         } catch (InvalidObjectName | InvalidWorkspace err) {
             throw new RuntimeException("Unexpectedly invalid name " + object.getName());
         } 

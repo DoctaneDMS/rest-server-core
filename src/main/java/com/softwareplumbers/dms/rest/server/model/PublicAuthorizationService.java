@@ -23,7 +23,7 @@ public class PublicAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
+    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
         return Query.UNBOUNDED;
     }
 

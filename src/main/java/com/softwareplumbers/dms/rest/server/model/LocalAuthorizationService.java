@@ -37,7 +37,7 @@ public class LocalAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) {
+    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 

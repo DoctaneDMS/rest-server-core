@@ -42,10 +42,10 @@ public class FederatedAuthorizationService implements AuthorizationService {
 
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
+    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getObjectACL(rootId, path, metadata, role));
+            result = result.union(service.getObjectACL(rootId, path, type, metadata, role));
         return result;
     }
 
