@@ -404,7 +404,7 @@ public class Workspaces {
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
-            Query acl = authorizationService.getObjectACL(rootId, wsName, null, getRequiredRole(updateType));
+            Query acl = authorizationService.getObjectACL(rootId, wsName, type, null, getRequiredRole(updateType));
                 
             if (!acl.containsItem(userMetadata)) {
                 return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, wsName)));
@@ -525,12 +525,13 @@ public class Workspaces {
                 wsName = wsName.rightFromStart(1);
             } 
             
-            Query acl = authorizationService.getObjectACL(rootId, wsName, null, ObjectAccessRole.CREATE);
+            RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
+
+            Query acl = authorizationService.getObjectACL(rootId, wsName, type, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, wsName)));
             }
 
-            RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
             
             if (type == RepositoryObject.Type.WORKSPACE) {
                 return LOG.logResponse("post", Response.status(Status.BAD_REQUEST).entity(Error.badOperation("Can't post a new workspace - use put")).build());
@@ -615,7 +616,7 @@ public class Workspaces {
                 pathName = pathName.rightFromStart(1);
             } 
 
-            Query acl = authorizationService.getObjectACL(wsId, pathName, null, ObjectAccessRole.CREATE);
+            Query acl = authorizationService.getObjectACL(wsId, pathName, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, pathName)));
             }
@@ -680,7 +681,7 @@ public class Workspaces {
                     return LOG.logResponse("deleteDocument", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath, path.documentId)));                
                 }
             } else {
-                Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, null, ObjectAccessRole.DELETE);
+                Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, null, null, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
                     service.deleteObjectByName(path.rootId, path.staticPath);
                 } else {

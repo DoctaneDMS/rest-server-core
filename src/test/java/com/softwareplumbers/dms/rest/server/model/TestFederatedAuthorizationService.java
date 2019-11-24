@@ -59,7 +59,7 @@ public class TestFederatedAuthorizationService {
     }
 
     @Test public void testGetObjectACL() throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
-        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT,null,  AuthorizationService.ObjectAccessRole.READ);
+        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, null, null,  AuthorizationService.ObjectAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_AND_SVC_AC), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_BRANCH), equalTo(false));

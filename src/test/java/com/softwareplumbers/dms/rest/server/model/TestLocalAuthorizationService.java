@@ -29,7 +29,7 @@ public class TestLocalAuthorizationService {
     }
     
     @Test public void testGetObjectACL() {
-        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, null, AuthorizationService.ObjectAccessRole.READ);
+        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, null, null, AuthorizationService.ObjectAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(JsonValue.EMPTY_JSON_OBJECT), equalTo(false));
     }
