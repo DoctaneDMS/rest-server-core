@@ -59,21 +59,21 @@ public class TestFederatedAuthorizationService {
     }
 
     @Test public void testGetObjectACL() throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
-        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, AuthorizationService.ObjectAccessRole.READ);
+        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT,null,  AuthorizationService.ObjectAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_AND_SVC_AC), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_BRANCH), equalTo(false));
     }
     
     @Test public void testGetDocumentACL() throws RepositoryService.InvalidReference {
-        Query acl = service.getDocumentACL(new Reference("DocumentId"), AuthorizationService.DocumentAccessRole.READ);
+        Query acl = service.getDocumentACL(new Reference("DocumentId"), null, null, AuthorizationService.DocumentAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_AND_SVC_AC), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_BRANCH), equalTo(false));        
     }
 
-    @Test public void testGetDocumentCreationACL() {
-        Query acl = service.getDocumentCreationACL(MediaType.TEXT_PLAIN_TYPE, JsonValue.EMPTY_JSON_OBJECT);
+    @Test public void testGetDocumentCreationACL() throws RepositoryService.InvalidReference {
+        Query acl = service.getDocumentACL(null, MediaType.TEXT_PLAIN_TYPE, JsonValue.EMPTY_JSON_OBJECT, AuthorizationService.DocumentAccessRole.CREATE);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_AND_SVC_AC), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_BRANCH), equalTo(false));       

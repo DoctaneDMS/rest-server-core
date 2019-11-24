@@ -37,12 +37,7 @@ public class LocalAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getDocumentACL(Reference ref, DocumentAccessRole role) {
-        return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
-    }
-
-    @Override
-    public Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role) {
+    public Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 
@@ -60,31 +55,13 @@ public class LocalAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getDocumentACL(Document doc, DocumentAccessRole role) {
+    public Query getDocumentACL(Reference ref, MediaType mediaType, JsonObject metadata, DocumentAccessRole role) {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 
-    @Override
-    public Query getDocumentCreationACL(MediaType mediaType, JsonObject metadata) {
-        return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
-    }
 
     @Override
-    public Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
+    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace, RepositoryService.InvalidDocumentId {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
-
-    @Override
-    public Query getObjectACL(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace, RepositoryService.InvalidDocumentId {
-        return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
-    }
-
-    @Override
-    public Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot) {
-        if (userMetadata.getBoolean("serviceAccount", false))
-            return Query.UNBOUNDED;
-        else 
-            return Query.EMPTY;
-    }
-    
 }

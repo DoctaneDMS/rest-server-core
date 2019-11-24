@@ -18,22 +18,12 @@ import javax.ws.rs.core.MediaType;
 public class PublicAuthorizationService implements AuthorizationService {
 
     @Override
-    public Query getDocumentACL(Reference ref, DocumentAccessRole role) throws RepositoryService.InvalidReference {
+    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws RepositoryService.InvalidReference {
         return Query.UNBOUNDED;
     }
 
     @Override
-    public Query getDocumentACL(Document doc, DocumentAccessRole role) {
-        return Query.UNBOUNDED;
-    }
-
-    @Override
-    public Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
-        return Query.UNBOUNDED;
-    }
-
-    @Override
-    public Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
+    public Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
         return Query.UNBOUNDED;
     }
 
@@ -43,22 +33,14 @@ public class PublicAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot) {
-        return Query.UNBOUNDED;
-    }
-
-    @Override
     public JsonObject getUserMetadata(String userId) {
         return JsonValue.EMPTY_JSON_OBJECT;
     }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) {
+    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) {
         return Query.UNBOUNDED;
     }
 
-    @Override
-    public Query getDocumentCreationACL(MediaType mediaType, JsonObject metadata) {
-        return Query.UNBOUNDED;
-    }
+
 }

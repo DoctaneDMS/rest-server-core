@@ -33,50 +33,28 @@ public class FederatedAuthorizationService implements AuthorizationService {
     public FederatedAuthorizationService() { }
     
     @Override
-    public Query getDocumentACL(Reference ref, DocumentAccessRole role) throws RepositoryService.InvalidReference {
+    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws RepositoryService.InvalidReference {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getDocumentACL(ref, role));
+            result = result.union(service.getDocumentACL(ref, type, metadata, role));
         return result;
     }
 
+
     @Override
-    public Query getDocumentACL(Document doc, DocumentAccessRole role) {
+    public Query getObjectACL(String rootId, QualifiedName path, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getDocumentACL(doc, role));
+            result = result.union(service.getObjectACL(rootId, path, metadata, role));
         return result;
     }
 
-    @Override
-    public Query getDocumentCreationACL(MediaType mediaType, JsonObject metadata) {
-        Query result = Query.EMPTY;
-        for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getDocumentCreationACL(mediaType, metadata));
-        return result;
-    }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
+    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace, RepositoryService.InvalidDocumentId {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getObjectACL(rootId, path, role));
-        return result;
-    }
-
-    @Override
-    public Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
-        Query result = Query.EMPTY;
-        for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getObjectACL(object, role));
-        return result;
-    }
-
-    @Override
-    public Query getObjectACL(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace, RepositoryService.InvalidDocumentId {
-        Query result = Query.EMPTY;
-        for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getObjectACL(rootId, path, documentId, role));
+            result = result.union(service.getObjectACLById(rootId, path, documentId, role));
         return result;
     }
 
@@ -85,14 +63,6 @@ public class FederatedAuthorizationService implements AuthorizationService {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
             result = result.union(service.getAccessConstraint(userMetadata, rootId, pathTemplate));
-        return result;
-    }
-
-    @Override
-    public Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot) {
-        Query result = Query.EMPTY;
-        for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getAccessConstraint(userMetadata, searchRoot));
         return result;
     }
 

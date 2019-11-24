@@ -60,6 +60,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import javax.json.JsonValue;
 import javax.ws.rs.POST;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
@@ -403,7 +404,7 @@ public class Workspaces {
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
-            Query acl = authorizationService.getObjectACL(rootId, wsName, getRequiredRole(updateType));
+            Query acl = authorizationService.getObjectACL(rootId, wsName, null, getRequiredRole(updateType));
                 
             if (!acl.containsItem(userMetadata)) {
                 return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, wsName)));
@@ -524,7 +525,7 @@ public class Workspaces {
                 wsName = wsName.rightFromStart(1);
             } 
             
-            Query acl = authorizationService.getObjectACL(rootId, wsName, ObjectAccessRole.CREATE);
+            Query acl = authorizationService.getObjectACL(rootId, wsName, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, wsName)));
             }
@@ -614,7 +615,7 @@ public class Workspaces {
                 pathName = pathName.rightFromStart(1);
             } 
 
-            Query acl = authorizationService.getObjectACL(wsId, pathName, ObjectAccessRole.CREATE);
+            Query acl = authorizationService.getObjectACL(wsId, pathName, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, pathName)));
             }
@@ -672,14 +673,14 @@ public class Workspaces {
                 return LOG.logResponse("deleteDocument", Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("wildcards not permitted in deleted")));
             
             if (path.documentId != null) {
-                Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, path.documentId, ObjectAccessRole.DELETE);
+                Query acl = authorizationService.getObjectACLById(path.rootId, path.staticPath, path.documentId, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
                     service.deleteDocument(path.rootId, path.staticPath, path.documentId);
                 } else {
                     return LOG.logResponse("deleteDocument", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath, path.documentId)));                
                 }
             } else {
-                Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, ObjectAccessRole.DELETE);
+                Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, null, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
                     service.deleteObjectByName(path.rootId, path.staticPath);
                 } else {

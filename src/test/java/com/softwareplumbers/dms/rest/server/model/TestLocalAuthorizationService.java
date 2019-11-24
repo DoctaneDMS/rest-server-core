@@ -29,19 +29,19 @@ public class TestLocalAuthorizationService {
     }
     
     @Test public void testGetObjectACL() {
-        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, AuthorizationService.ObjectAccessRole.READ);
+        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, null, AuthorizationService.ObjectAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(JsonValue.EMPTY_JSON_OBJECT), equalTo(false));
     }
     
     @Test public void testGetDocumentACL() {
-        Query acl = service.getDocumentACL(new Reference("DocumentId"), AuthorizationService.DocumentAccessRole.READ);
+        Query acl = service.getDocumentACL(new Reference("DocumentId"), null, null, AuthorizationService.DocumentAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(JsonValue.EMPTY_JSON_OBJECT), equalTo(false));        
     }
 
     @Test public void testGetDocumentCreationACL() {
-        Query acl = service.getDocumentCreationACL(MediaType.TEXT_PLAIN_TYPE, JsonValue.EMPTY_JSON_OBJECT);
+        Query acl = service.getDocumentACL(null, MediaType.TEXT_PLAIN_TYPE, JsonValue.EMPTY_JSON_OBJECT, AuthorizationService.DocumentAccessRole.CREATE);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(JsonValue.EMPTY_JSON_OBJECT), equalTo(false));        
     }

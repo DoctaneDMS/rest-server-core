@@ -393,7 +393,7 @@ public class Documents {
             
             JsonObject metadata = metadata_part.getEntityAs(JsonObject.class);
             
-            Query acl = authorizationService.getDocumentCreationACL(computedMediaType, metadata);
+            Query acl = authorizationService.getDocumentACL(null, computedMediaType, metadata, DocumentAccessRole.CREATE);
             if (!acl.containsItem(userMetadata))
                 return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, computedMediaType, metadata)));
             
@@ -456,7 +456,7 @@ public class Documents {
             }
             
             MediaType mediaType = MediaType.valueOf(request.getContentType());
-            Query acl = authorizationService.getDocumentCreationACL(mediaType, JsonValue.EMPTY_JSON_OBJECT);
+            Query acl = authorizationService.getDocumentACL(null, mediaType, JsonValue.EMPTY_JSON_OBJECT, DocumentAccessRole.CREATE);
             if (!acl.containsItem(userMetadata))
                 return LOG.logResponse("postFile", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, mediaType, JsonValue.EMPTY_JSON_OBJECT)));
 
@@ -523,11 +523,12 @@ public class Documents {
     			return Response.status(Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(Error.missingFile()).build();
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
-            
-            Query acl = authorizationService.getDocumentACL(new Reference(id), DocumentAccessRole.UPDATE);
+						
+            JsonObject metadata = metadata_part.getEntityAs(JsonObject.class);
+                        
+            Query acl = authorizationService.getDocumentACL(new Reference(id), computedMediaType, null, DocumentAccessRole.UPDATE);
             if (!acl.containsItem(userMetadata))
                 return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
-
            
             Reference reference = 
     			service
@@ -535,7 +536,7 @@ public class Documents {
     					id,
     					computedMediaType,
     					()->file_part.getEntityAs(InputStream.class),
-						metadata_part.getEntityAs(JsonObject.class),
+						metadata,
 						workspace,
 						createWorkspace
 					);
@@ -589,7 +590,8 @@ public class Documents {
     		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     		
-            Query acl = authorizationService.getDocumentACL(new Reference(id), DocumentAccessRole.UPDATE);
+            MediaType type = MediaType.valueOf(request.getContentType());
+            Query acl = authorizationService.getDocumentACL(new Reference(id), type, null, DocumentAccessRole.UPDATE);
             if (!acl.containsItem(userMetadata))
                 return LOG.logResponse("updateFile", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
 
@@ -597,7 +599,7 @@ public class Documents {
     			service
     				.updateDocument(
     					id,
-    					MediaType.valueOf(request.getContentType()),
+    					type,
     					()->request.getInputStream(),
 						null,
 						workspace,
@@ -652,7 +654,7 @@ public class Documents {
     		if (service == null || authorizationService == null) 
     			return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
     					
-    		Query acl = authorizationService.getDocumentACL(new Reference(id), DocumentAccessRole.UPDATE);
+    		Query acl = authorizationService.getDocumentACL(new Reference(id), null, null, DocumentAccessRole.UPDATE);
             if (!acl.containsItem(userMetadata))
                 return LOG.logResponse("updateMetadata", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
 
