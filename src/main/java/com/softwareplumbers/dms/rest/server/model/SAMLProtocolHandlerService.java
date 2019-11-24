@@ -5,6 +5,7 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.rest.server.util.IdioticShibbolethSpringResourceBridge;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,6 +53,7 @@ import org.opensaml.saml.criterion.EntityRoleCriterion;
 import org.opensaml.saml.metadata.resolver.MetadataResolver;
 import org.opensaml.saml.metadata.resolver.impl.FilesystemMetadataResolver;
 import org.opensaml.saml.metadata.resolver.impl.PredicateRoleDescriptorResolver;
+import org.opensaml.saml.metadata.resolver.impl.ResourceBackedMetadataResolver;
 import org.opensaml.saml.saml2.core.Assertion;
 import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.opensaml.saml.saml2.core.Issuer;
@@ -70,6 +72,7 @@ import org.opensaml.xmlsec.config.DefaultSecurityConfigurationBootstrap;
 import org.opensaml.xmlsec.keyinfo.KeyInfoCredentialResolver;
 import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.opensaml.xmlsec.signature.support.SignatureValidator;
+import org.springframework.core.io.ClassPathResource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
@@ -127,22 +130,19 @@ public class SAMLProtocolHandlerService {
         LOG.logEntering("<constructor>", entityId);
         
         try {
-            InitializationService.initialize();
-        } catch (InitializationException e) {
+            InitializationService.initialize();        
+            this.entityId = entityId;
+            documentBuilderFactory = DocumentBuilderFactory.newInstance();
+            documentBuilderFactory.setNamespaceAware(true);
+            unmarshallerFactory = XMLObjectProviderRegistrySupport.getUnmarshallerFactory();
+            marshallerFactory = XMLObjectProviderRegistrySupport.getMarshallerFactory();
+            ClassPathResource metadataResource = new ClassPathResource("/idp-metadata.xml");
+            idpMetadataResolver = initialiseMetadataResolver(metadataResource, entityId);
+            idpCredential = getIDPCredential(idpMetadataResolver, entityId);
+            idpEndpoint = getIDPEndpoint(idpMetadataResolver, entityId).orElseThrow(()->new SAMLInitialisationError("can't locate endpoint"));
+        } catch (InitializationException | IOException e) {
             throw new SAMLInitialisationError("can't initialize SAML subsystem", e);
         }
-        
-        this.entityId = entityId;
-        documentBuilderFactory = DocumentBuilderFactory.newInstance();
-        documentBuilderFactory.setNamespaceAware(true);
-        unmarshallerFactory = XMLObjectProviderRegistrySupport.getUnmarshallerFactory();
-        marshallerFactory = XMLObjectProviderRegistrySupport.getMarshallerFactory();
-        
-        URL metadata = SAMLProtocolHandlerService.class.getResource("/idp-metadata.xml");
-        idpMetadataResolver = initialiseMetadataResolver(metadata, entityId);
-        idpCredential = getIDPCredential(idpMetadataResolver, entityId);
-        idpEndpoint = getIDPEndpoint(idpMetadataResolver, entityId).orElseThrow(()->new SAMLInitialisationError("can't locate endpoint"));
-
         LOG.logExiting("<constructor>");
     }
     
@@ -159,18 +159,16 @@ public class SAMLProtocolHandlerService {
         return assertion.getSubject().getNameID().getValue();
     }
     
-    public static MetadataResolver initialiseMetadataResolver(URL config, String entityId) throws SAMLInitialisationError {
+    public static MetadataResolver initialiseMetadataResolver(ClassPathResource resource, String entityId) throws SAMLInitialisationError, IOException {
         try {
-            FilesystemMetadataResolver idpMetadataResolver = new FilesystemMetadataResolver(new File(config.toURI()));
+            ResourceBackedMetadataResolver idpMetadataResolver = new ResourceBackedMetadataResolver(new IdioticShibbolethSpringResourceBridge(resource));
             idpMetadataResolver.setRequireValidMetadata(true);
             idpMetadataResolver.setParserPool(XMLObjectProviderRegistrySupport.getParserPool());
             idpMetadataResolver.setId(entityId);
             idpMetadataResolver.initialize();
             return idpMetadataResolver;
-        } catch (ComponentInitializationException | ResolverException e) {
+        } catch (ComponentInitializationException e) {
             throw new SAMLInitialisationError("Could not initialse SAML subsystem", e);
-        } catch (URISyntaxException e) {
-            throw new SAMLInitialisationError("Invalid metadata file ", e);
         }
     }
     

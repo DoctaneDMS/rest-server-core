@@ -23,16 +23,16 @@ import javax.ws.rs.core.MediaType;
  */
 public class LocalAuthorizationService implements AuthorizationService {
     
-    Map<String, JsonObject> localUsers = new HashMap<>();
+    private Map<String, JsonObject> localUsers = new HashMap<>();
     
-    void setLocalUsers(Map<String,String> localUsers) {
+    public void setLocalUsers(Map<String,String> localUsers) {
         for (Map.Entry<String,String> entry : localUsers.entrySet()) {
             JsonReader reader = Json.createReader(new StringReader(entry.getValue()));
             this.localUsers.put(entry.getKey(), reader.readObject());
         }
     }
     
-    void addLocalUser(String username, JsonObject userMetadata) {
+    public void addLocalUser(String username, JsonObject userMetadata) {
         localUsers.put(username, userMetadata);
     }
 
