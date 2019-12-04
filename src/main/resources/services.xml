@@ -61,6 +61,8 @@
         <property name="SAMLResponseHandlerService" ref="softwarePlumbersSAMLServer"/>
     </bean>
 
+    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.PublicAuthorizationService" scope="singleton"/>
+
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
         <property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
@@ -79,6 +81,17 @@
             <props>
                 <prop key="tmp">auth.tmp</prop>
                 <prop key="dummy">auth.dummy</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <bean id="AuthorizationServiceFactory"
+            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthorizationServiceFactory"/>
+        <property name="serviceMappings">
+            <props>
+                <prop key="tmp">authz.public</prop>
+                <prop key="dummy">authz.public</prop>
             </props>
         </property>
     </bean>
