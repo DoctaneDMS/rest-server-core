@@ -71,7 +71,6 @@ public class XMLOutput implements StreamingOutput {
 				handler.setResult(saxOutput);
                 Metadata metadata = new Metadata();
     	        parser.parse(stream, handler, metadata, new ParseContext());
-                System.out.println(metadata);
     	    } catch (CannotConvertFormatException e) {
     	    	throw new WebApplicationException(e, Response.status(Response.Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON_TYPE).entity(Error.mapServiceError(e)).build());
 			} catch (TransformerConfigurationException | SAXException | TikaException e) {
