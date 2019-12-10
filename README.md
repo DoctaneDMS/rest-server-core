@@ -116,11 +116,11 @@ Multiple mappings can be specified by adding additional 'prop' elements.
    </bean>
 ```
 
-## Authorization Components
+## Authentication Components
 
-### Authorization Service Map
+### Authentication Service Map
 
-The authorization service map maps a set of authentication services to each repository. Each set of authentication services
+The authentication service map maps a set of authentication services to each repository. Each set of authentication services
 must be defined as a spring bean and implement the AuthenticationService interface. The configuration below maps the tenant 
 'test' to a set of dummy authentication services implemented by the spring bean 'auth.dummy'.
 
@@ -212,4 +212,57 @@ on /auth/<repo>/service or the SAMLResponseHandlerService on /auth/<repo>/saml. 
     </bean>
 ```
 
- 
+## Authorization Components
+
+### Authorization Service Map
+
+The authorization service map maps a set of authorization services to each tenant. Each set of authentication services
+must be defined as a spring bean and implement the AuthorizationService interface. The configuration below maps the tenant 
+'test' to a set of authorization services implemented by the spring bean 'authz.public'.
+
+```xml
+    <bean id="AuthorizationServiceFactory"
+            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthorizationServiceFactory"/>
+        <property name="serviceMappings">
+            <props>
+                <prop key="tmp">authz.public</prop>
+            </props>
+        </property>
+    </bean>
+```
+
+### Core authorization services
+
+The following bean defines a public authorization service which grants access to all authenticated users.
+
+```xml
+    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.PublicAuthorizationService" scope="singleton"/>
+```
+
+The following bean defines a local authorization service which grants access to the named users (...in this case the user
+name is DEFAULT_SERVICE_ACCOUNT) and will supply the given value (formatted as JSON) as user metadata.
+
+```xml
+    <bean name="authz.local" class="com.softwareplumbers.dms.rest.server.model.LocalAuthorizationService" scope="singleton">
+        <property name="localUsers">
+            <util:map>
+                <entry key="DEFAULT_SERVICE_ACCOUNT" value='{ "serviceAccount" : true }'/>
+            </util:map>
+        </property>
+    </bean>
+```        
+
+The following bean defines a federated authorization services created from two underlying authorization services authz.local
+and authz.ti.
+
+```xml
+        <bean name="authz.federated" class="com.softwareplumbers.dms.rest.server.model.FederatedAuthorizationService" scope="singleton">
+            <property name="authorizationServices" >
+                <util:list value-type="com.softwareplumbers.dms.rest.server.model.AuthorizationService" >
+                    <ref bean="authz.ti"/>
+                    <ref bean="authz.local"/>
+                </util:list>
+            </property>
+        </bean>
+```
