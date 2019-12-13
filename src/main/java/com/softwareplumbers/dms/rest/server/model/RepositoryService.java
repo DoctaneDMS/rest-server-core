@@ -533,13 +533,14 @@ public interface RepositoryService {
 	 */
 	public void deleteObjectByName(String rootId, QualifiedName objectName) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
 
-	/** List all the workspaces of which the given document is a member.
+	/** *  List all the workspaces of which the given document is a member.Will return an empty stream if no workspace is found.
 	 * 
-	 * Will return an empty stream if no workspace is found.
 	 * 
 	 * @param id Id of document
 	 * @param pathFilter wildcard path which can be used to cut down number of responses
+     * @param filter
 	 * @return A Stream of DocumentLink objects, each of which links this document to a workspace.
+     * @throws InvalidDocumentId if if does not reference a valid document
 	 */
-	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter); // throws InvalidDocumentId;
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter) throws InvalidDocumentId;
 }

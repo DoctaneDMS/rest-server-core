@@ -472,8 +472,9 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter) {
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter) throws InvalidDocumentId {
 		LOG.logEntering("listWorkspaces", id);
+        if (store.subMap(new Reference(id, ""), new Reference(id, null)).isEmpty()) throw new InvalidDocumentId(id);
 		Set<String> workspaceIds = workspacesByDocument.get(id);
 		if (workspaceIds == null) return LOG.logReturn("listWorkspaces", Stream.empty());
 		// TODO: add pathFilter

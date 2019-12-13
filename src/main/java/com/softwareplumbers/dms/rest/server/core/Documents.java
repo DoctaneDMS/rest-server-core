@@ -47,6 +47,8 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.json.JsonValue;
 import javax.ws.rs.container.ContainerRequestContext;
 
@@ -357,6 +359,8 @@ public class Documents {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("getWorkspaces",Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+        } catch (InvalidDocumentId e) {
+            return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
         }
     }    
     

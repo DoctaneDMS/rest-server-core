@@ -162,9 +162,9 @@ public abstract class BaseRepositoryServiceTest {
 		service().deleteDocument(randomWorkspaceId(), QualifiedName.ROOT, ref.id);
 	}
 	
-	@Test 
-	public void testListWorkspacesInvalidWorkspaceId() throws InvalidDocumentId {
-		assertEquals(0L,service().listWorkspaces(randomDocumentReference().id, QualifiedName.of("*"), Query.UNBOUNDED).count());
+	@Test(expected = InvalidDocumentId.class)
+	public void testListWorkspacesInvalidDocumentId() throws InvalidDocumentId {
+		service().listWorkspaces(randomDocumentReference().id, QualifiedName.of("*"), Query.UNBOUNDED);
 	}
 
 	@Test
@@ -308,7 +308,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState {
+	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId {
 		Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, randomWorkspaceId(), true);
 		assertEquals(1, service().listWorkspaces(ref.id, QualifiedName.of("*"), Query.UNBOUNDED).count());
 	}

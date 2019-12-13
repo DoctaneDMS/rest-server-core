@@ -59,6 +59,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.ws.rs.POST;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
@@ -191,7 +193,7 @@ public class Workspaces {
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build());
+                return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
 
             if (!workspacePath.queryPath.isEmpty() || !workspacePath.queryPartPath.isEmpty()) {
                 Stream<NamedRepositoryObject> results;
@@ -277,7 +279,7 @@ public class Workspaces {
                     	}
                 } else {
                     return LOG.logResponse("get", 
-                        Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.objectNotFound(repository, workspacePath)).build());
+                        Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
                 }
             }
 
@@ -328,7 +330,7 @@ public class Workspaces {
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("getWorkspaces", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
+                return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, null, QualifiedName.ROOT);
 
@@ -342,7 +344,9 @@ public class Workspaces {
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("getWorkspaces", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+            return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+        } catch (InvalidDocumentId e) {
+            return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
     
@@ -398,10 +402,10 @@ public class Workspaces {
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
+                return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (workspacePath == null || workspacePath.isEmpty())
-                return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
+                return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
@@ -448,22 +452,22 @@ public class Workspaces {
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidReference err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
-            return LOG.logResponse("put", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
 
@@ -510,10 +514,10 @@ public class Workspaces {
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("post", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
+                return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (workspacePath == null || workspacePath.isEmpty())
-                return LOG.logResponse("post", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
+                return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
@@ -524,7 +528,7 @@ public class Workspaces {
 
             
             if (type == RepositoryObject.Type.WORKSPACE) {
-                return LOG.logResponse("post", Response.status(Status.BAD_REQUEST).entity(Error.badOperation("Can't post a new workspace - use put")).build());
+                return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("Can't post a new workspace - use put")));
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 JsonObject metadata = object.getJsonObject("metadata");
@@ -537,22 +541,22 @@ public class Workspaces {
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         }catch (InvalidReference err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
             LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
-            return LOG.logResponse("put", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+            return LOG.logResponse("put", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
 
@@ -591,10 +595,10 @@ public class Workspaces {
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
+                return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (path == null || path.isEmpty())
-                return LOG.logResponse("putDocument", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
+                return LOG.logResponse("putDocument", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
@@ -615,15 +619,15 @@ public class Workspaces {
 
             return LOG.logResponse("putDocument", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("putDocument", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+            return LOG.logResponse("putDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
     
@@ -648,7 +652,7 @@ public class Workspaces {
 
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
+                return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (path.queryPath != QualifiedName.ROOT)
                 return LOG.logResponse("deleteDocument", Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("wildcards not permitted in deleted")));
@@ -671,17 +675,17 @@ public class Workspaces {
 
             return LOG.logResponse("deleteDocument", Response.status(Status.NO_CONTENT).build());
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            return LOG.logResponse("deleteDocument", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
-            return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
+            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("deleteDocument", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
+            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         }
     }    
 }
