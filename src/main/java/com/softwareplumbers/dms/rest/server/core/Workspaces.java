@@ -50,7 +50,6 @@ import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService.ObjectAccessRole;
 
-import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
@@ -60,7 +59,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
-import javax.json.JsonValue;
 import javax.ws.rs.POST;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
@@ -82,9 +80,9 @@ public class Workspaces {
     
     ///////////--------- Static member variables --------////////////
 
-    private static Log LOG = new Log(Workspaces.class);
+    private static final Log LOG = new Log(Workspaces.class);
     
-    private static List<MediaType> GET_RESULT_TYPES = Arrays.asList(
+    private static final List<MediaType> GET_RESULT_TYPES = Arrays.asList(
         MediaType.WILDCARD_TYPE,
         MediaType.MULTIPART_FORM_DATA_TYPE, 
         MediaType.APPLICATION_XHTML_XML_TYPE, 
@@ -110,11 +108,25 @@ public class Workspaces {
         this.repositoryServiceFactory = serviceFactory;
     }
     
+    /** 
+     * Used by Spring to inject a document navigator service.
+     * 
+     * The document navigator service is used to navigate between parts of a single document.
+     * 
+     * @param documentNavigatorService 
+     */
     @Autowired
     public void setDocumentNavigatorService(DocumentNavigatorService documentNavigatorService) {
         this.navigator = documentNavigatorService;
     }
     
+    /**
+     * Used by Spring to inject an authorization service.
+     * 
+     * The authorization service is used to check that an authenticated user has the right to perform an operation.
+     * 
+     * @param authorizationServiceFactory 
+     */
     @Autowired
     public void setAuthorizationServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
         this.authorizationServiceFactory = authorizationServiceFactory;
@@ -151,7 +163,7 @@ public class Workspaces {
      * of an iframe). 
      * 
      * @param repository string identifier of a document repository
-     * @param workspacePath string identifier of a workspace or document
+     * @param workspacePath identifier of a workspace or document
      * @param filter AbstractQuery filter (in Base64 encoded Json) to fine down results of wildcard searches
      * @param contentType explicitly require contentType
      * @param headers including content type information
@@ -179,7 +191,7 @@ public class Workspaces {
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build();
+                return LOG.logResponse("get", Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(Error.repositoryNotFound(repository)).build());
 
             if (!workspacePath.queryPath.isEmpty() || !workspacePath.queryPartPath.isEmpty()) {
                 Stream<NamedRepositoryObject> results;
@@ -283,7 +295,7 @@ public class Workspaces {
             return LOG.logResponse("get", Error.errorResponse(Status.BAD_REQUEST, Error.mapServiceError(err)));
         } catch (PartNotFoundException err) {
             return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
-        }catch (Throwable e) {
+        } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
@@ -327,7 +339,7 @@ public class Workspaces {
             
             //TODO: must be able to do this in a stream somehow.
             return LOG.logResponse("getWorkspaces", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
-        } catch (Throwable e) {
+        } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("getWorkspaces", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
@@ -374,12 +386,12 @@ public class Workspaces {
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
             @PathParam("repository") String repository,
-            @PathParam("workspace") String objectName,
+            @PathParam("workspace") WorkspacePath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
             @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.logEntering("put", repository, objectName, createWorkspace, updateType, object);
+        LOG.logEntering("put", repository, workspacePath, createWorkspace, updateType, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -388,26 +400,15 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.logResponse("put", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
-            if (objectName == null || objectName.isEmpty())
+            if (workspacePath == null || workspacePath.isEmpty())
                 return LOG.logResponse("put", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
-
-
-            QualifiedName wsName = QualifiedName.parse(objectName, "/");
-            String rootId = ROOT_ID;
-            String firstPart = wsName.get(0);
-
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
-            if (firstPart.startsWith("~")) {
-                rootId = firstPart.substring(1);
-                wsName = wsName.rightFromStart(1);
-            } 
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
-            Query acl = authorizationService.getObjectACL(rootId, wsName, type, null, getRequiredRole(updateType));
+            Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, getRequiredRole(updateType));
                 
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, wsName)));
+                return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
             }
             
             if (type == RepositoryObject.Type.WORKSPACE) {
@@ -421,9 +422,9 @@ public class Workspaces {
                 String wsId;
 
                 if (updateType == UpdateType.CREATE) {
-                    wsId = service.createWorkspaceByName(rootId, wsName, state, metadata);
+                    wsId = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata);
                 } else {
-                    wsId = service.updateWorkspaceByName(rootId, wsName, updateQName, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
+                    wsId = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, updateQName, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
                 
                 JsonObjectBuilder result = Json.createObjectBuilder();
@@ -439,9 +440,9 @@ public class Workspaces {
                 }
                 
                 if (updateType == UpdateType.CREATE)
-                    service.createDocumentLinkByName(rootId, wsName, reference, createWorkspace);
+                    service.createDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
                 else
-                    service.updateDocumentLinkByName(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                    service.updateDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 
                 return LOG.logResponse("put", Response.accepted().build());
             }
@@ -496,13 +497,13 @@ public class Workspaces {
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response post(
             @PathParam("repository") String repository,
-            @PathParam("workspace") String objectName,
+            @PathParam("workspace") WorkspacePath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
             @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.logEntering("post", repository, objectName, createWorkspace, updateType, object);
+        LOG.logEntering("post", repository, workspacePath, createWorkspace, updateType, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -511,25 +512,14 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.logResponse("post", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
-            if (objectName == null || objectName.isEmpty())
+            if (workspacePath == null || workspacePath.isEmpty())
                 return LOG.logResponse("post", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
 
-
-            QualifiedName wsName = QualifiedName.parse(objectName, "/");
-            String rootId = ROOT_ID;
-            String firstPart = wsName.get(0);
-
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
-            if (firstPart.startsWith("~")) {
-                rootId = firstPart.substring(1);
-                wsName = wsName.rightFromStart(1);
-            } 
-            
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
-            Query acl = authorizationService.getObjectACL(rootId, wsName, type, null, ObjectAccessRole.CREATE);
+            Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, wsName)));
+                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
             }
 
             
@@ -541,7 +531,7 @@ public class Workspaces {
                 if (metadata != null && !metadata.isEmpty()) {
                     service.updateDocument(reference.id, null, null, metadata, null, false);
                 }
-                DocumentLink link = service.createDocumentLink(rootId, wsName, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                DocumentLink link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().join("/")).build();
                 return LOG.logResponse("post", Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
@@ -587,7 +577,7 @@ public class Workspaces {
     @Consumes({ MediaType.MULTIPART_FORM_DATA })
     public Response putDocument(
         @PathParam("repository") String repository,
-        @PathParam("workspace") String path,
+        @PathParam("workspace") WorkspacePath path,
         @FormDataParam("metadata") FormDataBodyPart metadata_part,
         @FormDataParam("file") FormDataBodyPart file_part,
         @QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
@@ -603,29 +593,19 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
 
-            QualifiedName pathName = QualifiedName.parse(path, "/");
-
-            if (pathName == null || pathName.isEmpty())
+            if (path == null || path.isEmpty())
                 return LOG.logResponse("putDocument", Response.status(Status.BAD_REQUEST).entity(Error.missingResourcePath()).build());
 
-            String wsId = null;
-            String firstPart = pathName.get(0);
-            // If the qualified name starts with a '~', the next element is an Id which we will use for the root repositor
-            if (firstPart.startsWith("~")) {
-                wsId = firstPart.substring(1);
-                pathName = pathName.rightFromStart(1);
-            } 
-
-            Query acl = authorizationService.getObjectACL(wsId, pathName, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
+            Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, pathName)));
+                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
             }
 
-            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), pathName.part);
+            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
 
             Reference result = service.updateDocumentByName(
-                    wsId, 
-                    pathName, 
+                    path.rootId, 
+                    path.staticPath, 
                     computedMediaType,
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
@@ -640,7 +620,7 @@ public class Workspaces {
             return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
         } catch (InvalidWorkspaceState err) {
             return LOG.logResponse("putDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
-        } catch (Throwable e) {
+        } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("putDocument", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
@@ -698,7 +678,7 @@ public class Workspaces {
             return LOG.logResponse("deleteDocument", Response.status(Status.FORBIDDEN).entity(Error.mapServiceError(err)).build());
         } catch (InvalidDocumentId err) {
             return LOG.logResponse("deleteDocument", Response.status(Status.NOT_FOUND).entity(Error.mapServiceError(err)).build());
-        } catch (Throwable e) {
+        } catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("deleteDocument", Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());

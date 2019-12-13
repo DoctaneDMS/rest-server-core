@@ -9,6 +9,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 
 import com.softwareplumbers.dms.rest.server.model.Constants;
+import com.softwareplumbers.dms.rest.server.util.Log;
 
 /** Class representing workspace path.
  * 
@@ -33,7 +34,9 @@ import com.softwareplumbers.dms.rest.server.model.Constants;
  * @author Jonathan Essex
  */
 public class WorkspacePath {
-
+    
+    private static final Log LOG = new Log(WorkspacePath.class);
+    
     public final String rootId;
     public final QualifiedName staticPath;
     public final QualifiedName queryPath;
@@ -59,6 +62,7 @@ public class WorkspacePath {
      * @return true if element is an id
      */
     public static boolean isId(String element) {
+        if (element == null) return false;
         return element.length() > 1 && element.startsWith("~") && !element.startsWith("~~");
     }
 
@@ -67,10 +71,12 @@ public class WorkspacePath {
      * @return true if element is a query element
      */
     public static boolean isQueryElement(String element) {
+        if (element == null) return false;
         return !Parsers.parseUnixWildcard(element).isSimple();
     }
 
     public static boolean isPartDelimeter(String element) {
+        if (element == null) return false;
         return element.equals("~");
     }
 
@@ -82,34 +88,38 @@ public class WorkspacePath {
         QualifiedName queryPartPath = QualifiedName.ROOT;
         String documentId = null;
         boolean seenPartDelimeter = false;
-        for (String pathElement : path.split("/")) {
-            if (pathElement.length() == 0) continue;
-            if (isPartDelimeter(pathElement)) {
-                seenPartDelimeter = true;
-                continue;
-            } 
-            if (seenPartDelimeter || documentId != null) {
-                if (!queryPartPath.isEmpty() || isQueryElement(pathElement))
-                    queryPartPath = queryPartPath.add(pathElement);
-                else
-                    staticPartPath = staticPartPath.add(pathElement);
-                continue;
-            } 
-            if (isId(pathElement)) {
-                String id = pathElement.substring(1);
-                if (staticPath.isEmpty() && queryPath.isEmpty() && rootId == Constants.ROOT_ID) {
-                    rootId = id;
-                } else {
-                    documentId = id;
-                }
-                continue;
-            } 
-            if (!queryPath.isEmpty() || isQueryElement(pathElement)) {
-                queryPath = queryPath.add(pathElement);
-                continue;
-            } 
-            
-            staticPath = staticPath.add(pathElement);
+        try {
+            for (String pathElement : path.split("/")) {
+                if (pathElement.length() == 0) continue;
+                if (isPartDelimeter(pathElement)) {
+                    seenPartDelimeter = true;
+                    continue;
+                } 
+                if (seenPartDelimeter || documentId != null) {
+                    if (!queryPartPath.isEmpty() || isQueryElement(pathElement))
+                        queryPartPath = queryPartPath.add(pathElement);
+                    else
+                        staticPartPath = staticPartPath.add(pathElement);
+                    continue;
+                } 
+                if (isId(pathElement)) {
+                    String id = pathElement.substring(1);
+                    if (staticPath.isEmpty() && queryPath.isEmpty() && rootId == Constants.ROOT_ID) {
+                        rootId = id;
+                    } else {
+                        documentId = id;
+                    }
+                    continue;
+                } 
+                if (!queryPath.isEmpty() || isQueryElement(pathElement)) {
+                    queryPath = queryPath.add(pathElement);
+                    continue;
+                } 
+
+                staticPath = staticPath.add(pathElement);
+            }
+        } catch (RuntimeException e) {
+            LOG.logWarning("valueOf", "Could not parse workspace path");    
         }
         return new WorkspacePath(rootId, staticPath, queryPath, documentId, staticPartPath, queryPartPath);
     }
@@ -123,5 +133,13 @@ public class WorkspacePath {
         if (staticPartPath != QualifiedName.ROOT) result.append("/").append(staticPartPath.join("/"));
         if (queryPartPath != QualifiedName.ROOT) result.append("/").append(queryPartPath.join("/"));
         return result.toString();
+    }
+    
+    public boolean isEmpty() {
+        return Constants.ROOT_ID == rootId
+            && staticPath == QualifiedName.ROOT
+            && staticPartPath == QualifiedName.ROOT
+            && queryPath == QualifiedName.ROOT
+            && queryPartPath == QualifiedName.ROOT;
     }
 }
