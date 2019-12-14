@@ -836,9 +836,9 @@ public class TempRepositoryServerTest {
         assertEquals(Response.Status.SEE_OTHER.getStatusCode(), response.getStatus());
         URI location = response.getLocation();
         //These values come from the services.xml config
-        assertEquals("localhost", location.getHost());
-        assertEquals(6666, location.getPort());
-        assertEquals("relayState=abcdef",location.getQuery());
+        assertEquals("auth.softwareplumbers.com", location.getHost());
+        System.out.println (location.getQuery());
+        assertTrue(location.getQuery().contains("elayState=abcdef"));
     }
 
     @Test

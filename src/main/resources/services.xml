@@ -11,16 +11,16 @@
     <context:annotation-config />
 	
     <bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
-	<constructor-arg index="0" value="/tmp/doctane-proxy.keystore"/>
-	<constructor-arg index="1" value="password"/>
-	<!-- for some reason specifying a value attribute here does not work -->
-	<constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
-	<constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
+        <constructor-arg index="0" value="/tmp/doctane-proxy.keystore"/>
+        <constructor-arg index="1" value="password"/>
+        <!-- for some reason specifying a value attribute here does not work -->
+        <constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
+        <constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
     </bean>
 
     <bean id="tmp" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
-   	<constructor-arg index="0" ref="documentNavigatorService"/>
-   	<constructor-arg index="1" value="filename"/>
+        <constructor-arg index="0" ref="documentNavigatorService"/>
+        <constructor-arg index="1" value="filename"/>
     </bean>
     
     <bean id="dummyValidation" class="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" scope="singleton">
@@ -43,13 +43,13 @@
     
     <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
 
+    <bean id="cookieRequestValidationService" class="com.softwareplumbers.dms.rest.server.core.CookieRequestValidationService">
+        <constructor-arg index="0" ref="keymgr"/>
+        <constructor-arg index="1" value="tmp"/>
+    </bean>
+                
     <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
-        <property name="RequestValidationService">
-            <bean class="com.softwareplumbers.dms.rest.server.core.CookieRequestValidationService">
-                <constructor-arg index="0" ref="keymgr"/>
-                <constructor-arg index="1" value="tmp"/>
-            </bean>
-        </property>
+        <property name="RequestValidationService" ref="cookieRequestValidationService"/>
         <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
         <property name="SignonService">
             <bean class="com.softwareplumbers.dms.rest.server.core.SAMLSignonService">
