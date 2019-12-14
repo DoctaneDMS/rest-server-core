@@ -6,9 +6,6 @@ import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import java.math.BigDecimal;
 import java.util.Optional;
 import javax.json.JsonArrayBuilder;
 

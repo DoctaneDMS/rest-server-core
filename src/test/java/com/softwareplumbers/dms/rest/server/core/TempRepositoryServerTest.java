@@ -62,13 +62,15 @@ import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.StreamableDocumentPartImpl;
 import com.softwareplumbers.dms.rest.server.model.Reference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
+import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
-import com.softwareplumbers.dms.rest.server.test.TestRepository;
 import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.InitializationFailure;
 import com.softwareplumbers.keymanager.KeyManager;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.util.Arrays;
+import javax.json.JsonReader;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.client.ClientProperties;
 
@@ -103,6 +105,26 @@ public class TempRepositoryServerTest {
     @Autowired
     KeyManager<?,?> keyManager;
     
+    private static InputStream getTestFile(String name) {
+        return TempRepositoryServerTest.class.getResourceAsStream(name);
+    }
+    
+    private static JsonObject getTestMetadata(String name) throws IOException {
+		try (InputStream stream = getTestFile(name)) {
+			JsonReader reader = Json.createReader(stream);
+			return reader.readObject();
+		}
+	}
+
+    private static boolean docEquals(String name, StreamableRepositoryObject document) throws IOException {
+		byte[] testfile = IOUtils.toByteArray(getTestFile("/" + name + ".txt"));
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		document.writeDocument(stream);
+		JsonObject metadata = getTestMetadata("/" + name + ".json");
+		return metadata.equals(document.getMetadata()) && Arrays.equals(testfile, stream.toByteArray());
+	}
+
+    
     /** *  Utility function to post a document using the Jersey client API.Test documents are held in src/test/resources in this project.Two files
     <I>name</I>.txt and <I>name</I>.json make up a single test document, 
  where the json file contains the metadata.
@@ -125,13 +147,13 @@ public class TempRepositoryServerTest {
         
         StreamDataBodyPart file = new StreamDataBodyPart(
         	"file",
-            TestRepository.getTestFile("/"+name+"."+ext),
+            getTestFile("/"+name+"."+ext),
             null,
             type);
 
         FormDataBodyPart metadata = new FormDataBodyPart(
             	"metadata",
-                 TestRepository.getTestMetadata("/"+name+".json"),
+                 getTestMetadata("/"+name+".json"),
                  MediaType.APPLICATION_JSON_TYPE);
         
         multiPart.bodyPart(file);
@@ -171,13 +193,13 @@ public class TempRepositoryServerTest {
         
         StreamDataBodyPart file = new StreamDataBodyPart(
         	"file",
-             TestRepository.getTestFile("/"+name+"."+ext),
+             getTestFile("/"+name+"."+ext),
              null,
              mediaTypesByExtension.get(ext));
 
         FormDataBodyPart metadata = new FormDataBodyPart(
             	"metadata",
-                 TestRepository.getTestMetadata("/"+name+".json"),
+                 getTestMetadata("/"+name+".json"),
                  MediaType.APPLICATION_JSON_TYPE);
         
         multiPart.bodyPart(file);
@@ -548,7 +570,7 @@ public class TempRepositoryServerTest {
 
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/file");
     	
-        InputStream file = TestRepository.getTestFile("/test1.txt");
+        InputStream file = getTestFile("/test1.txt");
 
     	Response response = target
     			.request(MediaType.APPLICATION_JSON_TYPE)
@@ -576,7 +598,7 @@ public class TempRepositoryServerTest {
 
     	WebTarget target = client.target("http://localhost:" + port + "/docs/dummy/file");
     	
-        InputStream file = TestRepository.getTestFile("/test1.txt");
+        InputStream file = getTestFile("/test1.txt");
 
     	Response response = target
     			.request(MediaType.APPLICATION_JSON_TYPE)
@@ -613,7 +635,7 @@ public class TempRepositoryServerTest {
 		
 		assertNotNull(doc);
 		
-		assertTrue(TestRepository.docEquals("test1", doc));
+		assertTrue(docEquals("test1", doc));
 		
 	}
 	

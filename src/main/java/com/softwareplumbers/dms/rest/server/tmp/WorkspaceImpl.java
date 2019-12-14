@@ -201,6 +201,7 @@ class WorkspaceImpl implements Workspace {
 		int count = 1;
 		while (children.containsKey(containmentName)) {
 			containmentName = baseName + "." + count + ext;
+            count++;
 		}
 		return containmentName;
 	}

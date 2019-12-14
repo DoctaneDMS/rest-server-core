@@ -8,7 +8,6 @@ import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 
 public class DocumentLinkImpl implements DocumentLink {
     

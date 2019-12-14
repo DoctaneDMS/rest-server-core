@@ -18,6 +18,7 @@ import org.junit.Test;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.JsonUtil;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.dms.rest.server.core.MediaTypes;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
@@ -29,10 +30,13 @@ import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.apache.commons.io.IOUtils;
 
 /** Unit tests that should pass for all implementations of RepositoryService. 
  * 
@@ -92,10 +96,22 @@ public abstract class BaseRepositoryServiceTest {
 		doc.writeDocument(stream);
 		return new String(stream.toByteArray());
 	}
+    
+    @FunctionalInterface
+    private interface DocDataConsumer {
+        public void consume(byte[] data, JsonObject metadata, MediaType type);
+    }
 	
+    private final void generateDocs(int count, DocDataConsumer consumer) {
+        for (int i = 0; i < count; i++) {
+            consumer.consume(randomText().getBytes(), randomMetadata(), MediaType.TEXT_PLAIN_TYPE);
+        }
+    }
 
 	public abstract Reference randomDocumentReference();
 	public abstract String randomWorkspaceId();
+    public abstract JsonObject randomMetadata();
+    public abstract String uniqueMetadataField();
 	
 	@Test
 	public void testAnonymousCreateWorkspace() throws InvalidWorkspace {
@@ -633,5 +649,84 @@ public abstract class BaseRepositoryServiceTest {
         assertEquals("test", json.getJsonObject("document").getString("id"));
         assertEquals(MediaTypes.MICROSOFT_WORD_XML.toString(), json.getString("mediaType"));
         assertEquals(false, json.getBoolean("navigable"));
+	}
+    
+    	@Test
+	public void testRepositoryRoundtrip() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Document result = service().getDocument(ref1);
+        assertEquals(originalText, IOUtils.toString(result.getData(), "UTF-8"));
+	}
+		
+	@Test(expected = InvalidReference.class)
+	public void testRepositoryFetchWithInvalidVersion() throws IOException, InvalidReference, InvalidWorkspace, InvalidWorkspaceState {
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Document result = service().getDocument(new Reference(ref1.id, "777"));
+	}
+	
+	@Test
+	public void testRepositoryFetchWithNoVersion() throws IOException, InvalidReference, InvalidWorkspace, InvalidWorkspaceState {
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        Document result = service().getDocument(new Reference(ref1.id, null));
+        assertEquals(originalText, getDocText(result));
+	}
+		
+	@Test
+	public void testRepositorySearch() throws IOException, InvalidWorkspace {
+        
+        ArrayList<byte[]> dataValues = new ArrayList<>();
+        ArrayList<JsonObject> metadataValues = new ArrayList<>();
+        
+        generateDocs(4, (data, metadata, type) -> {
+            dataValues.add(data);
+            metadataValues.add(metadata);
+            try {
+                service().createDocument(type, ()->new ByteArrayInputStream(data), metadata, null, false);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        
+        int itemToSearch = 3;
+        String indexField = uniqueMetadataField();
+        JsonValue indexValue = metadataValues.get(itemToSearch).get(indexField);
+        
+        Query search = Query.from("metadata", Query.from(indexField, Range.equals(indexValue)));
+        
+		RepositoryObject[] result = service().catalogue(search, false).toArray(RepositoryObject[]::new);
+		
+        assertEquals(result.length, 1);
+		assertEquals(getDocText((Document)result[0]), IOUtils.toString(dataValues.get(itemToSearch), "UTF-8"));
+	}
+	
+	
+	@Test 
+	public void testWorkspaceUpdate() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
+		String workspace_id = UUID.randomUUID().toString();
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+		service().updateDocument(ref1.id, null, null, null, workspace_id, true);
+		assertEquals(service().catalogueById(workspace_id, null, false).count(), 1);
+		service().deleteDocument(workspace_id, QualifiedName.ROOT, ref1.id);
+		assertEquals(service().catalogueById(workspace_id, null, false).count(), 0);
+	}
+	
+	@Test 
+	public void testListWorkspaces() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
+		String workspace1 = UUID.randomUUID().toString();
+		String workspace2 = UUID.randomUUID().toString();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+        Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+        Reference ref3 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().updateDocument(ref1.id, null, null, null, workspace1, true);
+		service().updateDocument(ref1.id, null, null, null, workspace2, true);
+		service().updateDocument(ref2.id, null, null, null, workspace2, true);
+		service().updateDocument(ref3.id, null, null, null, workspace2, true);
+		assertEquals(2, service().listWorkspaces(ref1.id, null, Query.UNBOUNDED).count());
+		assertEquals(1, service().listWorkspaces(ref2.id, null, Query.UNBOUNDED).count());
+		assertEquals(1, service().listWorkspaces(ref3.id, null, Query.UNBOUNDED).count());
 	}
 }
