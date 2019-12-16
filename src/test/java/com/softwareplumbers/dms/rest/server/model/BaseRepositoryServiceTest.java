@@ -102,7 +102,7 @@ public abstract class BaseRepositoryServiceTest {
         public void consume(byte[] data, JsonObject metadata, MediaType type);
     }
 	
-    private final void generateDocs(int count, DocDataConsumer consumer) {
+    private void generateDocs(int count, DocDataConsumer consumer) {
         for (int i = 0; i < count; i++) {
             consumer.consume(randomText().getBytes(), randomMetadata(), MediaType.TEXT_PLAIN_TYPE);
         }
@@ -118,7 +118,7 @@ public abstract class BaseRepositoryServiceTest {
 		String workspace1 = service().createWorkspaceById(null, null, State.Open, null);
 		assertNotNull(workspace1);
 		String workspace2 = service().createWorkspaceById(null, null, State.Open, null);
-		assertNotNull(workspace1);
+		assertNotNull(workspace2);
 		assertNotEquals(workspace1, workspace2);
 	}
 	
@@ -267,26 +267,6 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(null, fetched2.getMetadata().getString("Branch",null));
 		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
 	}
-
-	/** *  Important - what should be returned when we have multiple versions of a document matching criteria.Definiton is that we return the latest version which matches the criteria.
-	 * 
-	 *
-     * @throws java.io.IOException 
-     * @throws InvalidDocumentId 
-     * @throws InvalidWorkspace 
-     * @throws InvalidWorkspaceState 
-     * @throws InvalidReference 
-	 */
-	@Test
-	public void testRepositoryCatalogWithVersions() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
-		long count1 = service().catalogue(Query.UNBOUNDED, true).count();
-		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		long count2 = service().catalogue(Query.UNBOUNDED, true).count();
-		assertEquals(3, count2 - count1);
-	}
 	
 	@Test
 	public void testRepositoryCatalog() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId {
@@ -299,7 +279,7 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(3, count2 - count1);
 	}
 
-		@Test
+	@Test
 	public void testWorkspaceNameRoundtrip() throws InvalidWorkspace {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
@@ -329,23 +309,7 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(1, service().listWorkspaces(ref.id, QualifiedName.of("*"), Query.UNBOUNDED).count());
 	}
 	
-	@Test
-	public void testGetDocumentWithWorkspaceId() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
-		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
-		String originalText = randomText();
-		// Create a document in the workspace
-		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, wsId, false);
-		// now close the workspace
-		service().updateWorkspaceById(wsId, null, State.Closed, EMPTY_METADATA, false);
-		Reference ref2 = service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
-		assertEquals(ref1.id, ref2.id);
-		String doc1 = getDocText(service().getDocument(ref1));
-		String doc2 = getDocText(service().getDocument(ref2));
-		assertNotEquals(doc1, doc2);	
-		String wsDoc = getDocText(service().getDocument(ref1.id, wsId));
-		// assertEquals(originalText, wsDoc); <-- TODO: this is broken for now in filenet impl
-	}
-	
+
 	@Test
 	public void testGetObjectById() throws InvalidWorkspace, InvalidObjectName {
 		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
@@ -729,4 +693,47 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(1, service().listWorkspaces(ref2.id, null, Query.UNBOUNDED).count());
 		assertEquals(1, service().listWorkspaces(ref3.id, null, Query.UNBOUNDED).count());
 	}
+    
+    
+    
+    //////------- Versioning tests --------//////
+    
+  
+    /** 
+     *  Important - what should be returned when we have multiple versions of a document matching criteria.Definiton is that we return the latest version which matches the criteria.
+	 * 
+	 *
+     * @throws InvalidDocumentId 
+     * @throws InvalidWorkspace 
+     * @throws InvalidWorkspaceState 
+     * @throws InvalidReference 
+	 */
+	@Test // Versioning
+	public void testRepositoryCatalogWithVersions() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+		long count1 = service().catalogue(Query.UNBOUNDED, true).count();
+		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		long count2 = service().catalogue(Query.UNBOUNDED, true).count();
+		assertEquals(3, count2 - count1);
+	}
+    
+	@Test // Versioning
+	public void testGetDocumentWithWorkspaceId() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String originalText = randomText();
+		// Create a document in the workspace
+		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, wsId, false);
+		// now close the workspace
+		service().updateWorkspaceById(wsId, null, State.Closed, EMPTY_METADATA, false);
+		Reference ref2 = service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		assertEquals(ref1.id, ref2.id);
+		String doc1 = getDocText(service().getDocument(ref1));
+		String doc2 = getDocText(service().getDocument(ref2));
+		assertNotEquals(doc1, doc2);	
+		String wsDoc = getDocText(service().getDocumentLink(wsId, QualifiedName.ROOT, ref1.id));
+		assertEquals(originalText, wsDoc); 
+	}
+	
 }
