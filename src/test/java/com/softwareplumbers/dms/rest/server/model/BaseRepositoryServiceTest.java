@@ -24,12 +24,12 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocum
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
 import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.Workspace.State;
 
 import static com.softwareplumbers.dms.rest.server.model.Constants.*;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
+import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +37,8 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.io.IOUtils;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.assertThat;
 
 /** Unit tests that should pass for all implementations of RepositoryService. 
  * 
@@ -697,7 +699,6 @@ public abstract class BaseRepositoryServiceTest {
     
     
     //////------- Versioning tests --------//////
-    
   
     /** 
      *  Important - what should be returned when we have multiple versions of a document matching criteria.Definiton 
@@ -706,7 +707,7 @@ public abstract class BaseRepositoryServiceTest {
 	 *
      * @throws RepositoryService.BaseException
 	 */
-	@Test // Versioning
+	@Test 
 	public void testRepositoryCatalogWithVersions() throws RepositoryService.BaseException {
 		long count1 = service().catalogue(Query.UNBOUNDED, true).count();
 		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
@@ -717,7 +718,7 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(3, count2 - count1);
 	}
     
-	@Test // Versioning
+	@Test
 	public void testGetDocumentWithWorkspaceId() throws IOException, RepositoryService.BaseException {
 		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
 		String originalText = randomText();
@@ -733,5 +734,76 @@ public abstract class BaseRepositoryServiceTest {
 		String wsDoc = getDocText(service().getDocumentLink(wsId, QualifiedName.ROOT, ref1.id));
 		assertEquals(originalText, wsDoc); 
 	}
-	
+    
+    @Test
+    public void testGetDocumentVersions() throws RepositoryService.BaseException {
+		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+		Reference ref2 = service().updateDocument(ref1.id, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+ 		Reference ref3 = service().updateDocument(ref1.id, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
+      
+        Reference[] refs = { ref1, ref2, ref3 };
+        
+        // Check the base document id is the same
+        assertEquals(ref1.id, ref2.id);
+        assertEquals(ref1.id, ref3.id);
+      
+        // Check the version id is different
+        assertNotEquals(ref1.version, ref2.version);
+        assertNotEquals(ref1.version, ref3.version);
+        assertNotEquals(ref2.version, ref3.version);
+        
+        Document[] versions = service().catalogueHistory(ref3, Query.UNBOUNDED).toArray(Document[]::new);
+        
+        assertEquals(3, versions.length);
+        
+        assertThat(versions[0].getReference(), isIn(refs));
+        assertThat(versions[1].getReference(), isIn(refs));
+        assertThat(versions[2].getReference(), isIn(refs));
+    }
+    
+    @Test
+    public void testGetVersionedDocumentFromWorkspace() throws RepositoryService.BaseException, IOException {
+        // Create  a document
+        String textv1 = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv1), EMPTY_METADATA, null, false);
+        // Create a workspace
+        QualifiedName workspaceName = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, workspaceName, State.Open, EMPTY_METADATA);
+        // Link document to workspace
+        service().createDocumentLink(ROOT_ID, workspaceName, ref1, true, true);
+        // Update document
+        String textv2 = randomText();
+		Reference ref2 = service().updateDocument(ref1.id, MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv2), null, null, false);
+        // Close workspace
+        service().updateWorkspaceByName(ROOT_ID, workspaceName, null, State.Closed, null, false);
+        // Update document again
+        String textv3 = randomText();
+ 		Reference ref3 = service().updateDocument(ref1.id, MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv3), null, null, false);
+        // Now retrieve document from workspace
+        DocumentLink doc = service().getDocumentLink(ROOT_ID, workspaceName, ref1.id);
+        // We should see the version of the document that was current when the workspace was closed
+        assertEquals(ref2, doc.getReference());
+        // Double check
+        assertEquals(textv2, getDocText(doc));
+    }
+    
+    @Test(expected = InvalidWorkspaceState.class)
+    public void testWorkspaceUpdateDoesntWorkIfWorkspaceClosed() throws RepositoryService.BaseException {
+        // Create  a document
+        String textv1 = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv1), EMPTY_METADATA, null, false);
+        // Create a workspace
+        QualifiedName workspaceName = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, workspaceName, State.Open, EMPTY_METADATA);
+        // Link document to workspace
+        QualifiedName documentName = workspaceName.add(randomUrlSafeName());
+        service().createDocumentLinkByName(ROOT_ID, documentName, ref1, true);
+        // Close workspace
+        service().updateWorkspaceByName(ROOT_ID, workspaceName, null, State.Closed, null, false);
+        // Update document again
+        String textv2 = randomText();
+ 		Reference ref3 = service().updateDocumentByName(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
+    }
+    
+    //////------- End Versioning tests --------//////
 }
