@@ -114,7 +114,7 @@ public abstract class BaseRepositoryServiceTest {
     public abstract String uniqueMetadataField();
 	
 	@Test
-	public void testAnonymousCreateWorkspace() throws InvalidWorkspace {
+	public void testAnonymousCreateWorkspace() throws RepositoryService.BaseException {
 		String workspace1 = service().createWorkspaceById(null, null, State.Open, null);
 		assertNotNull(workspace1);
 		String workspace2 = service().createWorkspaceById(null, null, State.Open, null);
@@ -123,7 +123,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testCreateAndFindWorkspaceWithURLSafeName() throws InvalidWorkspace, InvalidObjectName {
+	public void testCreateAndFindWorkspaceWithURLSafeName() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		String workspace = service().createWorkspaceByName(ROOT_ID, name, State.Open, null);
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, name);
@@ -137,24 +137,24 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test (expected = InvalidObjectName.class)
-	public void testGetWorkspaceNotFoundByNameError() throws InvalidWorkspace, InvalidObjectName {
+	public void testGetWorkspaceNotFoundByNameError() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		Workspace test = (Workspace)service().getObjectByName(ROOT_ID,name);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
-	public void testGetWorkspaceNotFoundByIdError() throws InvalidWorkspace {
+	public void testGetWorkspaceNotFoundByIdError() throws RepositoryService.BaseException {
 		Workspace test = service().getWorkspaceById(randomWorkspaceId());
 	}
 
 	@Test (expected = InvalidWorkspace.class)
-	public void testUpdateWorkspaceNotFoundError() throws InvalidWorkspace {
+	public void testUpdateWorkspaceNotFoundError() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceByName(ROOT_ID, name, null, Workspace.State.Closed, null, false);
 	}
 	
 	@Test (expected = InvalidWorkspace.class)
-	public void testCreateDocumentNotFoundError() throws InvalidWorkspace, InvalidWorkspaceState, IOException {
+	public void testCreateDocumentNotFoundError() throws RepositoryService.BaseException, IOException {
 		service().createDocument(
 			MediaType.TEXT_PLAIN_TYPE, 
 			()->toStream(randomText()), 
@@ -164,13 +164,13 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test (expected = InvalidDocumentId.class)
-	public void testDeleteDocumentInvalidDocumentError() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
+	public void testDeleteDocumentInvalidDocumentError() throws RepositoryService.BaseException {
 		String workspace = service().createWorkspaceById(null, null, State.Open, null);
 		service().deleteDocument(workspace, QualifiedName.ROOT, randomDocumentReference().getId());
 	}
 
 	@Test (expected = InvalidWorkspace.class)
-	public void testDeleteDocumentInvalidWorkspaceId() throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState {
+	public void testDeleteDocumentInvalidWorkspaceId() throws RepositoryService.BaseException {
 		Reference ref = service().createDocument(
 			MediaType.TEXT_PLAIN_TYPE, 
 			()->toStream(randomText()), null, null, false
@@ -184,7 +184,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
 	@Test
-	public void testContentLength() throws InvalidReference, InvalidWorkspace, InvalidWorkspaceState {
+	public void testContentLength() throws RepositoryService.BaseException {
 		for (int i = 0; i < 3; i++) {
 			String testData = randomText();
 			Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(testData), null, null, false);
@@ -194,7 +194,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testRenameWorkspace() throws InvalidWorkspace, InvalidObjectName {
+	public void testRenameWorkspace() throws RepositoryService.BaseException {
 		String wsId = service().createWorkspaceById(null, null, State.Open, null);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceById(wsId, wsName, null, null, true);
@@ -203,7 +203,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test  (expected = InvalidWorkspace.class)
-	public void testRenameFolderExistingName() throws InvalidWorkspace {
+	public void testRenameFolderExistingName() throws RepositoryService.BaseException {
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().createWorkspaceByName(ROOT_ID,wsName, State.Open, null);
 		String wsId = service().createWorkspaceById(null, null, State.Open, null);
@@ -211,7 +211,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testSearchForWorkspaceByWildcard() throws InvalidWorkspace {
+	public void testSearchForWorkspaceByWildcard() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		QualifiedName jones = base.add("jones");
 		QualifiedName carter = base.add("carter");
@@ -232,7 +232,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testWorkspaceMetadataRoundtrip() throws InvalidWorkspace, InvalidObjectName {
+	public void testWorkspaceMetadataRoundtrip() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata);
@@ -241,7 +241,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testCatalogueWorkspaceWithMixedEntyTypes() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName {
+	public void testCatalogueWorkspaceWithMixedEntyTypes() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		QualifiedName jones = base.add("jones");
 		QualifiedName carter = base.add("carter");
@@ -252,7 +252,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testWorkspaceMetadataMerge() throws InvalidWorkspace, InvalidObjectName {
+	public void testWorkspaceMetadataMerge() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
@@ -269,7 +269,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testRepositoryCatalog() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId {
+	public void testRepositoryCatalog() throws IOException, RepositoryService.BaseException {
 		long count1 = service().catalogue(Query.UNBOUNDED, false).count();
 		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
@@ -280,7 +280,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
 	@Test
-	public void testWorkspaceNameRoundtrip() throws InvalidWorkspace {
+	public void testWorkspaceNameRoundtrip() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
 		Workspace workspace = service().getWorkspaceById(wsid);
@@ -288,7 +288,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testCreateAndFindWorkspaceWithPath() throws InvalidWorkspace, InvalidObjectName {
+	public void testCreateAndFindWorkspaceWithPath() throws RepositoryService.BaseException {
 		QualifiedName name = randomQualifiedName();
 		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
 		Workspace workspace = (Workspace)service().getObjectByName(ROOT_ID, name);
@@ -296,7 +296,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
 	@Test
-	public void testWorkspacePathRoundtrip() throws InvalidWorkspace {
+	public void testWorkspacePathRoundtrip() throws RepositoryService.BaseException {
 		QualifiedName name = randomQualifiedName();
 		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
 		Workspace workspace = service().getWorkspaceById(wsid);
@@ -304,21 +304,21 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testDocumentCreateWithRandomWorkspaceId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId {
+	public void testDocumentCreateWithRandomWorkspaceId() throws RepositoryService.BaseException {
 		Reference ref = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, randomWorkspaceId(), true);
 		assertEquals(1, service().listWorkspaces(ref.id, QualifiedName.of("*"), Query.UNBOUNDED).count());
 	}
 	
 
 	@Test
-	public void testGetObjectById() throws InvalidWorkspace, InvalidObjectName {
+	public void testGetObjectById() throws RepositoryService.BaseException {
 		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
 		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
 		assertEquals(RepositoryObject.Type.WORKSPACE, ro.getType());
 	}
 	
 	@Test
-	public void testGeneratedWorkspaceName() throws InvalidWorkspace, InvalidObjectName {
+	public void testGeneratedWorkspaceName() throws RepositoryService.BaseException {
 		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
 		String wsId2 = service().createWorkspaceByName(wsId, null, State.Open, EMPTY_METADATA);
 		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
@@ -328,7 +328,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
 	@Test
-	public void testUpdateWorkspaceReturnsSameId() throws InvalidWorkspace, InvalidObjectName {
+	public void testUpdateWorkspaceReturnsSameId() throws RepositoryService.BaseException {
 		JsonObject DUMMY_METADATA = Json.createObjectBuilder()
 				.add("Branch", "XYZABC")
 				.add("Team", "TEAM1")
@@ -340,7 +340,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test
-	public void testCreateDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testCreateDocumentLink() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -352,7 +352,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testCreateDocumentLinkGeneratedName() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testCreateDocumentLinkGeneratedName() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -363,7 +363,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testCreateDocumentLinkGeneratedNameSequence() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testCreateDocumentLinkGeneratedNameSequence() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -376,7 +376,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
     @Test
-	public void testCreateDocumentLinkGeneratedNameSameObject() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testCreateDocumentLinkGeneratedNameSameObject() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -387,7 +387,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test(expected = InvalidReference.class)
-	public void testCreateDocumentLinkGeneratedNameSameObjectError() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testCreateDocumentLinkGeneratedNameSameObjectError() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -398,7 +398,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testUpdateDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testUpdateDocumentLink() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -414,7 +414,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testUpdateDocumentByName() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testUpdateDocumentByName() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -433,7 +433,7 @@ public abstract class BaseRepositoryServiceTest {
     * the document either using the full path or the relative path from the folder id.
     */
     @Test
-	public void testEquivalenceOfNameAndId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testEquivalenceOfNameAndId() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         String wsid = service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -449,7 +449,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testUpdateDocumentLinkInCreateMode() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+	public void testUpdateDocumentLinkInCreateMode() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -462,7 +462,7 @@ public abstract class BaseRepositoryServiceTest {
     }
 	
 	@Test 
-	public void testSearchByDocumentId() throws InvalidWorkspace, InvalidWorkspaceState, InvalidDocumentId, InvalidObjectName, InvalidReference  {
+	public void testSearchByDocumentId() throws RepositoryService.BaseException {
 	    QualifiedName name1 = randomQualifiedName();
 	    String wsId1 = service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
 	    QualifiedName name2 = randomQualifiedName();
@@ -476,7 +476,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testRepositorySearchByMediaType() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+	public void testRepositorySearchByMediaType() throws IOException, RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -492,7 +492,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testRepositorySearchByFolderState() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+	public void testRepositorySearchByFolderState() throws IOException, RepositoryService.BaseException {
         QualifiedName name0 = randomQualifiedName();
         String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
 
@@ -509,7 +509,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testRepositorySearchByParentFolderStateAndMediaType() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+	public void testRepositorySearchByParentFolderStateAndMediaType() throws IOException, RepositoryService.BaseException {
         QualifiedName name0 = randomQualifiedName();
         String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
 
@@ -543,7 +543,7 @@ public abstract class BaseRepositoryServiceTest {
     }
         
     @Test
-	public void testRepositorySearchContent() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+	public void testRepositorySearchContent() throws IOException, RepositoryService.BaseException {
         QualifiedName name0 = randomQualifiedName();
         String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
 
@@ -569,7 +569,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
     @Test
-	public void testGetDocumentLink() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference, InvalidDocumentId, IOException {
+	public void testGetDocumentLink() throws RepositoryService.BaseException, IOException {
         QualifiedName name0 = randomQualifiedName();
         String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
 
@@ -592,7 +592,7 @@ public abstract class BaseRepositoryServiceTest {
     }
     
     @Test
-    public void testJsonRepresentation() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+    public void testJsonRepresentation() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -616,7 +616,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     	@Test
-	public void testRepositoryRoundtrip() throws IOException, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+	public void testRepositoryRoundtrip() throws IOException, RepositoryService.BaseException {
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
         Document result = service().getDocument(ref1);
@@ -624,14 +624,14 @@ public abstract class BaseRepositoryServiceTest {
 	}
 		
 	@Test(expected = InvalidReference.class)
-	public void testRepositoryFetchWithInvalidVersion() throws IOException, InvalidReference, InvalidWorkspace, InvalidWorkspaceState {
+	public void testRepositoryFetchWithInvalidVersion() throws IOException, RepositoryService.BaseException {
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
         Document result = service().getDocument(new Reference(ref1.id, "777"));
 	}
 	
 	@Test
-	public void testRepositoryFetchWithNoVersion() throws IOException, InvalidReference, InvalidWorkspace, InvalidWorkspaceState {
+	public void testRepositoryFetchWithNoVersion() throws IOException, RepositoryService.BaseException {
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
         Document result = service().getDocument(new Reference(ref1.id, null));
@@ -668,7 +668,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	
 	@Test 
-	public void testWorkspaceUpdate() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
+	public void testWorkspaceUpdate() throws RepositoryService.BaseException {
 		String workspace_id = UUID.randomUUID().toString();
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
@@ -679,7 +679,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
 	
 	@Test 
-	public void testListWorkspaces() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
+	public void testListWorkspaces() throws RepositoryService.BaseException {
 		String workspace1 = UUID.randomUUID().toString();
 		String workspace2 = UUID.randomUUID().toString();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
@@ -700,16 +700,14 @@ public abstract class BaseRepositoryServiceTest {
     
   
     /** 
-     *  Important - what should be returned when we have multiple versions of a document matching criteria.Definiton is that we return the latest version which matches the criteria.
+     *  Important - what should be returned when we have multiple versions of a document matching criteria.Definiton 
+     * is that we return the latest version which matches the criteria.
 	 * 
 	 *
-     * @throws InvalidDocumentId 
-     * @throws InvalidWorkspace 
-     * @throws InvalidWorkspaceState 
-     * @throws InvalidReference 
+     * @throws RepositoryService.BaseException
 	 */
 	@Test // Versioning
-	public void testRepositoryCatalogWithVersions() throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
+	public void testRepositoryCatalogWithVersions() throws RepositoryService.BaseException {
 		long count1 = service().catalogue(Query.UNBOUNDED, true).count();
 		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
 		service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
@@ -720,7 +718,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
 	@Test // Versioning
-	public void testGetDocumentWithWorkspaceId() throws IOException, InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState, InvalidReference, InvalidObjectName {
+	public void testGetDocumentWithWorkspaceId() throws IOException, RepositoryService.BaseException {
 		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
 		String originalText = randomText();
 		// Create a document in the workspace

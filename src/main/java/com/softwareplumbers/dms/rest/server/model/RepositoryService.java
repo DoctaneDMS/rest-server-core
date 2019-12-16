@@ -25,9 +25,13 @@ import javax.ws.rs.core.MediaType;
  * 
  */
 public interface RepositoryService {
+    
+    public static class BaseException extends Exception {
+        public BaseException(String description) { super(description); }
+    }
 
 	/** Exception type for an invalid document reference */
-	public static class InvalidReference extends Exception {
+	public static class InvalidReference extends BaseException {
 		private static final long serialVersionUID = 4890221706381667729L;
 		public final Reference reference;
 		public InvalidReference(Reference reference) {
@@ -37,7 +41,7 @@ public interface RepositoryService {
 	}
 
 	/** Exception type for an invalid document id */
-	public static class InvalidDocumentId extends Exception {
+	public static class InvalidDocumentId extends BaseException {
 		private static final long serialVersionUID = 4890221706381667729L;
 		public final String id;
 		public InvalidDocumentId(String id) {
@@ -47,7 +51,7 @@ public interface RepositoryService {
 	}
 
 	/** Exception type for an invalid workspace name or id */
-	public static class InvalidWorkspace extends Exception {
+	public static class InvalidWorkspace extends BaseException {
 		private static final long serialVersionUID = 2546274609900213587L;
 		public final String workspace;
 		public InvalidWorkspace(String workspace) {
@@ -61,7 +65,7 @@ public interface RepositoryService {
 	}
 	
 	/** Exception type for an invalid name (for either document or workspace) */
-	public static class InvalidObjectName extends Exception {
+	public static class InvalidObjectName extends BaseException {
 
 		private static final long serialVersionUID = 7176066099090799797L;
 		public final QualifiedName name;
@@ -72,7 +76,7 @@ public interface RepositoryService {
 	}
 
 	/** Exception type for an invalid workspace state */
-	public static class InvalidWorkspaceState extends Exception {
+	public static class InvalidWorkspaceState extends BaseException {
 		private static final long serialVersionUID = -4516622808487331082L;
 		public final String workspace;
 		public final Workspace.State state;
