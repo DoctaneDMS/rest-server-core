@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.IOUtils;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
+import static com.softwareplumbers.dms.rest.server.model.TestUtils.*;
 
 /** Unit tests that should pass for all implementations of RepositoryService. 
  * 
@@ -51,64 +52,6 @@ public abstract class BaseRepositoryServiceTest {
 	
 	public abstract RepositoryService service();
     public abstract DocumentNavigatorService navigator();
-	
-	public static final String[] NAMES = { "julien", "peter", "fairfax", "austen", "celtic", "a", "the", "halibut", "eaten" };
-	public static final String CHARACTERS = "-._";
-	public static final String RESERVED = "&$+,/:;=?@#";
-	
-	public static int unique = 0;
-	
-	public static final String randomUrlSafeName() {
-		StringBuilder buffer = new StringBuilder(NAMES[(int)(Math.random() * NAMES.length)]);
-		buffer.append(CHARACTERS.charAt((int)(Math.random() * CHARACTERS.length())));
-		buffer.append(Integer.toHexString(unique++));
-		return buffer.toString();
-	}
-	
-	public static final String randomReservedName() {
-		StringBuilder buffer = new StringBuilder();
-		for (int i = 1; i < 3; i++) {
-			buffer.append(RESERVED.charAt((int)(Math.random() * RESERVED.length())));
-			buffer.append(randomUrlSafeName());
-		}
-		return buffer.toString();
-	}
-	
-	public QualifiedName randomQualifiedName() {
-		QualifiedName result = QualifiedName.ROOT;
-		for (int i = 0; i < 3; i++) result = result.add(randomUrlSafeName());
-		return result;
-	}
-		
-	public static final String randomText() {
-		StringBuilder buffer = new StringBuilder();
-		for (int i = 1; i < 10; i++) {
-			buffer.append(randomUrlSafeName());
-			buffer.append(" ");
-		}
-		return buffer.toString();		
-	}
-	
-	public static final InputStream toStream(String out) {
-		return new ByteArrayInputStream(out.getBytes());
-	}
-
-	public static final String getDocText(Document doc) throws IOException {
-		ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		doc.writeDocument(stream);
-		return new String(stream.toByteArray());
-	}
-    
-    @FunctionalInterface
-    private interface DocDataConsumer {
-        public void consume(byte[] data, JsonObject metadata, MediaType type);
-    }
-	
-    private void generateDocs(int count, DocDataConsumer consumer) {
-        for (int i = 0; i < count; i++) {
-            consumer.consume(randomText().getBytes(), randomMetadata(), MediaType.TEXT_PLAIN_TYPE);
-        }
-    }
 
 	public abstract Reference randomDocumentReference();
 	public abstract String randomWorkspaceId();
@@ -646,7 +589,7 @@ public abstract class BaseRepositoryServiceTest {
         ArrayList<byte[]> dataValues = new ArrayList<>();
         ArrayList<JsonObject> metadataValues = new ArrayList<>();
         
-        generateDocs(4, (data, metadata, type) -> {
+        generateDocs(4, this::randomMetadata, (data, metadata, type) -> {
             dataValues.add(data);
             metadataValues.add(metadata);
             try {
