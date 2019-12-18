@@ -3,9 +3,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.stream.Stream;
 
 import javax.json.Json;
@@ -614,7 +612,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test 
 	public void testWorkspaceUpdate() throws RepositoryService.BaseException {
-		String workspace_id = UUID.randomUUID().toString();
+		String workspace_id = randomWorkspaceId();
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
 		service().updateDocument(ref1.id, null, null, null, workspace_id, true);
