@@ -31,7 +31,6 @@ import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorks
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.io.IOUtils;
@@ -623,8 +622,8 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test 
 	public void testListWorkspaces() throws RepositoryService.BaseException {
-		String workspace1 = UUID.randomUUID().toString();
-		String workspace2 = UUID.randomUUID().toString();
+		String workspace1 = randomWorkspaceId();
+		String workspace2 = randomWorkspaceId();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
         Reference ref3 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA, null, false);
