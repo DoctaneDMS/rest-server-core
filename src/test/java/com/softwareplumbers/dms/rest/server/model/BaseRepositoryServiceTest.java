@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.JsonUtil;
+import static com.softwareplumbers.common.abstractquery.JsonUtil.parseObject;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.dms.rest.server.core.MediaTypes;
@@ -696,7 +697,13 @@ public abstract class BaseRepositoryServiceTest {
 		assertEquals(1, service().listWorkspaces(ref3.id, null, Query.UNBOUNDED).count());
 	}
     
-    
+	@Test
+	public void testSaveWorkspaceMetadata() throws InvalidWorkspace {
+        QualifiedName name0 = randomQualifiedName();
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, parseObject("{ 'Description': 'test metadata' }"));
+        Workspace workspace = service().getWorkspaceById(baseId);
+        assertEquals("test metadata", workspace.getMetadata().getString("Description"));
+	}    
     
     //////------- Versioning tests --------//////
   
