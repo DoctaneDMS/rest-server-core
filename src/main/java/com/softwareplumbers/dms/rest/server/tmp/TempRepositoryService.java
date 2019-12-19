@@ -495,9 +495,9 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public String createWorkspaceById(String Id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
+	public String createWorkspaceById(String Id, State state, JsonObject metadata) throws InvalidWorkspace {
 		if (Id == null) Id = UUID.randomUUID().toString();
-		return updateWorkspaceById(Id, name, state, metadata, true);
+		return updateWorkspaceById(Id, null, state, metadata, true);
 	}
 
 	@Override

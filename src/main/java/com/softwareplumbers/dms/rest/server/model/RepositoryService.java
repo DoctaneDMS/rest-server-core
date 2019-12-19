@@ -406,13 +406,12 @@ public interface RepositoryService {
 	 * on a closed workspace will throw an error.
 	 * 
 	 * @param id Id of workspace to create (optional - id will be generated if not supplied)
-	 * @param name (optional) folder to file workspace in
 	 * @param state Initial/Updated state of workspace (optional)
 	 * @param metadata additional info describing the workspace
 	 * return the id of the created workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
-	public String createWorkspaceById(String id, QualifiedName name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
+	public String createWorkspaceById(String id, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
 
 	
 	/** Create or update a workspace 

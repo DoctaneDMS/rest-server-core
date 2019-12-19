@@ -57,9 +57,9 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testAnonymousCreateWorkspace() throws RepositoryService.BaseException {
-		String workspace1 = service().createWorkspaceById(null, null, State.Open, null);
+		String workspace1 = service().createWorkspaceById(null, State.Open, null);
 		assertNotNull(workspace1);
-		String workspace2 = service().createWorkspaceById(null, null, State.Open, null);
+		String workspace2 = service().createWorkspaceById(null, State.Open, null);
 		assertNotNull(workspace2);
 		assertNotEquals(workspace1, workspace2);
 	}
@@ -107,7 +107,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test (expected = InvalidDocumentId.class)
 	public void testDeleteDocumentInvalidDocumentError() throws RepositoryService.BaseException {
-		String workspace = service().createWorkspaceById(null, null, State.Open, null);
+		String workspace = service().createWorkspaceById(null, State.Open, null);
 		service().deleteDocument(workspace, QualifiedName.ROOT, randomDocumentReference().getId());
 	}
 
@@ -137,7 +137,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testRenameWorkspace() throws RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, null, State.Open, null);
+		String wsId = service().createWorkspaceById(null, State.Open, null);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().updateWorkspaceById(wsId, wsName, null, null, true);
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, wsName);
@@ -148,7 +148,7 @@ public abstract class BaseRepositoryServiceTest {
 	public void testRenameFolderExistingName() throws RepositoryService.BaseException {
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
 		service().createWorkspaceByName(ROOT_ID,wsName, State.Open, null);
-		String wsId = service().createWorkspaceById(null, null, State.Open, null);
+		String wsId = service().createWorkspaceById(null, State.Open, null);
 		service().updateWorkspaceById(wsId,wsName, null, null, false);
 	}
 	
@@ -254,14 +254,14 @@ public abstract class BaseRepositoryServiceTest {
 
 	@Test
 	public void testGetObjectById() throws RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
 		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
 		assertEquals(RepositoryObject.Type.WORKSPACE, ro.getType());
 	}
 	
 	@Test
 	public void testGeneratedWorkspaceName() throws RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
 		String wsId2 = service().createWorkspaceByName(wsId, null, State.Open, EMPTY_METADATA);
 		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
 		assertEquals(QualifiedName.of("~" + wsId), ((Workspace)ro).getName());
@@ -275,7 +275,7 @@ public abstract class BaseRepositoryServiceTest {
 				.add("Branch", "XYZABC")
 				.add("Team", "TEAM1")
 				.build();
-		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
 		QualifiedName name = randomQualifiedName();
 		String resultId = service().updateWorkspaceByName(wsId, QualifiedName.ROOT, name, null, DUMMY_METADATA, true);
 		assertEquals(wsId, resultId);
@@ -660,7 +660,7 @@ public abstract class BaseRepositoryServiceTest {
     
 	@Test
 	public void testGetDocumentWithWorkspaceId() throws IOException, RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, null, State.Open, EMPTY_METADATA);
+		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
 		String originalText = randomText();
 		// Create a document in the workspace
 		Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, wsId, false);
