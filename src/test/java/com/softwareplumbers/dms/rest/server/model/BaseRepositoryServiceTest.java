@@ -72,7 +72,36 @@ public abstract class BaseRepositoryServiceTest {
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, name);
 		assertEquals(workspace, ws.getId());
 	}
-	
+       
+    @Test 
+	public void testWorkspaceUpdateByIdWithNewPath() throws RepositoryService.BaseException {
+		String id = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , EMPTY_METADATA);
+        QualifiedName newName = randomQualifiedName();
+        service().updateWorkspaceById(id, newName, State.Open, EMPTY_METADATA, true);
+        Workspace result = service().getWorkspaceByName(ROOT_ID, newName);
+        assertEquals(id, result.getId());
+	}
+    
+    @Test 
+	public void testWorkspaceUpdateByNameWithNewPath() throws RepositoryService.BaseException {
+        QualifiedName name = randomQualifiedName();
+		String id = service().createWorkspaceByName(ROOT_ID, name, State.Open , EMPTY_METADATA);
+        QualifiedName newName = randomQualifiedName();
+        service().updateWorkspaceByName(ROOT_ID, name, newName, State.Open, EMPTY_METADATA, true);
+        Workspace result = service().getWorkspaceByName(ROOT_ID, newName);
+        assertEquals(id, result.getId());
+	}
+
+    @Test(expected = InvalidWorkspace.class)
+	public void testWorkspaceUpdateByNameWithNewPathOriginalMustExist() throws RepositoryService.BaseException {
+        service().updateWorkspaceByName(randomWorkspaceId(), randomQualifiedName(), randomQualifiedName(), State.Open, EMPTY_METADATA, true);
+	}
+
+   @Test(expected = InvalidWorkspace.class)
+	public void testWorkspaceUpdateByIdWithNewPathOriginalMustExist() throws RepositoryService.BaseException {
+        service().updateWorkspaceById(randomWorkspaceId(), randomQualifiedName(), State.Open, EMPTY_METADATA, true);
+	}
+    
 	@Test(expected = InvalidReference.class)
 	public void testRepositoryFetchWithInvalidRef() throws IOException, InvalidReference {
 		Reference ref1 = randomDocumentReference();

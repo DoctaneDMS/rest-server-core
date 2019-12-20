@@ -381,8 +381,8 @@ public class TempRepositoryService implements RepositoryService {
 		if (rootId != null) {
 		   myRoot = workspacesById.get(rootId);
 		   if (myRoot == null) {
-		       if (createWorkspace)
-		           myRoot = root.createWorkspace(rootId, newName, state, metadata);
+		       if (createWorkspace && newName == null)
+		           myRoot = root.createWorkspace(rootId, name, state, metadata);
 		       else
 		           throw new InvalidWorkspace(rootId);
 		   }
@@ -392,7 +392,7 @@ public class TempRepositoryService implements RepositoryService {
 
 		WorkspaceImpl ws;
 		if (!workspace.isPresent()) {
-			if (createWorkspace)
+			if (createWorkspace && newName == null)
 				ws = myRoot.createWorkspace(UUID.randomUUID().toString(), name, state, metadata);
 			else
 				throw LOG.logThrow("updateWorkspaceByName", new InvalidWorkspace(myRoot.getName().addAll(name)));
@@ -409,7 +409,7 @@ public class TempRepositoryService implements RepositoryService {
 	
 	public String updateWorkspaceById(String id, QualifiedName newName, State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace {
 	    if (!workspacesById.containsKey(id)) {
-			if (createWorkspace) {
+			if (createWorkspace && newName == null) {
 			    if (state == null) state = State.Open;
 				workspacesById.put(id, new WorkspaceImpl(this, navigator, null, id, null, state, metadata));
 			} else
@@ -491,7 +491,7 @@ public class TempRepositoryService implements RepositoryService {
 
 	@Override
 	public String createWorkspaceByName(String rootId, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
-		return updateWorkspaceByName(rootId, name, name, state, metadata, true);
+        return updateWorkspaceByName(rootId, name, null, state, metadata, true);
 	}
 	
 	@Override
