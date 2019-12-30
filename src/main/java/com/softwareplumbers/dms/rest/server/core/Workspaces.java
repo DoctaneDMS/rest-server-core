@@ -95,6 +95,11 @@ public class Workspaces {
     private DocumentNavigatorService navigator;
     private AuthorizationServiceFactory authorizationServiceFactory;
 
+    ///////////---------  static methods ----------///////////
+    
+    private static String stripBraces(String pathPart) {
+        return pathPart.replaceAll("\\{", "%7B").replaceAll("\\}", "%7D");
+    }
     
     ///////////---------  methods --------////////////
 
@@ -534,7 +539,7 @@ public class Workspaces {
                     service.updateDocument(reference.id, null, null, metadata, null, false);
                 }
                 DocumentLink link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
-                URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().join("/")).build();
+                URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.logResponse("post", Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
         } catch (InvalidWorkspace err) {

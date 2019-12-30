@@ -251,16 +251,19 @@ public class TempRepositoryServerTest {
         }
     }
     
-        /** Utility function to put a document using the Jersey client API.
+    /** 
+     *  Utility function to put a document using the Jersey client API.
      * 
-     * Test documents are held in src/test/resources in this project. Two files
-     * <I>name</I>.txt and <I>name</I>.json make up a single test document, 
+     * Test documents are held in src/test/resources in this project.
+     * 
+     * Two files <I>name</I>.txt and <I>name</I>.json make up a single test document, 
      * where the json file contains the metadata.
      * 
      * @param path Path of document to update (including base, so /docs/tmp/id or /ws/tmp/workspace/docName)
      * @param id Id of document to link to
      * @param type UpdateType parameter
      * @return The result of posting the document link to the test server.
+     * @throws java.io.IOException
      * 
      */
     public JsonObject postDocumentLink(String path, String id, UpdateType type) throws IOException {
@@ -780,6 +783,17 @@ public class TempRepositoryServerTest {
         putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
         Document doc = (Document)getDocumentFromWorkspace("anotherws/myDoc");
         assertEquals(wsId, doc.getId());
+    }
+    
+    @Test
+    public void testCreateDocumentLinkGeneratesName() throws IOException, ParseException {
+        JsonObject response1 = postDocument("anon", null, "txt");
+        String docId = response1.getString("id");
+        assertNotNull(docId);
+        JsonObject response2 = postDocumentLink("/ws/tmp/anotherws", docId, UpdateType.CREATE);
+        String docName = response2.getString("name");
+        Document doc = (Document)getDocumentFromWorkspace(docName);
+        assertEquals(docId, doc.getId());
     }
 
     @Test
