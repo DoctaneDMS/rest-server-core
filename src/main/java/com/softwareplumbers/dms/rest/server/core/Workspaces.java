@@ -443,7 +443,7 @@ public class Workspaces {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));                
                 JsonObject metadata = object.getJsonObject("metadata");
                 if (metadata != null && !metadata.isEmpty()) {
-                    service.updateDocument(reference.id, null, null, metadata, null, false);
+                    service.updateDocument(reference.id, null, null, metadata);
                 }
                 
                 if (updateType == UpdateType.CREATE)
@@ -536,7 +536,7 @@ public class Workspaces {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 JsonObject metadata = object.getJsonObject("metadata");
                 if (metadata != null && !metadata.isEmpty()) {
-                    service.updateDocument(reference.id, null, null, metadata, null, false);
+                    service.updateDocument(reference.id, null, null, metadata);
                 }
                 DocumentLink link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
@@ -631,6 +631,77 @@ public class Workspaces {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("putDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+        } 
+    }
+    
+        /** PUT document on path /ws/{repository}/{path}
+     * 
+     * A path as several elements separated by '/'. If the first
+     * element is a '~', what follows is assumed to be a workspace id. If not, we assume it 
+     * is a workspace name and call the service accordingly. The final element of the path is in
+     * this case the name of the document in the workspace. Note that a document may be filed under
+     * different names in several workspaces.
+     * 
+     * @param repository string identifier of a document repository
+     * @param path to document
+     * @param metadata_part metadata for document
+     * @param file_part actual document file
+     * @param createWorkspace set true if we want to create any workspaces which do not exist, but are specified in the path
+     * @param createDocument set true if we want to create a new document if one does not exist on the specified path
+     * @param requestContext context (from which we get userMetadata)
+     */
+    @POST
+    @Path("/{repository}/{workspace:[^?]+}")
+    @Consumes({ MediaType.MULTIPART_FORM_DATA })
+    public Response postDocument(
+        @PathParam("repository") String repository,
+        @PathParam("workspace") WorkspacePath path,
+        @FormDataParam("metadata") FormDataBodyPart metadata_part,
+        @FormDataParam("file") FormDataBodyPart file_part,
+        @QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
+        @Context ContainerRequestContext requestContext,
+        @Context UriInfo uriInfo
+    ) {
+        LOG.logEntering("postDocument", repository, path, metadata_part, Log.fmt(file_part), createWorkspace);
+        try {
+            RepositoryService service = repositoryServiceFactory.getService(repository);
+            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
+
+            if (service == null || authorizationService == null) 
+                return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+
+            if (path == null || path.isEmpty())
+                return LOG.logResponse("postDocument", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
+
+            Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
+            if (!acl.containsItem(userMetadata)) {
+                return LOG.logResponse("postDocument", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
+            }
+
+            DocumentLink result = service.createDocumentLinkAndName(
+                    path.rootId, 
+                    path.staticPath, 
+                    file_part.getMediaType(),
+                    ()->file_part.getEntityAs(InputStream.class),
+                    metadata_part.getEntityAs(JsonObject.class), 
+                    createWorkspace
+                );
+            
+            URI created = uriInfo.getAbsolutePathBuilder().path(result.getName().transform(Workspaces::stripBraces).join("/")).build();
+
+
+            return LOG.logResponse("postDocument", Response.created(created).type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
+        } catch (InvalidWorkspace err) {
+            return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+        } catch (InvalidObjectName err) {
+            return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+        } catch (InvalidWorkspaceState err) {
+            return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+        } catch (RuntimeException e) {
+            LOG.log.severe(e.getMessage());
+            e.printStackTrace(System.err);
+            return LOG.logResponse("postDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
     

@@ -138,9 +138,13 @@ public class TempRepositoryServerTest {
      * 
      */
     public JsonObject postDocument(String name, String workspace, String ext) throws IOException {
-    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp");
-    	if (workspace != null) target = target.queryParam("workspace", workspace).queryParam("createWorkspace", true);
-    	MultiPart multiPart = new MultiPart();
+    	WebTarget target;
+        if (workspace == null) 
+            target = client.target("http://localhost:" + port + "/docs/tmp");
+    	else
+            target = client.target("http://localhost:" + port + "/ws/tmp/~" + workspace);
+    	
+        MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
         
         MediaType type = mediaTypesByExtension.get(ext);

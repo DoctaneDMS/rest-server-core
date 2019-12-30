@@ -399,7 +399,7 @@ class WorkspaceImpl implements Workspace {
 	}
 	
 	public WorkspaceImpl getOrCreateWorkspace(QualifiedName name, boolean createWorkspace) throws InvalidWorkspace {
-		if (name.isEmpty()) return this;
+		if (name == null || name.isEmpty()) return this;
 		
 		String firstPart = name.get(0);
 		QualifiedName remainingName = name.rightFromStart(1);

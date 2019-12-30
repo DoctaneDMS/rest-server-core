@@ -124,10 +124,9 @@ public class Documents {
     	@PathParam("repository") String repository, 
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
-    	@QueryParam("workspaceId") String workspaceId,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("get", repository, id, version, workspaceId);
+        LOG.logEntering("get", repository, id, version);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -136,16 +135,8 @@ public class Documents {
     		if (service == null || authorizationService == null) 
     			return Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository));
     		
-    		if (version != null && workspaceId != null)
-    			return Error.errorResponse(Status.BAD_REQUEST,Error.bothVersionAndWorkspacePresent());
-
     		Document document;
-    		if (workspaceId == null)
     			document = service.getDocument(new Reference(id, version));
-            else {
-    			document = service.getDocument(id, workspaceId);
-                LOG.logWarning("get", "API call used deprecated workspaceId parameter");
-            }
     		
     		if (document != null) { 
                 Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
@@ -174,11 +165,7 @@ public class Documents {
     		}
     	} catch(InvalidReference e) { 
     		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch(InvalidWorkspace e) {
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-        } catch (InvalidDocumentId e) {
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-        } catch (RuntimeException e) {
+    	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return LOG.logReturn("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
@@ -384,11 +371,9 @@ public class Documents {
     	@PathParam("repository") String repository,
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
     	@FormDataParam("file") FormDataBodyPart file_part,
-    	@QueryParam("workspace") String workspace,
-    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
         @Context ContainerRequestContext requestContext        
     	) {
-        LOG.logEntering("post", repository, Log.fmt(metadata_part), Log.fmt(file_part), workspace, createWorkspace);
+        LOG.logEntering("post", repository, Log.fmt(metadata_part), Log.fmt(file_part));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -407,11 +392,7 @@ public class Documents {
     			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.missingContentType()));
             
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
-            
-            if (workspace != null) {
-                LOG.logWarning("post", "API call used deprecated workspace parameter");
-            }
-            
+                        
             JsonObject metadata = metadata_part.getEntityAs(JsonObject.class);
             
             Query acl = authorizationService.getDocumentACL(null, computedMediaType, metadata, DocumentAccessRole.CREATE);
@@ -423,20 +404,14 @@ public class Documents {
     				.createDocument(
     					computedMediaType,
     					()->file_part.getEntityAs(InputStream.class),
-						metadata,
-						workspace,
-						createWorkspace
-					);
+						metadata
+                    );
 
     		if (reference != null) {
     			return Response.status(Status.CREATED).type(MediaType.APPLICATION_JSON).entity(reference).build();
     		} else {
     			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure()));    			
     		}
-    	} catch (InvalidWorkspace e) {
-    		return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch (InvalidWorkspaceState e) {
-    		return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(e)));    		
     	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -461,12 +436,10 @@ public class Documents {
     @Produces(MediaType.APPLICATION_JSON)
     public Response postFile(
     	@PathParam("repository") String repository,
-    	@QueryParam("workspace") String workspace,
-    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	@Context HttpServletRequest request,
         @Context ContainerRequestContext requestContext        
     	) {
-        LOG.logEntering("postFile", repository, workspace, createWorkspace, Log.fmt(request));
+        LOG.logEntering("postFile", repository, Log.fmt(request));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -474,10 +447,6 @@ public class Documents {
 
     		if (service == null || authorizationService == null) 
     			return Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository));
-
-            if (workspace != null) {
-                LOG.logWarning("postFile", "API call used deprecated workspace parameter");
-            }
             
             MediaType mediaType = MediaType.valueOf(request.getContentType());
             Query acl = authorizationService.getDocumentACL(null, mediaType, JsonValue.EMPTY_JSON_OBJECT, DocumentAccessRole.CREATE);
@@ -489,9 +458,7 @@ public class Documents {
     				.createDocument(
     					MediaType.valueOf(request.getContentType()),
     					() -> request.getInputStream(),
-						EMPTY_METADATA,
-						workspace,
-						createWorkspace
+						EMPTY_METADATA
 					);
 
     		if (reference != null) {
@@ -499,10 +466,6 @@ public class Documents {
     		} else {
     			return Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure());    			
     		}
-    	} catch (InvalidWorkspace e) {
-    		return Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e));
-    	} catch (InvalidWorkspaceState e) {
-    		return Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(e));    		
     	} catch (InvalidReference e) {
     		return Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e));
         } catch (RuntimeException e) {
@@ -534,11 +497,9 @@ public class Documents {
     	@PathParam("id") String id,
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
     	@FormDataParam("file") FormDataBodyPart file_part,
-    	@QueryParam("workspace") String workspace,
-    	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
         @Context ContainerRequestContext requestContext        
     ) {
-        LOG.logEntering("put", repository, id, Log.fmt(metadata_part), Log.fmt(file_part), workspace, createWorkspace);
+        LOG.logEntering("put", repository, id, Log.fmt(metadata_part), Log.fmt(file_part));
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -567,9 +528,7 @@ public class Documents {
     					id,
     					computedMediaType,
     					()->file_part.getEntityAs(InputStream.class),
-						metadata,
-						workspace,
-						createWorkspace
+						metadata
 					);
 
     		if (reference != null) {
@@ -577,10 +536,6 @@ public class Documents {
     		} else {
     			return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
-    	} catch (InvalidWorkspace e) {
-    		return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch (InvalidWorkspaceState e) {
-    		return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(e)));    		
     	} catch (InvalidDocumentId e) {
     		return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	} catch (RuntimeException e) {
@@ -635,9 +590,7 @@ public class Documents {
     					id,
     					type,
     					()->request.getInputStream(),
-						null,
-						workspace,
-						createWorkspace
+						null
 					);
 
     		if (reference != null) {
@@ -645,10 +598,6 @@ public class Documents {
     		} else {
     			return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
-    	}  catch (InvalidWorkspace e) {
-    		return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch (InvalidWorkspaceState e) {
-    		return LOG.logResponse("updateFile", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(e)));    		
     	} catch (InvalidDocumentId e) {
     		return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {
@@ -704,9 +653,7 @@ public class Documents {
     					id,
     					null,
     					null,
-						metadata,
-						workspace,
-						createWorkspace
+						metadata
 					);
 
     		if (reference != null) {
@@ -714,10 +661,6 @@ public class Documents {
     		} else {
     			return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
-    	}  catch (InvalidWorkspace e) {
-    		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch (InvalidWorkspaceState e) {
-    		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(e)));    		
     	} catch (InvalidDocumentId e) {
     		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {

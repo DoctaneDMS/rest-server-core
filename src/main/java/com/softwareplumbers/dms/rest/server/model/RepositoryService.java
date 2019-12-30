@@ -110,18 +110,6 @@ public interface RepositoryService {
 	 */
 	public Document getDocument(Reference reference) throws InvalidReference;
 
-	/** *  Get a document from an Id and a workspace Id.Gets the most recent version of a document in the given workspace.
-	 * 
- 	 * 
-	 * @param id the Id of the requested document
-	 * @param workspaceId workspace to get the document from
-	 * @return the requested document
-     * @throws InvalidWorkspace if the is no workspace matching the id
-	 * @throws InvalidDocumentId if there is no document matching the reference in the repository 
-     * @deprecated 
-	 */
-	public DocumentLink getDocument(String id, String workspaceId) throws InvalidWorkspace, InvalidDocumentId;
-
 	/** Get a document from an Id and a workspace Id.
 	 * 
 	 * Gets the most recent version of a document in the given workspace.
@@ -141,17 +129,13 @@ public interface RepositoryService {
 	 * @param mediaType the type of document
 	 * @param stream a supplier function that produces a stream of binary data representing the document
 	 * @param metadata a Json object describing the document
-	 * @param workspaceId An optional string identifying a workspace in which to place the document
-	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
 	 * @return A Reference object that can later be used to retrieve the document
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
 	public Reference createDocument(MediaType mediaType, 
 			InputStreamSupplier stream, 
-			JsonObject metadata, 
-			String workspaceId,
-			boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState;
+			JsonObject metadata);
 	
 	/** Create a new document in the repository.
 	 * 
@@ -176,6 +160,31 @@ public interface RepositoryService {
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
+    
+    
+    /** Create a new document in the repository.
+	 * 
+	 * Creates document within the given workspace. The first parts of the given name are the
+	 * name of the workspace. The last part of the given name is used as the name of the document
+	 * within the workspace.
+	 * 
+	 * @param rootId the Id of the 'root' workspace
+	 * @param workspaceName the fully qualified name of the workspace
+	 * @param mediaType the type of document
+	 * @param stream a supplier function that produces a stream of binary data representing the document
+	 * @param metadata a Json object describing the document
+	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
+	 * @return A DocumentLink object that can later be used to retrieve the document
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspaceState if workspace is already closed
+	 */
+	public DocumentLink createDocumentLinkAndName(
+			String rootId,
+			QualifiedName workspaceName,
+			MediaType mediaType, 
+			InputStreamSupplier stream, 
+			JsonObject metadata, 
+			boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState;
 	
 	/** Create a link to an existing document by reference.
 	 * 
@@ -265,19 +274,13 @@ public interface RepositoryService {
 	 * @param mediaType (optional) new media type for document
 	 * @param stream (optional) a supplier function that produces a stream of binary data representing the document 
 	 * @param metadata (optional) a json object describing the document
-	 * @param workspaceId (optional) string identifying the workspace in which to place the document
-     * @param createWorkspace flag whether to create workspaces in the path
 	 * @return A reference to the new version of the document.
-	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
-	 * @throws InvalidWorkspaceState if workspace is already closed
 	 * @throws InvalidDocumentId if no document exists with the given id
 	 */
 	public Reference updateDocument(String id, 
 		MediaType mediaType, 
 		InputStreamSupplier stream, 
-		JsonObject metadata, 
-		String workspaceId,
-		boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState;
+		JsonObject metadata) throws InvalidDocumentId;
 	
     /** Update or create a link to an existing document by reference.
      * 

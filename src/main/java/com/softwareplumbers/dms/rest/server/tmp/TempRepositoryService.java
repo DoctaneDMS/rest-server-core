@@ -69,6 +69,19 @@ public class TempRepositoryService implements RepositoryService {
 		}
 		return myRoot;
 	}
+    
+    private WorkspaceImpl getOrCreateRoot(String rootId, boolean createWorkspace) throws InvalidWorkspace {
+		WorkspaceImpl myRoot = root;
+		if (rootId != null) {
+            if (createWorkspace)
+    			myRoot = workspacesById.computeIfAbsent(rootId, id -> new WorkspaceImpl(this, navigator, null, id, null, State.Open, EMPTY_METADATA));
+            else {
+                myRoot = workspacesById.get(rootId);
+                if (myRoot == null) throw new InvalidWorkspace(rootId);
+            }
+		}
+		return myRoot;
+	}
 	
 	public TempRepositoryService(DocumentNavigatorService navigator, QualifiedName nameAttribute) {
 		this.nameAttribute = nameAttribute;
@@ -106,16 +119,6 @@ public class TempRepositoryService implements RepositoryService {
 			result = store.get(reference);
 		}
 		if (result == null) throw LOG.logThrow("getDocument",new InvalidReference(reference));
-		return LOG.logReturn("getDocument", result);
-	}
-
-	@Override
-	public DocumentLink getDocument(String documentId, String workspaceId) throws InvalidWorkspace, InvalidDocumentId {
-		LOG.logEntering("getDocument", documentId, workspaceId);
-		WorkspaceImpl workspace = workspacesById.get(workspaceId);
-		if (workspace == null) throw LOG.logThrow("getDocument", new InvalidWorkspace(workspaceId));
-		DocumentLink result = workspace.getById(documentId);
-		if (result == null) throw LOG.logThrow("getDocument",new InvalidDocumentId(documentId));
 		return LOG.logReturn("getDocument", result);
 	}
 	
@@ -175,12 +178,11 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata, String workspaceId, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
-		LOG.logEntering("createDocument", mediaType, metadata, workspaceId, createWorkspace);
+	public Reference createDocument(MediaType mediaType, InputStreamSupplier stream, JsonObject metadata) {
+		LOG.logEntering("createDocument", mediaType, metadata);
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
 		try {
 			DocumentImpl new_document = new DocumentImpl(new_reference,mediaType, stream, metadata);
-			updateWorkspace(workspaceId, new_reference, new_document, createWorkspace);
 			store.put(new_reference, new_document);
 		} catch (IOException e) {
 			throw new RuntimeException(LOG.logRethrow("createDocument",e));
@@ -268,14 +270,11 @@ public class TempRepositoryService implements RepositoryService {
 	public Reference updateDocument(String id, 
 			MediaType mediaType, 
 			InputStreamSupplier stream, 
-			JsonObject metadata, 
-			String workspaceId, 
-			boolean createWorkspace) throws InvalidDocumentId, InvalidWorkspace, InvalidWorkspaceState {
-		LOG.logEntering("updateDocument", id, mediaType, metadata, workspaceId, createWorkspace);
+			JsonObject metadata) throws InvalidDocumentId {
+		LOG.logEntering("updateDocument", id, mediaType, metadata);
 		try {
 			Reference new_reference = newVersionReference(id);
 			DocumentImpl newDocument = updateDocument(new_reference, mediaType, stream, metadata);
-			updateWorkspace(workspaceId, new_reference, newDocument, createWorkspace);
 			return LOG.logReturn("updateDocument", new_reference);
 		} catch (InvalidReference ref) {
 			throw LOG.logRethrow("updateDocument", new InvalidDocumentId(id));
@@ -556,10 +555,29 @@ public class TempRepositoryService implements RepositoryService {
         
         if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
         
-        WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(workspaceName, createWorkspace);
+        WorkspaceImpl workspace;
+        
+        workspace = getOrCreateRoot(rootId, createWorkspace).getOrCreateWorkspace(workspaceName, createWorkspace);
+        
         return LOG.logReturn("createDocumentLink", workspace.add(reference, returnExisting));
     }
 
+    @Override
+    public DocumentLink createDocumentLinkAndName(String rootWorkspace, QualifiedName workspaceName, MediaType mediaType, InputStreamSupplier stream, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState {
+		LOG.logEntering("createDocumentLinkAndName", rootWorkspace, workspaceName, mediaType, stream, metadata, createWorkspace);
+		WorkspaceImpl myRoot = getOrCreateRoot(rootWorkspace, createWorkspace);
+		WorkspaceImpl workspace = myRoot.getOrCreateWorkspace(workspaceName, createWorkspace);
+		Reference new_reference;
+		try {
+			new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
+			DocumentImpl new_document = new DocumentImpl(new_reference, mediaType, stream, metadata);
+			store.put(new_reference, new_document);
+			return LOG.logReturn("createDocumentLinkAndName", workspace.add(new_reference, false));
+		} catch (InvalidReference | IOException e) {
+			throw new RuntimeException(LOG.logRethrow("createDocumentLinkAndName",e));	
+		}
+	}
+    
     @Override
     public Workspace getWorkspaceByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
         NamedRepositoryObject object = getObjectByName(rootId, name);
@@ -584,4 +602,5 @@ public class TempRepositoryService implements RepositoryService {
 		if (result == null) throw LOG.logThrow("getDocumentLink",new InvalidDocumentId(documentId));
 		return LOG.logReturn("getDocumentLink", result);    
     }
+
 }
