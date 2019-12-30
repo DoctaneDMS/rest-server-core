@@ -39,6 +39,8 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 import static com.softwareplumbers.dms.rest.server.model.TestUtils.*;
 
+import static org.hamcrest.Matchers.*;
+
 /** Unit tests that should pass for all implementations of RepositoryService. 
  * 
  * Note that the underlying repository must support at least the metadata field "Description" in both workspaces and
@@ -300,7 +302,20 @@ public abstract class BaseRepositoryServiceTest {
 	}
 
 	@Test
-	public void testUpdateWorkspaceReturnsSameId() throws RepositoryService.BaseException {
+	public void testGeneratedDocumentName() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        QualifiedName name1 = randomQualifiedName();
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        String originalText = randomText();
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, null, false);
+        DocumentLink link = service().createDocumentLink(ROOT_ID, name1, ref1, true, false);
+	    assertEquals(ref1, link.getReference());
+        assertThat(link.getName().toString(), startsWith(name1.toString()));
+        assertThat(link.getName().size(), greaterThan(name1.size()));
+        assertThat(link.getName().part, not(isEmptyString()));
+	}
+    
+    @Test
+	public void testUpdateWorkspaceReturnsSameId() throws InvalidWorkspace, InvalidObjectName {
 		JsonObject DUMMY_METADATA = Json.createObjectBuilder()
 				.add("Branch", "XYZABC")
 				.add("Team", "TEAM1")
