@@ -155,7 +155,19 @@ public interface RepositoryService {
 		MediaType mediaType, 
 		InputStreamSupplier stream, 
 		JsonObject metadata) throws InvalidDocumentId;
-    
+
+	// ---------------- Workspace API -------------- //
+
+    /** Get the current state of a document link
+     * 
+	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
+	 * @param name the name of the workspace
+	 * @return a Workspace object located by name
+	 * @throws InvalidWorkspace if rootId is not a valid workspace
+     * @throws InvalidObjectName if name is not a valid document name within the root workspace
+     */
+    public DocumentLink getDocumentLink(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
+            
 	/** Get a document from an Id and a workspace Id.
 	 * 
 	 * Gets the most recent version of a document in the given workspace.
@@ -170,7 +182,6 @@ public interface RepositoryService {
 	 */
 	public DocumentLink getDocumentLink(String workspaceId, QualifiedName path, String documentId) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId;
     
-	// ---------------- Workspace API -------------- //
     
 	/** Create a new document in the repository.
 	 * 
@@ -188,7 +199,7 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
-	public Reference createDocumentByName(
+	public Reference createDocumentLinkByName(
 			String rootId,
 			QualifiedName documentName,
 			MediaType mediaType, 
@@ -200,8 +211,8 @@ public interface RepositoryService {
     /** Create a new document in the repository.
 	 * 
 	 * Creates document within the given workspace. The first parts of the given name are the
-	 * name of the workspace. The last part of the given name is used as the name of the document
-	 * within the workspace.
+	 * name of the workspace. The name of the document is derived from document metadata in
+     * a way that guarantees uniqueness but may be implementation-specific.
 	 * 
 	 * @param rootId the Id of the 'root' workspace
 	 * @param workspaceName the fully qualified name of the workspace
@@ -234,7 +245,7 @@ public interface RepositoryService {
      * @throws InvalidWorkspaceState if workspace is already closed
 	 * @throws InvalidReference 
 	 */
-	public void createDocumentLinkByName(
+	public DocumentLink createDocumentLinkByName(
 	        String rootId,
 	        QualifiedName documentName,
 	        Reference reference,
@@ -279,7 +290,7 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspaceState if workspace is already closed
      * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
 	 */
-	public Reference updateDocumentByName(
+	public Reference updateDocumentLinkByName(
 			String rootId,
 			QualifiedName documentName,
 			MediaType mediaType, 
@@ -498,16 +509,6 @@ public interface RepositoryService {
      */
     public Workspace getWorkspaceByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;  
     
-    /** Get the current state of a document link
-     * 
-	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
-	 * @param name the name of the workspace
-	 * @return a Workspace object located by name
-	 * @throws InvalidWorkspace if rootId is not a valid workspace
-     * @throws InvalidObjectName if name is not a valid document name within the root workspace
-     */
-    public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
-        
 	/** Get current state of workspace 
 	 * 
 	 * @param id the id of the requested workspace

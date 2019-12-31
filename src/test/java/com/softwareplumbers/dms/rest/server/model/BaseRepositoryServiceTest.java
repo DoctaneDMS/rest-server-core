@@ -211,7 +211,7 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName carter = base.add("carter");
 		service().createWorkspaceByName(ROOT_ID, base, State.Open, null);
 		service().createWorkspaceByName(ROOT_ID, jones, State.Open, null);
-		service().createDocumentByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
+		service().createDocumentLinkByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
 		assertEquals(2,service().catalogueByName(ROOT_ID, base.add("*"), Query.UNBOUNDED, false).count());
 	}
 	
@@ -384,7 +384,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testUpdateDocumentByName() throws RepositoryService.BaseException {
+	public void testupdateDocumentLinkByName() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
         service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
         String originalText = randomText();
@@ -393,7 +393,7 @@ public abstract class BaseRepositoryServiceTest {
         service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
 	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
 	    assertEquals(ref1, doc1.getReference());
-        service().updateDocumentByName(ROOT_ID, docName, null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
+        service().updateDocumentLinkByName(ROOT_ID, docName, null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
 	    Document doc2 = (Document)service().getObjectByName(ROOT_ID, docName);
 	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
 	}
@@ -413,7 +413,7 @@ public abstract class BaseRepositoryServiceTest {
         service().createDocumentLinkByName(wsid, QualifiedName.of(docPart), ref1, true);
 	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
 	    assertEquals(ref1, doc1.getReference());
-        service().updateDocumentByName(wsid, QualifiedName.of(docPart), null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
+        service().updateDocumentLinkByName(wsid, QualifiedName.of(docPart), null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
 	    Document doc2 = (Document)service().getObjectByName(wsid, QualifiedName.of(docPart));
 	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
 	}
@@ -697,7 +697,7 @@ public abstract class BaseRepositoryServiceTest {
 		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
 		String originalText = randomText();
 		// Create a document in the workspace
-		Reference ref1 = service().createDocumentByName(wsId, QualifiedName.of(randomUrlSafeName()), MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, false);
+		Reference ref1 = service().createDocumentLinkByName(wsId, QualifiedName.of(randomUrlSafeName()), MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, false);
 		// now close the workspace
 		service().updateWorkspaceById(wsId, null, State.Closed, EMPTY_METADATA, false);
 		Reference ref2 = service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA);
@@ -776,7 +776,7 @@ public abstract class BaseRepositoryServiceTest {
         service().updateWorkspaceByName(ROOT_ID, workspaceName, null, State.Closed, null, false);
         // Update document again
         String textv2 = randomText();
- 		Reference ref3 = service().updateDocumentByName(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
+ 		Reference ref3 = service().updateDocumentLinkByName(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
     }
     
     //////------- End Versioning tests --------//////

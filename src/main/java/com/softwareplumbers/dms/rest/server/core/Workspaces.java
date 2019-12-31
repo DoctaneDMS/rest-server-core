@@ -610,7 +610,7 @@ public class Workspaces {
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
 
-            Reference result = service.updateDocumentByName(
+            Reference result = service.updateDocumentLinkByName(
                     path.rootId, 
                     path.staticPath, 
                     computedMediaType,
