@@ -26,6 +26,10 @@ public interface Workspace extends NamedRepositoryObject {
 	/** Possible states of a workspace */
 	enum State { Open, Closed, Finalized }
 	
+    public static State getState(JsonObject object) {
+        return object.containsKey("state") ? State.valueOf(object.getString("state")) : null;
+    }
+    
 	/** Get id of object */
 	String getId();
 

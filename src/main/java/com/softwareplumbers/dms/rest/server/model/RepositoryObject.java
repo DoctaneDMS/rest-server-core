@@ -8,7 +8,26 @@ import javax.json.JsonObject;
 public interface RepositoryObject {
 	
 	enum Type { WORKSPACE, DOCUMENT, DOCUMENT_LINK, DOCUMENT_PART, STREAMABLE_DOCUMENT_PART };
-
+    
+    /** Get the type from a standard json representation of a RepositoryObject.
+     * 
+     * @param object a JSON representation of a document (as might be returned by this.toJson)
+     * @return the value of the object's type attribute converted into a Type 
+     */
+    public static Type getType(JsonObject object) {
+        // For historical reasons, an empty type attribute implies the object is a workspace.
+        return Type.valueOf(object.getString("type", Type.WORKSPACE.name()));
+    }
+    
+    /** Get the metadata from a standard json representation of a RepositoryObject.
+     * 
+     * @param object a JSON representation of a document (as might be returned by this.toJson)
+     * @return the value of the object's metadata attribute 
+     */
+    public static JsonObject getMetadata(JsonObject object) {
+        return object.getJsonObject("metadata");
+    }
+    
 	/** Get metadata
      * @return metadata associated with this repository object */
 	JsonObject getMetadata();

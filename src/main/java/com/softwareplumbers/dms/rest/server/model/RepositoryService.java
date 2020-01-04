@@ -280,9 +280,10 @@ public interface RepositoryService {
 	 * 
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param documentName the fully qualified name of the document in a workspace
-	 * @param mediaType the type of document
-	 * @param stream a supplier function that produces a stream of binary data representing the document
-	 * @param metadata a Json object describing the document
+     * @param newName a new name for the document (in same workspace), null if unchanged.
+	 * @param mediaType the type of document, null if unchanged
+	 * @param stream a supplier function that produces a stream of binary data representing the document, null if unchanged
+	 * @param metadata a Json object describing the document, null if unchanged
 	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
      * @param createDocument if true, create a new document instead of throwing error if document does not exist
 	 * @return A Reference object that can later be used to retrieve the document
@@ -293,6 +294,7 @@ public interface RepositoryService {
 	public Reference updateDocumentLinkByName(
 			String rootId,
 			QualifiedName documentName,
+            QualifiedName newName,
 			MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
@@ -305,7 +307,8 @@ public interface RepositoryService {
      * 
      * @param rootId the Id of the 'root' workspace
      * @param documentName the fully qualified name of the document in a workspace
-     * @param reference Reference of document to link to
+     * @param newName a new name for the document (in same workspace), null if unchanged.
+     * @param reference Reference of document to link to, null if unchanged
      * @param createWorkspace Allow workspace creation if workspace dos not exist
      * @param createLink if true, create a new document link instead of throwing error if document link does not exist
      * @throws InvalidWorkspace if document link or workspace does not exist and createWorkspace is false
@@ -317,6 +320,7 @@ public interface RepositoryService {
     public void updateDocumentLinkByName(
             String rootId,
             QualifiedName documentName,
+            QualifiedName newName,
             Reference reference,
             boolean createWorkspace,
             boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;

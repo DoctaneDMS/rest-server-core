@@ -9,12 +9,18 @@ import com.softwareplumbers.common.QualifiedName;
 import java.util.Optional;
 import javax.json.JsonArrayBuilder;
 
+/** Define the basic DocumentLink interface.
+ * 
+ * Also defines the Json representation of a document link.
+ * 
+ * @author jonathan
+ */
 public interface DocumentLink extends NamedRepositoryObject, Document {
-    
+        
     /** Default implementation returns Type.DOCUMENT_LINK */ 
     @Override
     default Type getType() { return Type.DOCUMENT_LINK; }
-    
+
     /** Output DocumentLink to JSON.
      * 
      * JSON representation does not contain file itself but is understood to contain sufficient information 

@@ -8,6 +8,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
 /** A repository object which can be read from or written to a stream.
@@ -15,6 +16,24 @@ import javax.ws.rs.core.MediaType;
  * @author jonathan.local
  */
 public interface StreamableRepositoryObject extends RepositoryObject {
+    
+    /** Get the mediaType from a standard json representation of a StreamableRepositoryObject.
+     * 
+     * @param object a JSON representation of a StreamableRepositoryObject (as might be returned by this.toJson)
+     * @return the value of the object's mediaType attribute converted into a MediaType 
+     */
+    public static MediaType getMediaType(JsonObject object) {
+        return MediaType.valueOf(object.getString("mediaType"));
+    }
+    
+    /** Get the length from a standard json representation of a StreamableRepositoryObject.
+     * 
+     * @param object a JSON representation of a StreamableRepositoryObject (as might be returned by this.toJson)
+     * @return the value of the object's length attribute converted into a MediaType 
+     */    
+    public static long getLength(JsonObject object) {
+        return object.getJsonNumber("length").longValue();
+    }
 
     /** Get the media type of this stream
      * @return the media type of the 

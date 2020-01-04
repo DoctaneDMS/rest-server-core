@@ -13,6 +13,33 @@ import javax.ws.rs.core.MediaType;
  * @author Jonathan Essex
  */
 public interface Document extends StreamableRepositoryObject {
+    
+    /** Get the id from a standard json representation of a Document.
+     * 
+     * @param object a JSON representation of a document (as might be returned by this.toJson)
+     * @return the value of the object's id attribute 
+     */
+    public static String getId(JsonObject object) {
+        return object.getString("id", null);
+    }
+    
+    /** Get the version from a standard json representation of a Document.
+     * 
+     * @param object a JSON representation of a document (as might be returned by this.toJson)
+     * @return the value of the object's version attribute 
+     */
+    public static String getVersion(JsonObject object) {
+        return object.getString("version", null);
+    }
+    
+    public static Reference getReference(JsonObject object) {
+        // TODO: deprecate this optional format for reference
+        if (object.containsKey("reference")) {
+            object = object.getJsonObject("reference");
+        }
+        return new Reference(getId(object), getVersion(object));
+    }
+
 	/** Get id of object
      * @return the id of the object */
 	String getId();	
