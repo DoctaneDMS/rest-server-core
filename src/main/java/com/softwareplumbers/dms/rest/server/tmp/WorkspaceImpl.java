@@ -376,7 +376,7 @@ class WorkspaceImpl implements Workspace {
 			return childWorkspace.getOrCreateWorkspace(remainingName, createWorkspace);
 	}
 	
-	public WorkspaceImpl createWorkspace(String id, QualifiedName name, State state, JsonObject metadata) throws InvalidWorkspace {
+	public WorkspaceImpl createWorkspace(String id, QualifiedName name, State state, JsonObject metadata, boolean createParent) throws InvalidWorkspace {
 		String localName;
 		WorkspaceImpl localParent;
 		if (state == null) {
@@ -387,7 +387,7 @@ class WorkspaceImpl implements Workspace {
 			localName = generateName();
 		} else {
 			localName = name.part;
-			localParent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, true);
+			localParent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, createParent);
 			if (localParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
 		}
 

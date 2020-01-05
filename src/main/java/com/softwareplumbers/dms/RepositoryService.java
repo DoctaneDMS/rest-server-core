@@ -508,6 +508,52 @@ public interface RepositoryService {
         return updateDocumentLink(link, document.getReference());
     }
     
+    public default NamedRepositoryObject copyObject(NamedRepositoryObject source, Workspace target, String targetName) throws InvalidWorkspaceState, InvalidObjectName {
+         switch (source.getType()) {
+             case DOCUMENT_LINK: return copyDocumentLink((DocumentLink)source, target, targetName, false);
+             case WORKSPACE: return copyWorkspace((Workspace)source, target, targetName);
+             default: throw new RuntimeException("Invalid type " + source.getType());
+         }
+    }
+    
+    public NamedRepositoryObject copyObject(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createParent) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName;
+    
+    public default DocumentLink copyDocumentLink(DocumentLink documentLink, Workspace target, String targetName, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName {
+        try {
+            return copyDocumentLink(Constants.ROOT_ID, documentLink.getName(), target.getId(), target.getName().add(targetName), false, returnExisting);
+        } catch (InvalidWorkspace ex) {
+            throw new BaseRuntimeException(ex);
+        }
+    }
+    
+    public DocumentLink copyDocumentLink(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createWorkspace, boolean returnExisting) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName;
+    
+    public default DocumentLink copyDocumentLink(Workspace source, String sourceName, Workspace target, String targetName, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName {
+        try {
+            return copyDocumentLink(source.getId(), QualifiedName.of(sourceName), target.getId(), QualifiedName.of(targetName), false, returnExisting);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
+    public default Workspace copyWorkspace(Workspace source, Workspace target, String targetName) throws InvalidWorkspaceState, InvalidObjectName {
+        try {
+            return copyWorkspace(Constants.ROOT_ID, source.getName(), target.getId(), target.getName().add(targetName), false);
+        } catch (InvalidWorkspace ex) {
+            throw new BaseRuntimeException(ex);
+        }
+    }
+    
+    public Workspace copyWorkspace(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createParent) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName;
+    
+    public default Workspace copyWorkspace(Workspace source, String sourceName, Workspace target, String targetName, boolean createParent) throws InvalidWorkspaceState, InvalidObjectName {
+        try {
+            return copyWorkspace(source.getId(), QualifiedName.of(sourceName), target.getId(), QualifiedName.of(targetName), createParent);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
 	/** Catalog a repository.
 	 * 
 	 * Returns information (including reference and meta-data) about documents in the repository 
@@ -595,8 +641,12 @@ public interface RepositoryService {
 	 */
 	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference;
 		
-    public default Workspace createWorkspaceByName(Workspace workspace, String name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace {
-        return createWorkspaceByName(workspace.getId(), QualifiedName.of(name), state, metadata, false);
+    public default Workspace createWorkspaceByName(Workspace workspace, String name, Workspace.State state, JsonObject metadata) throws InvalidObjectName {
+        try {
+            return createWorkspaceByName(workspace.getId(), QualifiedName.of(name), state, metadata, false);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
     }
     
 	/** Create a workspace 
@@ -639,6 +689,14 @@ public interface RepositoryService {
 	 */
 	public Workspace createWorkspaceAndName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspace;
 	
+    public default Workspace updateWorkspace(Workspace workspace, Workspace.State state, JsonObject metadata, boolean createWorkspace) {
+        try {
+            return updateWorkspaceByName(workspace.getId(), QualifiedName.ROOT, state, metadata, false);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
 	/** Create or update a workspace 
 	 * 
 	 * A workspace may be specified by id 
@@ -768,4 +826,6 @@ public interface RepositoryService {
             throw new BaseRuntimeException(e);
         }
     }
+    
+    
 }

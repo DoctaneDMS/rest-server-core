@@ -75,37 +75,38 @@ public abstract class BaseRepositoryServiceTest {
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, name);
 		assertEquals(ws1.getId(), ws.getId());
 	}
-/*       
+       
     @Test 
-	public void testWorkspaceUpdateByIdWithNewPath() throws RepositoryService.BaseException {
-		String id = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , EMPTY_METADATA);
+	public void testWorkspaceCopyById() throws RepositoryService.BaseException {
+        JsonObject metadata = randomMetadata();
+		Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , metadata, true);
         QualifiedName newName = randomQualifiedName();
-        service().updateWorkspaceByName(id, null, newName, State.Open, EMPTY_METADATA, true);
+        service().copyWorkspace(workspace.getId(), QualifiedName.ROOT, Constants.ROOT_ID, newName, true);
         Workspace result = service().getWorkspaceByName(ROOT_ID, newName);
-        assertEquals(id, result.getId());
+        assertEquals(metadata, result.getMetadata());
 	}
     
     @Test 
-	public void testWorkspaceUpdateByNameWithNewPath() throws RepositoryService.BaseException {
-        QualifiedName name = randomQualifiedName();
-		String id = service().createWorkspaceByName(ROOT_ID, name, State.Open , EMPTY_METADATA);
+	public void testWorkspaceCopyByName() throws RepositoryService.BaseException {
+        JsonObject metadata = randomMetadata();
+		Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , metadata, true);
         QualifiedName newName = randomQualifiedName();
-        service().updateWorkspaceByName(ROOT_ID, name, newName, State.Open, EMPTY_METADATA, true);
+        service().copyWorkspace(Constants.ROOT_ID, workspace.getName(), Constants.ROOT_ID, newName, true);
         Workspace result = service().getWorkspaceByName(ROOT_ID, newName);
-        assertEquals(id, result.getId());
+        assertEquals(metadata, result.getMetadata());
 	}
 
     @Test(expected = InvalidWorkspace.class)
-	public void testWorkspaceUpdateByNameWithNewPathOriginalMustExist() throws RepositoryService.BaseException {
-        service().updateWorkspaceByName(randomWorkspaceId(), randomQualifiedName(), randomQualifiedName(), State.Open, EMPTY_METADATA, true);
+	public void testWorkspaceCopyByNameOriginalMustExist() throws RepositoryService.BaseException {
+        service().copyWorkspace(Constants.ROOT_ID, randomQualifiedName(), Constants.ROOT_ID, randomQualifiedName(), true);
 	}
 
    @Test(expected = InvalidWorkspace.class)
-	public void testWorkspaceUpdateByIdWithNewPathOriginalMustExist() throws RepositoryService.BaseException {
-        service().updateWorkspaceByName(randomWorkspaceId(), null, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
+	public void testWorkspaceCopyByIdWithNewPathOriginalMustExist() throws RepositoryService.BaseException {
+        service().copyWorkspace(randomWorkspaceId(), QualifiedName.ROOT, Constants.ROOT_ID, randomQualifiedName(), true);
 	}
-*/    
-	@Test(expected = InvalidReference.class)
+
+    @Test(expected = InvalidReference.class)
 	public void testRepositoryFetchWithInvalidRef() throws IOException, InvalidReference {
 		Reference ref1 = randomDocumentReference();
 		service().getDocument(ref1);
@@ -157,24 +158,27 @@ public abstract class BaseRepositoryServiceTest {
 			assertEquals(testData.length(), doc.getLength());
 		}
 	}
-/*	
+	
 	@Test
-	public void testRenameWorkspace() throws RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, State.Open, null);
+	public void testCopyWorkspace() throws RepositoryService.BaseException {
+        JsonObject metadata = randomMetadata();
+		Workspace workspace = service().createWorkspaceAndName(Constants.ROOT_ID, QualifiedName.ROOT, State.Open, metadata, false);
+        service().createDocumentLinkAndName(workspace, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), Constants.EMPTY_METADATA);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().updateWorkspaceById(wsId, wsName, null, null, true);
-		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, wsName);
-		assertEquals(wsId, ws.getId());
+		service().copyWorkspace(workspace.getId(), QualifiedName.ROOT, Constants.ROOT_ID, wsName, false);
+		Workspace copy = (Workspace)service().getObjectByName(ROOT_ID, wsName);
+		assertEquals(workspace.getMetadata(), copy.getMetadata());
+        assertEquals(1, service().catalogueByName(copy, QualifiedName.of("*"), Query.UNBOUNDED, false).count());
 	}
 	
 	@Test  (expected = InvalidWorkspace.class)
-	public void testRenameFolderExistingName() throws RepositoryService.BaseException {
+	public void testCopyFolderExistingName() throws RepositoryService.BaseException {
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
-		service().createWorkspaceByName(ROOT_ID,wsName, State.Open, null);
-		String wsId = service().createWorkspaceById(null, State.Open, null);
-		service().updateWorkspaceById(wsId,wsName, null, null, false);
+		Workspace a = service().createWorkspaceByName(ROOT_ID, wsName, State.Open, null, false);
+		Workspace b = service().createWorkspaceAndName(ROOT_ID, QualifiedName.ROOT, State.Open, Constants.EMPTY_METADATA, false);
+		service().copyWorkspace(ROOT_ID, b.getName(), ROOT_ID, wsName, false);
 	}
-*/	
+	
 	@Test
 	public void testSearchForWorkspaceByWildcard() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
@@ -288,23 +292,23 @@ public abstract class BaseRepositoryServiceTest {
         assertThat(link.getName().size(), greaterThan(name1.size()));
         assertThat(link.getName().part, not(isEmptyString()));
 	}
- /*   
+    
     @Test
 	public void testUpdateWorkspaceReturnsSameId() throws InvalidWorkspace, InvalidObjectName {
 		JsonObject DUMMY_METADATA = Json.createObjectBuilder()
 				.add("Branch", "XYZABC")
 				.add("Team", "TEAM1")
 				.build();
-		String wsId = service().createWorkspaceById(State.Open, EMPTY_METADATA);
-		QualifiedName name = randomQualifiedName();
-		String resultId = service().updateWorkspaceByName(wsId, QualifiedName.ROOT, name, DUMMY_METADATA, true);
-		assertEquals(wsId, resultId);
+		Workspace workspace = service().createWorkspaceAndName(Constants.ROOT_ID, QualifiedName.ROOT, State.Open, EMPTY_METADATA, false);
+		Workspace result = service().updateWorkspace(workspace, null, DUMMY_METADATA, false);
+		assertEquals(workspace.getId(), result.getId());
+        assertEquals(DUMMY_METADATA, result.getMetadata());
 	}
-*/	
+	
 	@Test
 	public void testCreateDocumentLink() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA, false);
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         QualifiedName docName = name1.add(randomUrlSafeName());
