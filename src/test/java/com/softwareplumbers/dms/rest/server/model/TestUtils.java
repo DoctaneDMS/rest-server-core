@@ -5,6 +5,7 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.common.QualifiedName;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

@@ -1,7 +1,6 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.dms;
 
 import javax.json.Json;
-import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonString;

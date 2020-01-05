@@ -5,6 +5,9 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.InputStreamSupplier;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.Document;
 import java.io.IOException;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;

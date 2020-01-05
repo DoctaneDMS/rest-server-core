@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.dms;
 
 import javax.json.JsonObject;
 

@@ -8,7 +8,7 @@ package com.softwareplumbers.dms.rest.server.core;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 
-import com.softwareplumbers.dms.rest.server.model.Constants;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.rest.server.util.Log;
 
 /** Class representing workspace path.

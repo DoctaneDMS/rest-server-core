@@ -5,6 +5,9 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;

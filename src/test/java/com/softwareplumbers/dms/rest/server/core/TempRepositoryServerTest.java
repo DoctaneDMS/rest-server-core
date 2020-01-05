@@ -57,12 +57,12 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl;
-import com.softwareplumbers.dms.rest.server.model.Document;
+import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
 import com.softwareplumbers.dms.rest.server.model.StreamableDocumentPartImpl;
-import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
-import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObject;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.InitializationFailure;

@@ -18,16 +18,16 @@ import javax.ws.rs.core.Response.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.DocumentPart;
-import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.DocumentPart;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryService;
+import com.softwareplumbers.dms.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.logging.Level;
 

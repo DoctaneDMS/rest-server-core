@@ -5,6 +5,10 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
+import com.softwareplumbers.dms.DocumentPart;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractpattern.visitor.Builders;

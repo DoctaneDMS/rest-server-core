@@ -6,9 +6,9 @@ import org.junit.Before;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
-import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.rest.server.model.ZipFileNavigatorService;
 import javax.json.Json;
 import javax.json.JsonObject;

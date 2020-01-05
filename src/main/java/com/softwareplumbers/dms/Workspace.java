@@ -1,11 +1,11 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.dms;
 
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.model.RepositoryObject.Type;
+import com.softwareplumbers.dms.RepositoryObject.Type;
 import java.util.Optional;
 
 import javax.json.Json;

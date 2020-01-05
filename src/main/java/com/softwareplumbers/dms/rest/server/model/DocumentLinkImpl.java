@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.DocumentLink;
+import com.softwareplumbers.dms.Document;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

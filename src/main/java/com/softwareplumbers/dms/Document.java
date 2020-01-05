@@ -1,6 +1,5 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.dms;
 import com.softwareplumbers.common.QualifiedName;
-import java.math.BigDecimal;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;

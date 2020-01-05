@@ -6,7 +6,7 @@ import java.io.OutputStream;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
 
-import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObject;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 
 /** Adapts a Document into a StreamingOutput object for use in the Jersey API 
  * 

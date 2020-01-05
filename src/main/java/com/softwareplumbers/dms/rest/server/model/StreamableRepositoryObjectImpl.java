@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.InputStreamSupplier;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +12,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.IOUtils;
 
-import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import static com.softwareplumbers.dms.Constants.*;
 
 /** Generic implementation of Document interface.
  * 

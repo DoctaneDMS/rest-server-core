@@ -21,8 +21,8 @@ import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.TransformerConfigurationException;
 
-import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.DocumentLink;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.DocumentLink;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.tika.parser.microsoft.OfficeParser;

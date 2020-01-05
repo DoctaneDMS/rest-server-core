@@ -1,6 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.RepositoryService;
 
 /** Sevice locator interface for Repositories.
  * 

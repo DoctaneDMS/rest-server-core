@@ -7,7 +7,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.json.JsonObjectBuilder;
-import static com.softwareplumbers.dms.rest.server.model.Constants.*;
+import static com.softwareplumbers.dms.Constants.*;
 
 /** Define how we merge metadata.
  * 

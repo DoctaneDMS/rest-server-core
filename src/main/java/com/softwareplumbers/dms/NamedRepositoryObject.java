@@ -1,11 +1,11 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.dms;
+
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 import javax.json.JsonObject;
 
 /** Base interface for named repository objects such as workspaces and document links.

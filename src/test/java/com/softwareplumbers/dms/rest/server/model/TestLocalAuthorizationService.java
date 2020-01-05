@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 

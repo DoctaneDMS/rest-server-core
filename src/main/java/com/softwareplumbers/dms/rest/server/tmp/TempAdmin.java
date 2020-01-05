@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory;
 import com.softwareplumbers.dms.rest.server.core.Error;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService;
+import com.softwareplumbers.dms.RepositoryService;
 
 /** Handle admin operations on mongodb repository.
  * 

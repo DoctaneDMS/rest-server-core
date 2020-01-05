@@ -16,18 +16,18 @@ import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractpattern.visitor.Builders;
 import com.softwareplumbers.common.abstractpattern.visitor.Visitor;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.DocumentLink;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
-import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
-import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
-import com.softwareplumbers.dms.rest.server.model.Workspace;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.DocumentLink;
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.NamedRepositoryObject;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.Workspace;
+import com.softwareplumbers.dms.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,64 +39,11 @@ class WorkspaceImpl implements Workspace {
 	
 	static Log LOG = new Log(WorkspaceImpl.class);
 	
-	private class DocumentInfo implements DocumentLink {
-        
-		public boolean deleted;
-        public Reference link;
-        public String name;
-		
-		public DocumentInfo(String name, Reference link, boolean deleted) {
-		    this.deleted = deleted;
-            this.link = link; 
-            this.name = name;
-		}	
-		
-		public DocumentLink toDynamic() { return new DocumentInfo(this.name, new Reference(link.id), deleted); }
-        public DocumentLink toStatic() { return new DocumentInfo( this.name, getReference(), deleted); }
-
-        @Override
-        public QualifiedName getName() {
-            return WorkspaceImpl.this.getName().add(name);
-        }
-
-        private Document linkedDocument() {
-            try {
-                return service.getDocument(link);
-            } catch (InvalidReference ex) {
-                throw LOG.logRethrow("DocumentInfo.getMetadata", new RuntimeException(ex));
-            } 
-        }
-        
-        @Override
-        public JsonObject getMetadata() { return linkedDocument().getMetadata(); }
-
-        @Override
-        public String getId() { return link.id; }
-
-        @Override
-        public MediaType getMediaType() { return linkedDocument().getMediaType(); }
-
-        @Override
-        public void writeDocument(OutputStream target) throws IOException { linkedDocument().writeDocument(target); }
-
-        @Override
-        public InputStream getData() throws IOException { return linkedDocument().getData(); }
-
-        @Override
-        public long getLength() { return linkedDocument().getLength(); }
-
-        @Override
-        public String getVersion() { return linkedDocument().getVersion(); }
-        
-        @Override
-        public Reference getReference() { return linkedDocument().getReference(); }
-        
-	}
 	
 	/**
 	 * 
 	 */
-	private final TempRepositoryService service;
+	final TempRepositoryService service;
 	private WorkspaceImpl parent;
 	private String name;
 	private String id;
@@ -213,34 +160,34 @@ class WorkspaceImpl implements Workspace {
 		LOG.logExiting("add");
 	}
 	
-	public DocumentLink add(Reference reference, String docName) throws InvalidWorkspaceState {
+	public DocumentInfo add(Reference reference, String docName) throws InvalidWorkspaceState {
 		LOG.logEntering("add", reference, docName);
 		if (state == State.Open) {
 			if (!service.referenceExists(this, reference)) {
 				Reference latest = new Reference(reference.id);
-                DocumentInfo result = new DocumentInfo(docName,latest,false);
+                DocumentInfo result = new DocumentInfo(docName,latest,false, this);
 				this.children.put(docName, result);
 				service.registerWorkspaceReference(this, latest);
                 return LOG.logReturn("add", result);
 			} else {
-                return LOG.logReturn("add", (DocumentLink)this.children.get(docName));
+                return LOG.logReturn("add", (DocumentInfo)this.children.get(docName));
             }
 		}
 		else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
 	}
     
-    public Optional<DocumentLink> findLink(Reference ref) {
+    public Optional<DocumentInfo> findLink(Reference ref) {
         return children.values()
                 .stream()
                 .filter(obj -> obj.getType() == RepositoryObject.Type.DOCUMENT_LINK)
-                .map(obj -> (DocumentLink)obj)
+                .map(obj -> (DocumentInfo)obj)
                 .filter(link -> link.getReference().equals(ref))
                 .findAny();
     }
     
-    public DocumentLink add(Reference ref, boolean returnExisting) throws InvalidWorkspaceState, InvalidReference {
+    public DocumentInfo add(Reference ref, boolean returnExisting) throws InvalidWorkspaceState, InvalidReference {
 		LOG.logEntering("add", ref, returnExisting);
-        Optional<DocumentLink> existing = findLink(ref);
+        Optional<DocumentInfo> existing = findLink(ref);
         if (existing.isPresent()) {
             if (returnExisting) 
                 return LOG.logReturn("add", existing.get());
@@ -252,21 +199,23 @@ class WorkspaceImpl implements Workspace {
         }        
     }
 	
-	public void update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
-		LOG.logEntering("add", reference, docName);
+	public DocumentInfo update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
+		LOG.logEntering("update", reference, docName);
 		RepositoryObject objRef = children.get(docName);
-		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw new InvalidObjectName(getName().add(docName));
+		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw LOG.logThrow("update", new InvalidObjectName(getName().add(docName)));
 		DocumentInfo docRef = (DocumentInfo)objRef;
 		if (state == State.Open) {
 			if (!docRef.getId().equals(reference.id)) {
 				service.deregisterWorkspaceReference(this, docRef.getReference());
 				service.registerWorkspaceReference(this, reference);
-				children.put(docName, new DocumentInfo(docRef.name, new Reference(reference.id), false));
-			} 
-			// else really nothing to do
+                DocumentInfo newInfo = new DocumentInfo(docRef.name, new Reference(reference.id), false, this);
+				children.put(docName, newInfo);
+                return LOG.logReturn("update", newInfo);
+			} else {
+                return LOG.logReturn("update", docRef);
+            }
 		}
-		else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
-		LOG.logExiting("add");		
+		else throw LOG.logThrow("update", new InvalidWorkspaceState(name, state));
 	}
 	
 	public NamedRepositoryObject deleteObjectByName(String docName) throws InvalidWorkspaceState {
@@ -316,7 +265,7 @@ class WorkspaceImpl implements Workspace {
 	private Stream<DocumentInfo> getHistory(DocumentInfo doc, Query filter) {
 	    try {
             return service.catalogueHistory(doc.getReference(), filter)
-                .map(histDoc->new DocumentInfo(doc.name, histDoc.getReference(), false));
+                .map(histDoc->new DocumentInfo(doc.name, histDoc.getReference(), false, this));
         } catch (InvalidReference e) {
             throw new RuntimeException(e);
         }
@@ -433,7 +382,7 @@ class WorkspaceImpl implements Workspace {
 		if (state == null) {
 		    state = State.Open;
 		}
-		if (name == null) {
+		if (name == null || name.isEmpty()) {
 			localParent = this;
 			localName = generateName();
 		} else {

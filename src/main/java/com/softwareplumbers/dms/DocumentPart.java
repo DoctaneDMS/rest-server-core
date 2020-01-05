@@ -1,31 +1,28 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package com.softwareplumbers.dms.rest.server.model;
-
+package com.softwareplumbers.dms;
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
+import static com.softwareplumbers.dms.RepositoryObject.Type.*;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-import javax.ws.rs.core.MediaType;
 
-/**
- *
+/** Part of a document 
+ * 
+ * Can represent either an individual document element or an assembly of such elements.
+ * 
  * @author jonathan.local
  */
-public interface StreamableDocumentPart extends DocumentPart, StreamableRepositoryObject {
-
-   /** Get type of object
-    * 
-    * @return DOCUMENT_PART 
-    */
-    @Override
-    default Type getType() { return Type.STREAMABLE_DOCUMENT_PART; }
+public interface DocumentPart extends NamedRepositoryObject {
     
-        /** Output DocumentPart to JSON. 
+    StreamableRepositoryObject getDocument();
+    	
+    /** Get type of object
+     * @return DOCUMENT_PART */
+    @Override
+    default Type getType() { return DOCUMENT_PART; }
+    
+    /** Output DocumentPart to JSON. 
      * 
      * JSON representation does not contain file itself but is understood to contain sufficient information 
      * to retrieve the file.
@@ -40,7 +37,6 @@ public interface StreamableDocumentPart extends DocumentPart, StreamableReposito
         QualifiedName name = getName();
         Type type = getType();
         StreamableRepositoryObject document = this.getDocument();
-        MediaType mediaType = getMediaType();
 
         
         JsonObjectBuilder builder = Json.createObjectBuilder(); 
@@ -54,7 +50,7 @@ public interface StreamableDocumentPart extends DocumentPart, StreamableReposito
                     try {
                         RepositoryObject parent = navigator.getPartByName(document, name.parent);
                         builder.add("parent", parent.toJson(service, navigator, parentLevels-1, 0));
-                    } catch (DocumentNavigatorService.PartNotFoundException err) {
+                    } catch (PartNotFoundException err) {
                         throw new RuntimeException(err);
                     }
                 }
@@ -85,9 +81,6 @@ public interface StreamableDocumentPart extends DocumentPart, StreamableReposito
         if (type != null) builder.add("type", type.toString());
         // Named Repository Item fields
         if (name != null) builder.add("name", name.join("/"));
-        //  StremableRepositoryObject fields
-        if (mediaType != null) builder.add("mediaType", mediaType.toString());
-        builder.add("length", getLength());
         return builder.build();
     }
 }

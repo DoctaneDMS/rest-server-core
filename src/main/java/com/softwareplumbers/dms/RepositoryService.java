@@ -1,7 +1,9 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.dms;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import javax.json.JsonObject;
@@ -30,6 +32,10 @@ public interface RepositoryService {
     
     public static class BaseException extends Exception {
         public BaseException(String description) { super(description); }
+    }
+    
+    public static class BaseRuntimeException extends RuntimeException {
+        public BaseRuntimeException(BaseException e) { super(e); }
     }
 
 	/** Exception type for an invalid document reference */
@@ -91,7 +97,7 @@ public interface RepositoryService {
 		}
 		public InvalidWorkspaceState(String workspace, Workspace.State state) {
 			super("Attempt to change workspace: " + workspace + " in state " + state);
-			this.workspace = workspace.toString();
+			this.workspace = workspace;
 			this.state = state;
 			this.other = null;
 		}
@@ -120,8 +126,6 @@ public interface RepositoryService {
 	 * @param stream a supplier function that produces a stream of binary data representing the document
 	 * @param metadata a Json object describing the document
 	 * @return A Reference object that can later be used to retrieve the document
-	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
-	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
 	public Reference createDocument(MediaType mediaType, 
 			InputStreamSupplier stream, 
@@ -166,8 +170,43 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspace if rootId is not a valid workspace
      * @throws InvalidObjectName if name is not a valid document name within the root workspace
      */
-    public DocumentLink getDocumentLink(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
-            
+    public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
+
+	/** Get a document from an Id and a workspace Id.
+	 * 
+	 * Gets the most recent version of a document in the given workspace.
+     * 
+     * Defined as equivalent to getDocuemntLink(workspace.getId(), QualifiedName.ROOT, documentId)
+ 	 * 
+	 * @param documentName the name of the requested document
+     * @param workspace Workspace from which to fetch document
+	 * @return the requested document
+     * @throws InvalidWorkspace if the is no workspace matching the id
+	 * @throws InvalidDocumentId if there is no document matching the reference in the repository 
+     * @throws InvalidObjectName if path does not specify a valid workspace
+	 */    
+    public default DocumentLink getDocumentLinkByName(Workspace workspace, String documentName) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId {
+        return getDocumentLinkByName(workspace.getId(), QualifiedName.ROOT.add(documentName));
+    }
+    
+    /** Get a document from an Id and a workspace Id.
+	 * 
+	 * Gets the most recent version of a document in the given workspace.
+     * 
+     * Defined as equivalent to getDocuemntLink(workspace.getId(), QualifiedName.ROOT, documentId)
+ 	 * 
+	 * @param documentId the Id of the requested document
+     * @param workspace Workspace from which to fetch document
+	 * @return the requested document
+     * @throws InvalidWorkspace if the is no workspace matching the id
+	 * @throws InvalidDocumentId if there is no document matching the reference in the repository 
+     * @throws InvalidObjectName if path does not specify a valid workspace
+	 */    
+    public default DocumentLink getDocumentLinkById(Workspace workspace, String documentId) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId {
+        return getDocumentLink(workspace.getId(), QualifiedName.ROOT, documentId);
+    }
+    
+    
 	/** Get a document from an Id and a workspace Id.
 	 * 
 	 * Gets the most recent version of a document in the given workspace.
@@ -182,12 +221,29 @@ public interface RepositoryService {
 	 */
 	public DocumentLink getDocumentLink(String workspaceId, QualifiedName path, String documentId) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId;
     
-    
-	/** Create a new document in the repository.
+	/** Create a new document in the repository.Creates document within the given workspace.
 	 * 
-	 * Creates document within the given workspace. The first parts of the given name are the
-	 * name of the workspace. The last part of the given name is used as the name of the document
-	 * within the workspace.
+	 * @param workspace the workspace in which to create the document link
+	 * @param documentName the name of the document in a workspace
+	 * @param mediaType the type of document
+	 * @param stream a supplier function that produces a stream of binary data representing the document
+	 * @param metadata a Json object describing the document
+	 * @return A DocumentLink object that can later be used to retrieve the document
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
+     * @throws InvalidObjectName if document with name already exists in workspace
+	 * @throws InvalidWorkspaceState if workspace is already closed
+	 */
+    public default DocumentLink createDocumentLinkByName(Workspace workspace, String documentName, MediaType mediaType, 
+			InputStreamSupplier stream, 
+			JsonObject metadata) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
+        return createDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), mediaType, stream, metadata, false);
+    }
+    
+	/** Create a new document in the repository.Creates document within the given workspace.
+	 * 
+	 * The first parts of the given name are the
+ name of the workspace. The last part of the given name is used as the name of the document
+ within the workspace.
 	 * 
 	 * @param rootId the Id of the 'root' workspace
 	 * @param documentName the fully qualified name of the document in a workspace
@@ -197,16 +253,33 @@ public interface RepositoryService {
 	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
 	 * @return A Reference object that can later be used to retrieve the document
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
+     * @throws InvalidObjectName if document with name already exists in workspace
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
-	public Reference createDocumentLinkByName(
+	public DocumentLink createDocumentLinkByName(
 			String rootId,
 			QualifiedName documentName,
 			MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
-    
+
+	/** Create a new document in the repository. Creates document within the given workspace.
+	 * 
+	 * @param workspace the workspace in which to create the document link
+	 * @param mediaType the type of document
+	 * @param stream a supplier function that produces a stream of binary data representing the document
+	 * @param metadata a Json object describing the document
+	 * @return A DocumentLink object that can later be used to retrieve the document
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
+     * @throws InvalidObjectName if document with name already exists in workspace
+	 * @throws InvalidWorkspaceState if workspace is already closed
+	 */
+    public default DocumentLink createDocumentLinkAndName(Workspace workspace, MediaType mediaType, 
+			InputStreamSupplier stream, 
+			JsonObject metadata) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
+        return createDocumentLinkAndName(workspace.getId(), QualifiedName.ROOT, mediaType, stream, metadata, false);
+    }    
     
     /** Create a new document in the repository.
 	 * 
@@ -231,47 +304,127 @@ public interface RepositoryService {
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState;
-	
-	/** Create a link to an existing document by reference.
+    
+    
+    public default DocumentLink createDocumentLinkAndName(Workspace workspace, Reference reference, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName, InvalidReference {
+        try {
+            return createDocumentLinkAndName(workspace.getId(), QualifiedName.ROOT, reference, false, returnExisting);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
+    public DocumentLink createDocumentLinkAndName(
+    		String rootId,
+			QualifiedName workspaceName,
+            Reference reference,
+            boolean createWorkspace,
+            boolean returnExisting
+	) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference;
+    
+    /** Create a link to an existing document by reference.
 	 * 
 	 * Creates a link to an existing document with a new name inside a given workspace.
 	 * 
-     * @param rootId the Id of the 'root' workspace
-     * @param documentName the fully qualified name of the document in a workspace
+     * @param workspace the Id of the workspace in which to create the document
+     * @param documentName the name of the document in the workspace
 	 * @param reference Reference of document to link to
-	 * @param createWorkspace controls if parent workspace will be created (if it doesn't exist)
-	 * @throws InvalidObject name if replaceExisting is false and an object with the given name already exists
-     * @throws InvalidWorkspace if workspace does not exist
+	 * @param returnExisting if true, will return any existing object with given name rather than failing
+	 * @throws InvalidObjectName name if an object with the given name already exists
      * @throws InvalidWorkspaceState if workspace is already closed
 	 * @throws InvalidReference 
+     * @return the new DocumentLink object
 	 */
-	public DocumentLink createDocumentLinkByName(
-	        String rootId,
-	        QualifiedName documentName,
+    public default DocumentLink createDocumentLinkByName(
+	        Workspace workspace,
+	        String documentName,
 	        Reference reference,
-	        boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
-	
+	        boolean returnExisting) throws InvalidObjectName, InvalidWorkspaceState, InvalidReference {
+        try {
+            return createDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), reference, false, returnExisting);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+		
 	/** Create a link to an existing document by reference.
-	 * 
-	 * Creates a link to an existing document with a new name inside a given workspace. The name is generated
-     * and guaranteed unique in the workspace.
+     * 
+     * Creates a link to an existing document with a new name inside a given workspace
 	 * 
      * @param rootId the Id of the 'root' workspace
-     * @param workspaceName the fully qualified name of the workspace
+     * @param workspaceName the fully qualified name of the document in the workspace
 	 * @param reference Reference of document to link to
 	 * @param createWorkspace controls if parent workspace will be created (if it doesn't exist)
      * @param returnExisting controls if the name of an existing link to the document will be returned, or an error generated
-     * @throws InvalidWorkspace if workspace does not exist
+     * @throws com.softwareplumbers.dms.RepositoryService.InvalidWorkspace
+     * @throws com.softwareplumbers.dms.RepositoryService.InvalidReference
+     * @throws InvalidObjectName if name already taken
      * @throws InvalidWorkspaceState if workspace is already closed
-	 * @throws InvalidReference if the supplied reference is not valid
      * @return the new DocumentLink object
 	 */
-	public DocumentLink createDocumentLink(
+	public DocumentLink createDocumentLinkByName(
 	        String rootId,
 	        QualifiedName workspaceName,
 	        Reference reference,
-	        boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference;
+	        boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidReference, InvalidObjectName, InvalidWorkspaceState;
+    
+	/** Create a link to an existing document by reference.
+     * 
+     * Creates a link to an existing document with a new name inside a given workspace
+	 * 
+     * @param workspace the workspace in which to create the document link
+	 * @param document  Document to link to
+     * @param name name of document in the workspace
+     * @param returnExisting controls if the name of an existing link to the document will be returned, or an error generated
+     * @throws InvalidObjectName if name already taken
+     * @throws InvalidWorkspaceState if workspace is already closed
+     * @return the new DocumentLink object
+	 */
+    public default DocumentLink createDocumentLinkByName(Workspace workspace, String name, Document document, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName {
+        try {
+            return createDocumentLinkByName(workspace, name, document.getReference(), returnExisting);
+        } catch (InvalidReference e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
 	
+    public default DocumentLink updateDocumentLink(DocumentLink link, MediaType mediaType, 
+        InputStreamSupplier stream, 
+		JsonObject metadata) throws InvalidWorkspaceState {
+        try {
+            return updateDocumentLinkByName(Constants.ROOT_ID, link.getName(), mediaType, stream, metadata, false, false);
+        } catch (InvalidWorkspace | InvalidObjectName e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
+	/** Update a document in the repository.
+	 * 
+	 * Updates document within the given workspace. The first parts of the given name are the
+	 * name of the workspace. The last part of the given name is used as the name of the document
+	 * within the workspace.
+	 * 
+	 * @param workspace The workspace in which to create the document 
+	 * @param documentName the name of the document in a workspace
+	 * @param mediaType the type of document, null if unchanged
+	 * @param stream a supplier function that produces a stream of binary data representing the document, null if unchanged
+	 * @param metadata a Json object describing the document, null if unchanged
+     * @param createDocument if true, create a new document instead of throwing error if document does not exist
+	 * @return A Reference object that can later be used to retrieve the document
+	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
+	 * @throws InvalidWorkspaceState if workspace is already closed
+     * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
+	 */
+    public default DocumentLink updateDocumentLinkByName(
+			Workspace workspace,
+            String documentName,
+			MediaType mediaType, 
+			InputStreamSupplier stream, 
+			JsonObject metadata, 
+			boolean createDocument) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
+        return updateDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), mediaType, stream, metadata, false, createDocument);
+    }
+    
 	/** Update a document in the repository.
 	 * 
 	 * Updates document within the given workspace. The first parts of the given name are the
@@ -280,51 +433,80 @@ public interface RepositoryService {
 	 * 
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param documentName the fully qualified name of the document in a workspace
-     * @param newName a new name for the document (in same workspace), null if unchanged.
 	 * @param mediaType the type of document, null if unchanged
 	 * @param stream a supplier function that produces a stream of binary data representing the document, null if unchanged
 	 * @param metadata a Json object describing the document, null if unchanged
 	 * @param createWorkspace if true, create a new workspace instead of throwing error if workspace does not exist
-     * @param createDocument if true, create a new document instead of throwing error if document does not exist
+     * @param createLink if true, create a new document instead of throwing error if document does not exist
 	 * @return A Reference object that can later be used to retrieve the document
 	 * @throws InvalidWorkspace if workspace does not exist (and createWorkspace is false)
 	 * @throws InvalidWorkspaceState if workspace is already closed
      * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
 	 */
-	public Reference updateDocumentLinkByName(
+	public DocumentLink updateDocumentLinkByName(
 			String rootId,
 			QualifiedName documentName,
-            QualifiedName newName,
 			MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			boolean createWorkspace,
-			boolean createDocument) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
+			boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
 	
+    public default DocumentLink updateDocumentLinkByName(Workspace workspace, String name, Reference reference, boolean createLink) throws InvalidReference, InvalidWorkspaceState, InvalidObjectName {
+        try {
+            return updateDocumentLinkByName(workspace.getId(), QualifiedName.of(name), reference, false, createLink);
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
     /** Update or create a link to an existing document by reference.
      * 
      * Creates a link to an existing document with a new name inside a given workspace.
      * 
      * @param rootId the Id of the 'root' workspace
-     * @param documentName the fully qualified name of the document in a workspace
-     * @param newName a new name for the document (in same workspace), null if unchanged.
+     * @param documentName the name of the document relative to rootId
      * @param reference Reference of document to link to, null if unchanged
      * @param createWorkspace Allow workspace creation if workspace dos not exist
      * @param createLink if true, create a new document link instead of throwing error if document link does not exist
+     * @return the updated document link
      * @throws InvalidWorkspace if document link or workspace does not exist and createWorkspace is false
      * @throws InvalidWorkspaceState if workspace is already closed
      * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
      * @throws InvalidReference if reference does not refer to a valid document
      * 
      */
-    public void updateDocumentLinkByName(
+    public DocumentLink updateDocumentLinkByName(
             String rootId,
             QualifiedName documentName,
-            QualifiedName newName,
             Reference reference,
             boolean createWorkspace,
             boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
+    
+    
+    public default DocumentLink updateDocumentLinkByName(
+            Workspace workspace,
+            String name,
+            Document document,
+            boolean createLink) throws InvalidObjectName, InvalidWorkspaceState {
+        try {   
+            return updateDocumentLinkByName(workspace, name, document.getReference(), createLink);
+        } catch (InvalidReference ex) {
+            throw new BaseRuntimeException(ex);
+        }
+    }
 
+    public default DocumentLink updateDocumentLink(DocumentLink link, Reference reference) throws InvalidWorkspaceState, InvalidReference {
+        try {
+            return updateDocumentLinkByName(Constants.ROOT_ID, link.getName(), reference, false, false);
+        } catch (InvalidWorkspace | InvalidObjectName e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+        
+    public default DocumentLink updateDocumentLink(DocumentLink link, Document document) throws InvalidWorkspaceState, InvalidReference {
+        return updateDocumentLink(link, document.getReference());
+    }
     
 	/** Catalog a repository.
 	 * 
@@ -367,6 +549,15 @@ public interface RepositoryService {
 	 */
 	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, Query filter, boolean searchHistory) throws InvalidWorkspace;
 
+    
+    public default Stream<NamedRepositoryObject> catalogueByName(Workspace workspace, QualifiedName path, Query filter, boolean searchHistory) {
+        try {
+            return catalogueByName(workspace.getId(), path, filter, searchHistory);
+        } catch(InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }   
+    }
+    
 	/** Catalog a workspace.
 	 * <p>
 	 * Returns information (including reference and meta-data) about documents in a workspace 
@@ -404,6 +595,10 @@ public interface RepositoryService {
 	 */
 	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference;
 		
+    public default Workspace createWorkspaceByName(Workspace workspace, String name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace {
+        return createWorkspaceByName(workspace.getId(), QualifiedName.of(name), state, metadata, false);
+    }
+    
 	/** Create a workspace 
 	 * 
 	 * Workspaces may be open, finalized or closed; catalog operations on a closed or finalized
@@ -416,12 +611,17 @@ public interface RepositoryService {
 	 * @param name name of workspace to create relative to base
 	 * @param state Initial/Updated state of workspace (optional)
 	 * @param metadata additional info describing the workspace
+     * @param createParent flag whether to create parents if they don't exist
 	 * @return the id of the created workspace
-	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
+	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist, or workspace already exists
 	 */
-	public String createWorkspaceByName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
-	
-	/** Create a workspace 
+	public Workspace createWorkspaceByName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspace;
+
+    public default Workspace createWorkspaceAndName(Workspace workspace, Workspace.State state, JsonObject metadata) throws InvalidWorkspace {
+        return createWorkspaceAndName(workspace.getId(), QualifiedName.ROOT, state, metadata, false);
+    }
+    
+    /** Create a workspace with a system-generated name
 	 * 
 	 * Workspaces may be open, finalized or closed; catalog operations on a closed or finalized
 	 * workspace work on the versions of documents that were current at the time the workspace
@@ -429,40 +629,16 @@ public interface RepositoryService {
 	 * new versions of the document but will not change the workspace; attempting such operations
 	 * on a closed workspace will throw an error.
 	 * 
-	 * @param id Id of workspace to create (optional - id will be generated if not supplied)
+	 * @param rootId base location id
+	 * @param name name of workspace in which to create new workspace
 	 * @param state Initial/Updated state of workspace (optional)
 	 * @param metadata additional info describing the workspace
-	 * return the id of the created workspace
-	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
+     * @param createParent flag whether to create parents if they don't exist
+	 * @return the id of the created workspace
+	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist, or workspace 
 	 */
-	public String createWorkspaceById(String id, Workspace.State state, JsonObject metadata) throws InvalidWorkspace;
-
+	public Workspace createWorkspaceAndName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspace;
 	
-	/** Create or update a workspace 
-	 * 
-	 * A workspace may be specified by id 
-	 * 
-	 * If name or state is null, the relevant attribute in the workspace is not updated.
-	 * 
-	 * Creates a workspace with the given id if one does not exist. Otherwise,
-	 * update the state of the workspace.
-	 * 
-	 * Workspaces may be open, finalized or closed; catalog operations on a closed or finalized
-	 * workspace work on the versions of documents that were current at the time the workspace
-	 * was closed. Operations that create or update documents in a finalized workspace will create
-	 * new versions of the document but will not change the workspace; attempting such operations
-	 * on a closed workspace will throw an error.
-	 * 
-	 * @param id id of workspace to create/update
-	 * @param name new name of workspace
-	 * @param state Initial/Updated state of workspace
-	 * @param metadata workspace metadata
-	 * @param createWorkspace create workspace with given name if it does not already exist
-	 * @return the id of the created/updated workspace
-	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exisit
-	 */
-	public String updateWorkspaceById(String id, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
-
 	/** Create or update a workspace 
 	 * 
 	 * A workspace may be specified by id 
@@ -480,15 +656,22 @@ public interface RepositoryService {
 	 * 
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param name name of workspace to create/update
-	 * @param newName new name for workspace
 	 * @param state Initial/Updated state of workspace
 	 * @param metadata workspace metadata
 	 * @param createWorkspace create workspace with given name if it does not already exist
 	 * @return the id of the created/updated workspace
 	 * @throws InvalidWorkspace if createWorkspace is false and workspace does not already exist
 	 */
-	public String updateWorkspaceByName(String rootId, QualifiedName name, QualifiedName newName, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
+	public Workspace updateWorkspaceByName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace;
 
+    public default NamedRepositoryObject getObjectByName(Workspace workspace, String name) throws InvalidObjectName {
+        try {
+            return getObjectByName(workspace.getId(), QualifiedName.of(name));
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
 	/** Get current state of workspace, document, or document part
      * 
      * Note: this method should not be called by preference; one of the type-specific methods getWorkspaceByName,
@@ -503,6 +686,14 @@ public interface RepositoryService {
 	 */
 	public NamedRepositoryObject getObjectByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
 
+    public default Workspace getWorkspaceByName(Workspace workspace, String name) throws InvalidObjectName {
+        try {
+            return getWorkspaceByName(workspace.getId(), QualifiedName.of(name));
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+
     /** Get the current state of a workspace
      * 
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
@@ -513,14 +704,15 @@ public interface RepositoryService {
      */
     public Workspace getWorkspaceByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;  
     
-	/** Get current state of workspace 
-	 * 
-	 * @param id the id of the requested workspace
-	 * @return a Workspace object containing current workspace state
-	 * @throws InvalidWorkspace if workspace does not already exist
-	 */
-	public Workspace getWorkspaceById(String id) throws InvalidWorkspace;
-
+    public default void deleteDocument(Workspace workspace, String name, Document document) throws InvalidWorkspaceState, InvalidDocumentId {
+        try {
+            deleteDocument(workspace.getId(), QualifiedName.of(name), document.getId());
+        } catch (InvalidWorkspace e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+    
+    
 	/** Remove a document from a workspace
 	 *   
 	 *  Removing a document from an open workspace will remove that document
@@ -534,7 +726,7 @@ public interface RepositoryService {
 	 * @throws InvalidDocumentId if document is not in workspace
 	 * @throws InvalidWorkspaceState if workspace is not open
 	 */
-	public void deleteDocument(String workspace_id, QualifiedName path, String doc_id) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState;
+	public void deleteDocument(String root_id, QualifiedName path, String doc_id) throws InvalidWorkspace, InvalidDocumentId, InvalidWorkspaceState;
 	
 	/** Remove a document from a workspace
 	 *   
@@ -545,7 +737,7 @@ public interface RepositoryService {
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
 	 * @param objectName Object id to remove from its parent workspace
 	 * @throws InvalidWorkspace if workspace does not exist
-	 * @throws InvalidDocumentId if document is not in workspace
+	 * @throws InvalidObjectName if document is not in workspace
 	 * @throws InvalidWorkspaceState if workspace is not open
 	 */
 	public void deleteObjectByName(String rootId, QualifiedName objectName) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
@@ -560,4 +752,20 @@ public interface RepositoryService {
      * @throws InvalidDocumentId if if does not reference a valid document
 	 */
 	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter) throws InvalidDocumentId;
+    
+    public default Workspace refresh(Workspace workspace) {
+        try {
+            return getWorkspaceByName(workspace.getId(), QualifiedName.ROOT);
+        } catch (InvalidWorkspace | InvalidObjectName e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
+
+    public default DocumentLink refresh(DocumentLink documentLink) {
+        try {
+            return getDocumentLinkByName(Constants.ROOT_ID, documentLink.getName());
+        } catch (InvalidWorkspace | InvalidObjectName e) {
+            throw new BaseRuntimeException(e);
+        }
+    }
 }

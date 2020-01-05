@@ -5,9 +5,13 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.StreamableDocumentPart;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.core.MediaTypes;
-import static com.softwareplumbers.dms.rest.server.model.Constants.EMPTY_METADATA;
+import static com.softwareplumbers.dms.Constants.EMPTY_METADATA;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;

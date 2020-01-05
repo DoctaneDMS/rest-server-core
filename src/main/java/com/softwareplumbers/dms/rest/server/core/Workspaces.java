@@ -32,29 +32,29 @@ import org.glassfish.jersey.media.multipart.MultiPartMediaTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.softwareplumbers.dms.rest.server.model.Document;
-import com.softwareplumbers.dms.rest.server.model.DocumentLink;
-import com.softwareplumbers.dms.rest.server.model.NamedRepositoryObject;
-import com.softwareplumbers.dms.rest.server.model.Reference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryObject;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.DocumentLink;
+import com.softwareplumbers.dms.NamedRepositoryObject;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryService;
+import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.dms.rest.server.util.Log;
-import com.softwareplumbers.dms.rest.server.model.Workspace;
+import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService.ObjectAccessRole;
 
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObject;
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
+import com.softwareplumbers.dms.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
@@ -410,7 +410,7 @@ public class Workspaces {
             if (workspacePath == null || workspacePath.isEmpty())
                 return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
-            RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
+            RepositoryObject.Type type = RepositoryObject.getType(object);
 
             Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, getRequiredRole(updateType));
                 
@@ -420,38 +420,41 @@ public class Workspaces {
             
             if (type == RepositoryObject.Type.WORKSPACE) {
 
-                String updateName = object.getString("name",null);
-                QualifiedName updateQName = updateName == null ? null : QualifiedName.parse(updateName, "/");
-                String stateString = object.getString("state", null);
-                Workspace.State state = stateString == null ? null : Workspace.State.valueOf(stateString);
-                JsonObject metadata = object.getJsonObject("metadata");
+                Workspace.State state = Workspace.getState(object);
+                JsonObject metadata = RepositoryObject.getMetadata(object);
     
-                String wsId;
+                Workspace workspace;
 
                 if (updateType == UpdateType.CREATE) {
-                    wsId = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata);
+                    workspace = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, true);
                 } else {
-                    wsId = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, updateQName, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
+                    workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
                 
-                JsonObjectBuilder result = Json.createObjectBuilder();
-                result.add("id", wsId);
-                return LOG.logResponse("put", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.build()).build());    
+                return LOG.logResponse("put", Response.accepted().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build());    
 
             } else {
 
-                Reference reference = Reference.fromJson(object.getJsonObject("reference"));                
-                JsonObject metadata = object.getJsonObject("metadata");
-                if (metadata != null && !metadata.isEmpty()) {
-                    service.updateDocument(reference.id, null, null, metadata);
+                Reference reference = Document.getReference(object);                
+                JsonObject metadata = RepositoryObject.getMetadata(object);
+                DocumentLink link;
+                
+                if (updateType == UpdateType.CREATE) {
+                    if (reference == null) {
+                        throw new InvalidDocumentId("null");
+                    } else {
+                        link = service.createDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, false);
+                    }
+                    
+                } else {
+                    link = service.updateDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
                 
-                if (updateType == UpdateType.CREATE)
-                    service.createDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
-                else
-                    service.updateDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                if (metadata != null && !metadata.isEmpty()) {
+                    link = service.updateDocumentLink(link, null, null, metadata);
+                }
                 
-                return LOG.logResponse("put", Response.accepted().build());
+                return LOG.logResponse("put", Response.accepted().entity(link.toJson()).build());
             }
         } catch (InvalidWorkspace err) {
             LOG.log.severe(err.getMessage());
@@ -538,7 +541,7 @@ public class Workspaces {
                 if (metadata != null && !metadata.isEmpty()) {
                     service.updateDocument(reference.id, null, null, metadata);
                 }
-                DocumentLink link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.logResponse("post", Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
@@ -573,6 +576,7 @@ public class Workspaces {
      * 
      * @param repository string identifier of a document repository
      * @param path to document
+     * @param newPath to document
      * @param metadata_part metadata for document
      * @param file_part actual document file
      * @param createWorkspace set true if we want to create any workspaces which do not exist, but are specified in the path
@@ -610,7 +614,7 @@ public class Workspaces {
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
 
-            Reference result = service.updateDocumentLinkByName(
+            DocumentLink result = service.updateDocumentLinkByName(
                     path.rootId, 
                     path.staticPath, 
                     computedMediaType,
@@ -634,7 +638,7 @@ public class Workspaces {
         } 
     }
     
-        /** PUT document on path /ws/{repository}/{path}
+    /** POST document on path /ws/{repository}/{path}
      * 
      * A path as several elements separated by '/'. If the first
      * element is a '~', what follows is assumed to be a workspace id. If not, we assume it 

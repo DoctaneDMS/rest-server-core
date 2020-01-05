@@ -1,5 +1,14 @@
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.DocumentNavigatorService;
+import com.softwareplumbers.dms.NamedRepositoryObject;
+import com.softwareplumbers.dms.Workspace;
+import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.DocumentPart;
+import com.softwareplumbers.dms.DocumentLink;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.RepositoryService;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
@@ -18,17 +27,18 @@ import com.softwareplumbers.common.abstractquery.JsonUtil;
 import static com.softwareplumbers.common.abstractquery.JsonUtil.parseObject;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.rest.server.core.MediaTypes;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.dms.rest.server.model.Workspace.State;
+import com.softwareplumbers.dms.RepositoryService.InvalidDocumentId;
+import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
+import com.softwareplumbers.dms.RepositoryService.InvalidReference;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.Workspace.State;
 
-import static com.softwareplumbers.dms.rest.server.model.Constants.*;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.DocumentFormatException;
-import com.softwareplumbers.dms.rest.server.model.DocumentNavigatorService.PartNotFoundException;
-import com.softwareplumbers.dms.rest.server.model.RepositoryService.InvalidWorkspaceState;
+import static com.softwareplumbers.dms.Constants.*;
+import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
+import com.softwareplumbers.dms.RepositoryService.InvalidWorkspaceState;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -57,29 +67,20 @@ public abstract class BaseRepositoryServiceTest {
 	public abstract String randomWorkspaceId();
     public abstract JsonObject randomMetadata();
     public abstract String uniqueMetadataField();
-	
-	@Test
-	public void testAnonymousCreateWorkspace() throws RepositoryService.BaseException {
-		String workspace1 = service().createWorkspaceById(null, State.Open, null);
-		assertNotNull(workspace1);
-		String workspace2 = service().createWorkspaceById(null, State.Open, null);
-		assertNotNull(workspace2);
-		assertNotEquals(workspace1, workspace2);
-	}
-	
+		
 	@Test
 	public void testCreateAndFindWorkspaceWithURLSafeName() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		String workspace = service().createWorkspaceByName(ROOT_ID, name, State.Open, null);
+		Workspace ws1 = service().createWorkspaceByName(ROOT_ID, name, State.Open, null, false);
 		Workspace ws = (Workspace)service().getObjectByName(ROOT_ID, name);
-		assertEquals(workspace, ws.getId());
+		assertEquals(ws1.getId(), ws.getId());
 	}
-       
+/*       
     @Test 
 	public void testWorkspaceUpdateByIdWithNewPath() throws RepositoryService.BaseException {
 		String id = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , EMPTY_METADATA);
         QualifiedName newName = randomQualifiedName();
-        service().updateWorkspaceById(id, newName, State.Open, EMPTY_METADATA, true);
+        service().updateWorkspaceByName(id, null, newName, State.Open, EMPTY_METADATA, true);
         Workspace result = service().getWorkspaceByName(ROOT_ID, newName);
         assertEquals(id, result.getId());
 	}
@@ -101,9 +102,9 @@ public abstract class BaseRepositoryServiceTest {
 
    @Test(expected = InvalidWorkspace.class)
 	public void testWorkspaceUpdateByIdWithNewPathOriginalMustExist() throws RepositoryService.BaseException {
-        service().updateWorkspaceById(randomWorkspaceId(), randomQualifiedName(), State.Open, EMPTY_METADATA, true);
+        service().updateWorkspaceByName(randomWorkspaceId(), null, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
 	}
-    
+*/    
 	@Test(expected = InvalidReference.class)
 	public void testRepositoryFetchWithInvalidRef() throws IOException, InvalidReference {
 		Reference ref1 = randomDocumentReference();
@@ -118,19 +119,19 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test (expected = InvalidWorkspace.class)
 	public void testGetWorkspaceNotFoundByIdError() throws RepositoryService.BaseException {
-		Workspace test = service().getWorkspaceById(randomWorkspaceId());
+		Workspace test = service().getWorkspaceByName(randomWorkspaceId(), null);
 	}
 
 	@Test (expected = InvalidWorkspace.class)
 	public void testUpdateWorkspaceNotFoundError() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		service().updateWorkspaceByName(ROOT_ID, name, null, Workspace.State.Closed, null, false);
+		service().updateWorkspaceByName(ROOT_ID, name, Workspace.State.Closed, null, false);
 	}
     
 	@Test (expected = InvalidDocumentId.class)
 	public void testDeleteDocumentInvalidDocumentError() throws RepositoryService.BaseException {
-		String workspace = service().createWorkspaceById(null, State.Open, null);
-		service().deleteDocument(workspace, QualifiedName.ROOT, randomDocumentReference().getId());
+		Workspace workspace = service().createWorkspaceAndName(ROOT_ID, null, State.Open, null, false);
+		service().deleteDocument(workspace.getId(), QualifiedName.ROOT, randomDocumentReference().getId());
 	}
 
 	@Test (expected = InvalidWorkspace.class)
@@ -156,7 +157,7 @@ public abstract class BaseRepositoryServiceTest {
 			assertEquals(testData.length(), doc.getLength());
 		}
 	}
-	
+/*	
 	@Test
 	public void testRenameWorkspace() throws RepositoryService.BaseException {
 		String wsId = service().createWorkspaceById(null, State.Open, null);
@@ -173,7 +174,7 @@ public abstract class BaseRepositoryServiceTest {
 		String wsId = service().createWorkspaceById(null, State.Open, null);
 		service().updateWorkspaceById(wsId,wsName, null, null, false);
 	}
-	
+*/	
 	@Test
 	public void testSearchForWorkspaceByWildcard() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
@@ -183,10 +184,10 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName peter_carter = carter.add("peter");
 		QualifiedName pamela_jones = jones.add("pamela");
 		QualifiedName roger_carter = carter.add("roger");
-		service().createWorkspaceByName(ROOT_ID, peter_jones, State.Open, null);
-		service().createWorkspaceByName(ROOT_ID, peter_carter, State.Open, null);
-		service().createWorkspaceByName(ROOT_ID, pamela_jones, State.Open, null);
-		service().createWorkspaceByName(ROOT_ID, roger_carter, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, peter_jones, State.Open, null, true);
+		service().createWorkspaceByName(ROOT_ID, peter_carter, State.Open, null, true);
+		service().createWorkspaceByName(ROOT_ID, pamela_jones, State.Open, null, true);
+		service().createWorkspaceByName(ROOT_ID, roger_carter, State.Open, null, true);
 				
 		assertEquals(4, service().catalogueByName(ROOT_ID, base.addAll("*","*"), Query.UNBOUNDED, false).count());
 		assertEquals(2, service().catalogueByName(ROOT_ID,base.addAll("jones","*"), Query.UNBOUNDED, false).count());
@@ -199,7 +200,7 @@ public abstract class BaseRepositoryServiceTest {
 	public void testWorkspaceMetadataRoundtrip() throws RepositoryService.BaseException {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
-		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata);
+		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata, true);
 		Workspace fetched =  (Workspace)service().getObjectByName(ROOT_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 	}
@@ -209,8 +210,8 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		QualifiedName jones = base.add("jones");
 		QualifiedName carter = base.add("carter");
-		service().createWorkspaceByName(ROOT_ID, base, State.Open, null);
-		service().createWorkspaceByName(ROOT_ID, jones, State.Open, null);
+		service().createWorkspaceByName(ROOT_ID, base, State.Open, null, true);
+		service().createWorkspaceByName(ROOT_ID, jones, State.Open, null, true);
 		service().createDocumentLinkByName(null, carter, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), null, false);
 		assertEquals(2,service().catalogueByName(ROOT_ID, base.add("*"), Query.UNBOUNDED, false).count());
 	}
@@ -220,13 +221,13 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName base = QualifiedName.of(randomUrlSafeName());
 		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
-		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata1);
-		service().updateWorkspaceByName(ROOT_ID,base, null, null, testMetadata2, false);
+		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata1, true);
+		service().updateWorkspaceByName(ROOT_ID,base, null, testMetadata2, false);
 		Workspace fetched = (Workspace) service().getObjectByName(ROOT_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 		assertEquals("alcatraz", fetched.getMetadata().getString("Team"));
 		JsonObject testMetadata3 = Json.createObjectBuilder().add("Branch", JsonValue.NULL).build();
-		service().updateWorkspaceByName(ROOT_ID,base, null, null, testMetadata3, false);
+		service().updateWorkspaceByName(ROOT_ID,base, null, testMetadata3, false);
 		Workspace fetched2 = (Workspace)service().getObjectByName(ROOT_ID,base);
 		assertEquals(null, fetched2.getMetadata().getString("Branch",null));
 		assertEquals("alcatraz", fetched2.getMetadata().getString("Team"));
@@ -246,155 +247,139 @@ public abstract class BaseRepositoryServiceTest {
 	@Test
 	public void testWorkspaceNameRoundtrip() throws RepositoryService.BaseException {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
-		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
-		Workspace workspace = service().getWorkspaceById(wsid);
+		Workspace workspace0 = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA, true);
+		Workspace workspace = service().getWorkspaceByName(workspace0.getId(), null);
+		assertEquals(name, workspace0.getName());
 		assertEquals(name, workspace.getName());
 	}
 	
 	@Test
 	public void testCreateAndFindWorkspaceWithPath() throws RepositoryService.BaseException {
 		QualifiedName name = randomQualifiedName();
-		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
+		Workspace workspace0 = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA, true);
 		Workspace workspace = (Workspace)service().getObjectByName(ROOT_ID, name);
-		assertEquals(wsid, workspace.getId());
+		assertEquals(workspace0.getId(), workspace.getId());
 	}
 
 	@Test
-	public void testWorkspacePathRoundtrip() throws RepositoryService.BaseException {
-		QualifiedName name = randomQualifiedName();
-		String wsid = service().createWorkspaceByName(ROOT_ID, name, State.Open, EMPTY_METADATA);
-		Workspace workspace = service().getWorkspaceById(wsid);
-		assertEquals(name, workspace.getName());
-	}
-	
-	@Test
 	public void testGetObjectById() throws RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
-		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
+		Workspace workspace0 = service().createWorkspaceAndName(ROOT_ID, QualifiedName.ROOT, State.Open, EMPTY_METADATA, true);
+		RepositoryObject ro = service().getObjectByName(workspace0.getId(), QualifiedName.ROOT);
 		assertEquals(RepositoryObject.Type.WORKSPACE, ro.getType());
 	}
 	
 	@Test
 	public void testGeneratedWorkspaceName() throws RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
-		String wsId2 = service().createWorkspaceByName(wsId, null, State.Open, EMPTY_METADATA);
-		RepositoryObject ro = service().getObjectByName(wsId, QualifiedName.ROOT);
-		assertEquals(QualifiedName.of("~" + wsId), ((Workspace)ro).getName());
-		RepositoryObject ro2 = service().getObjectByName(wsId2, QualifiedName.ROOT);
-		assertEquals(2, ((Workspace)ro2).getName().size());
+		Workspace workspace0 = service().createWorkspaceAndName(ROOT_ID, QualifiedName.ROOT, State.Open, EMPTY_METADATA, true);
+		Workspace workspace1 = service().createWorkspaceAndName(workspace0, State.Open, EMPTY_METADATA);
+		assertEquals(1, service().refresh(workspace0).getName().size());
+		assertEquals(2, service().refresh(workspace1).getName().size());
 	}
 
 	@Test
 	public void testGeneratedDocumentName() throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName, InvalidReference {
         QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        DocumentLink link = service().createDocumentLink(ROOT_ID, name1, ref1, true, false);
+        DocumentLink link = service().createDocumentLinkAndName(ROOT_ID, name1, ref1, true, false);
 	    assertEquals(ref1, link.getReference());
         assertThat(link.getName().toString(), startsWith(name1.toString()));
         assertThat(link.getName().size(), greaterThan(name1.size()));
         assertThat(link.getName().part, not(isEmptyString()));
 	}
-    
+ /*   
     @Test
 	public void testUpdateWorkspaceReturnsSameId() throws InvalidWorkspace, InvalidObjectName {
 		JsonObject DUMMY_METADATA = Json.createObjectBuilder()
 				.add("Branch", "XYZABC")
 				.add("Team", "TEAM1")
 				.build();
-		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
+		String wsId = service().createWorkspaceById(State.Open, EMPTY_METADATA);
 		QualifiedName name = randomQualifiedName();
-		String resultId = service().updateWorkspaceByName(wsId, QualifiedName.ROOT, name, null, DUMMY_METADATA, true);
+		String resultId = service().updateWorkspaceByName(wsId, QualifiedName.ROOT, name, DUMMY_METADATA, true);
 		assertEquals(wsId, resultId);
 	}
-	
+*/	
 	@Test
 	public void testCreateDocumentLink() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA, false);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         QualifiedName docName = name1.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
+        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true, true);
 	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
 	    assertEquals(ref1, doc1.getReference());
 	}
     
     @Test
 	public void testCreateDocumentLinkGeneratedName() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        DocumentLink newLink = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        DocumentLink newLink = service().createDocumentLinkAndName(workspace, ref1, false);
 	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, newLink.getName());
 	    assertEquals(ref1, doc1.getReference());
 	}
     
     @Test
 	public void testCreateDocumentLinkGeneratedNameSequence() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         String originalText2 = randomText();
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText2), EMPTY_METADATA);
-        DocumentLink link1 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-        DocumentLink link2 = service().createDocumentLink(ROOT_ID, name1, ref2, true, true);
+        DocumentLink link1 = service().createDocumentLinkAndName(workspace, ref1, false);
+        DocumentLink link2 = service().createDocumentLinkAndName(workspace, ref2, false);
 	    assertNotEquals(link1.getName(), link2.getName());
 	}
 
     @Test
 	public void testCreateDocumentLinkGeneratedNameSameObject() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        DocumentLink link1 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-        DocumentLink link2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
+        DocumentLink link1 = service().createDocumentLinkAndName(workspace, ref1, true);
+        DocumentLink link2 = service().createDocumentLinkAndName(workspace, ref1, true);
 	    assertEquals(link1.getName(), link2.getName());
 	}
     
     @Test(expected = InvalidReference.class)
 	public void testCreateDocumentLinkGeneratedNameSameObjectError() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        DocumentLink link1 = service().createDocumentLink(ROOT_ID, name1, ref1, true, true);
-        DocumentLink link2 = service().createDocumentLink(ROOT_ID, name1, ref1, true, false); // false - so should be an error
+        DocumentLink link1 = service().createDocumentLinkAndName(workspace, ref1, true);
+        DocumentLink link2 = service().createDocumentLinkAndName(workspace, ref1, false); // false - so should be an error
 	    assertEquals(link1.getName(), link2.getName());
 	}
     
     @Test
 	public void testUpdateDocumentLink() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        QualifiedName docName = name1.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
-	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+        DocumentLink link1 = service().createDocumentLinkByName(workspace, randomUrlSafeName(), ref1, true);
+	    Document doc1 = service().refresh(link1);
 	    assertEquals(ref1, doc1.getReference());
-        service().updateDocumentLinkByName(ROOT_ID, docName, ref2, false, false);
-	    Document doc2 = (Document)service().getObjectByName(ROOT_ID, docName);
+        service().updateDocumentLink(link1, ref2);
+	    Document doc2 = (Document)service().refresh(link1);
 	    assertEquals(ref2, doc2.getReference());
 	}
     
     @Test
 	public void testupdateDocumentLinkByName() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        QualifiedName docName = name1.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, docName, ref1, true);
-	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+        DocumentLink link = service().createDocumentLinkByName(workspace, randomUrlSafeName(), ref1, true);
+	    Document doc1 = service().refresh(link);
 	    assertEquals(ref1, doc1.getReference());
-        service().updateDocumentLinkByName(ROOT_ID, docName, null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
-	    Document doc2 = (Document)service().getObjectByName(ROOT_ID, docName);
+        service().updateDocumentLink(link, null, null, JsonUtil.parseObject("{'Description':'Text Document'}"));
+	    Document doc2 = (Document)service().refresh(link);
 	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
 	}
     
@@ -404,84 +389,74 @@ public abstract class BaseRepositoryServiceTest {
     */
     @Test
 	public void testEquivalenceOfNameAndId() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        String wsid = service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        String docPart = randomUrlSafeName(); 
-        QualifiedName docName = name1.add(docPart);
-        service().createDocumentLinkByName(wsid, QualifiedName.of(docPart), ref1, true);
-	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
-	    assertEquals(ref1, doc1.getReference());
-        service().updateDocumentLinkByName(wsid, QualifiedName.of(docPart), null, null, JsonUtil.parseObject("{'Description':'Text Document'}"), true, true);
-	    Document doc2 = (Document)service().getObjectByName(wsid, QualifiedName.of(docPart));
-	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
+        DocumentLink link1 = service().createDocumentLinkByName(workspace, randomUrlSafeName(), ref1, true);
+	    Document doc1 = service().getDocumentLinkByName(workspace, link1.getName().part);
+	    Document doc2 = service().getDocumentLinkByName(Constants.ROOT_ID, link1.getName());
+	    assertEquals(doc1.getReference(), doc2.getReference());
+        service().updateDocumentLinkByName(Constants.ROOT_ID, link1.getName(), null, null, JsonUtil.parseObject("{'Description':'Text Document1'}"), true, true);
+	    Document doc3 = service().refresh(link1);
+	    assertEquals("Text Document1", doc3.getMetadata().getString("Description"));
+        service().updateDocumentLinkByName(workspace, link1.getName().part, null, null, JsonUtil.parseObject("{'Description':'Text Document2'}"), true);
+	    Document doc4 = service().refresh(link1);
+	    assertEquals("Text Document2", doc4.getMetadata().getString("Description"));
 	}
     
     @Test
 	public void testUpdateDocumentLinkInCreateMode() throws RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        QualifiedName docName = name1.add(randomUrlSafeName());
-        service().updateDocumentLinkByName(ROOT_ID, docName, ref1, false, true);
-	    Document doc1 = (Document)service().getObjectByName(ROOT_ID, docName);
+        DocumentLink link = service().updateDocumentLinkByName(workspace, randomUrlSafeName(), ref1, true);
+	    Document doc1 = service().refresh(link);
 	    assertEquals(ref1, doc1.getReference());
     }
 	
 	@Test 
 	public void testSearchByDocumentId() throws RepositoryService.BaseException {
-	    QualifiedName name1 = randomQualifiedName();
-	    String wsId1 = service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
-	    QualifiedName name2 = randomQualifiedName();
-	    String wsId2 = service().createWorkspaceByName(ROOT_ID, name2, State.Open, EMPTY_METADATA);
+	    Workspace workspace1 = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
+	    Workspace workspace2 = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
 	    String originalText = randomText();
 	    Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-	    service().createDocumentLinkByName(ROOT_ID, name1.add("one"), ref1, true);
-	    service().createDocumentLinkByName(ROOT_ID, name2.add("two"), ref1, true);
+	    service().createDocumentLinkByName(workspace1, "one", ref1, true);
+	    service().createDocumentLinkByName(workspace2, "two", ref1, true);
 	    Stream<DocumentLink> result = service().listWorkspaces(ref1.id, null, Query.UNBOUNDED);
 	    assertEquals(2, result.count());
 	}
     
     @Test
 	public void testRepositorySearchByMediaType() throws IOException, RepositoryService.BaseException {
-        QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        Workspace workspace1 = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         Reference ref2 = service().createDocument(MediaType.APPLICATION_OCTET_STREAM_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        QualifiedName doc1Name = name1.add(randomUrlSafeName());
-        QualifiedName doc2Name = name1.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, doc1Name, ref1, true);
-        service().createDocumentLinkByName(ROOT_ID, doc2Name, ref2, true);
-		RepositoryObject[] result = service().catalogueByName(ROOT_ID, name1.add("*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
+        service().createDocumentLinkByName(workspace1, randomUrlSafeName(), ref1, true);
+        service().createDocumentLinkByName(workspace1, randomUrlSafeName(), ref2, true);
+		RepositoryObject[] result = service().catalogueByName(ROOT_ID, workspace1.getName().add("*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
 		assertEquals(1, result.length);
 		assertEquals(((Document)result[0]).getReference(), ref1);
 	}
     
     @Test
 	public void testRepositorySearchByFolderState() throws IOException, RepositoryService.BaseException {
-        QualifiedName name0 = randomQualifiedName();
-        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
-
-        QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
-        QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
+        Workspace workspace1 = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         
-        service().createWorkspaceByName(baseId, name1, State.Closed, EMPTY_METADATA);
-        service().createWorkspaceByName(baseId, name2, State.Open, EMPTY_METADATA);
-		RepositoryObject[] resultAll = service().catalogueByName(baseId, QualifiedName.of("*"), Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] result = service().catalogueByName(baseId, QualifiedName.of("*"), Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
+        Workspace workspace2 = service().createWorkspaceByName(workspace1, randomUrlSafeName(), State.Closed, EMPTY_METADATA);
+        Workspace workspace3 = service().createWorkspaceByName(workspace1, randomUrlSafeName(), State.Open, EMPTY_METADATA);
+		RepositoryObject[] resultAll = service().catalogueByName(workspace1, QualifiedName.of("*"), Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = service().catalogueByName(workspace1, QualifiedName.of("*"), Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
 		assertEquals(2, resultAll.length);
 		assertEquals(1, result.length);
-		assertEquals(name0.addAll(name1), ((Workspace)result[0]).getName());
+		assertEquals(workspace2.getName(), ((Workspace)result[0]).getName());
 	}
     
     @Test
 	public void testRepositorySearchByParentFolderStateAndMediaType() throws IOException, RepositoryService.BaseException {
         QualifiedName name0 = randomQualifiedName();
-        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+        Workspace workspace1 = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
 
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
@@ -492,16 +467,16 @@ public abstract class BaseRepositoryServiceTest {
         QualifiedName W1doc2Name = name1.add(randomUrlSafeName());
         QualifiedName W2doc1Name = name2.add(randomUrlSafeName());
         QualifiedName W2doc2Name = name2.add(randomUrlSafeName());
-        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true);
-        service().createDocumentLinkByName(baseId, W1doc2Name, ref2, true);
-        service().createDocumentLinkByName(baseId, W2doc1Name, ref1, true);
-        service().createDocumentLinkByName(baseId, W2doc2Name, ref2, true);
+        service().createDocumentLinkByName(workspace1.getId(), W1doc1Name, ref1, true, true);
+        service().createDocumentLinkByName(workspace1.getId(), W1doc2Name, ref2, true, true);
+        service().createDocumentLinkByName(workspace1.getId(), W2doc1Name, ref1, true, true);
+        service().createDocumentLinkByName(workspace1.getId(), W2doc2Name, ref2, true, true);
         // Close worspace 2
-        service().updateWorkspaceByName(baseId, name2, null, State.Closed, EMPTY_METADATA, false);
-		JsonObject[] resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).map(item->item.toJson()).toArray(JsonObject[]::new);
-		RepositoryObject[] resultClosed = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }"), false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] resultText = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
-		JsonObject[] resultClosedAndText = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}"), false).map(item->item.toJson()).toArray(JsonObject[]::new);
+        service().updateWorkspaceByName(workspace1.getId(), name2, State.Closed, EMPTY_METADATA, false);
+		JsonObject[] resultAll = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).map(item->item.toJson()).toArray(JsonObject[]::new);
+		RepositoryObject[] resultClosed = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] resultText = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
+		JsonObject[] resultClosedAndText = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}"), false).map(item->item.toJson()).toArray(JsonObject[]::new);
 		assertEquals(4, resultAll.length);
 		assertEquals(2, resultClosed.length);
 		assertEquals(2, resultText.length);
@@ -515,7 +490,7 @@ public abstract class BaseRepositoryServiceTest {
     @Test
 	public void testRepositorySearchContent() throws IOException, RepositoryService.BaseException {
         QualifiedName name0 = randomQualifiedName();
-        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA, true).getId();
 
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
@@ -526,13 +501,13 @@ public abstract class BaseRepositoryServiceTest {
         QualifiedName W1doc2Name = name1.add(randomUrlSafeName());
         QualifiedName W2doc1Name = name2.add(randomUrlSafeName());
         QualifiedName W2doc2Name = name2.add(randomUrlSafeName());
-        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true);
-        service().createDocumentLinkByName(baseId, W1doc2Name, ref2, true);
-        service().createDocumentLinkByName(baseId, W2doc1Name, ref1, true);
-        service().createDocumentLinkByName(baseId, W2doc2Name, ref2, true);
+        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true, true);
+        service().createDocumentLinkByName(baseId, W1doc2Name, ref2, true, true);
+        service().createDocumentLinkByName(baseId, W2doc1Name, ref1, true, true);
+        service().createDocumentLinkByName(baseId, W2doc2Name, ref2, true, true);
         // Close workspace 2
-        service().updateWorkspaceByName(baseId, name2, null, State.Closed, JsonUtil.parseObject("{'Description':'Closed Workspace'}"), false);
-        service().updateWorkspaceByName(baseId, name1, null, null, JsonUtil.parseObject("{'Description':'Open Workspace'}"), false);
+        service().updateWorkspaceByName(baseId, name2, State.Closed, JsonUtil.parseObject("{'Description':'Closed Workspace'}"), false);
+        service().updateWorkspaceByName(baseId, name1, null, JsonUtil.parseObject("{'Description':'Open Workspace'}"), false);
 		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).collect(Collectors.toList());
         
         assertEquals(2, countMatchingMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Text Document")));
@@ -541,7 +516,7 @@ public abstract class BaseRepositoryServiceTest {
     @Test
 	public void testGetDocumentLink() throws RepositoryService.BaseException, IOException {
         QualifiedName name0 = randomQualifiedName();
-        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA);
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, EMPTY_METADATA, true).getId();
 
         // Create a random document
         String originalText = randomText();        
@@ -550,7 +525,7 @@ public abstract class BaseRepositoryServiceTest {
         // Add document to a random folder
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName W1doc1Name = name1.add(randomUrlSafeName());
-        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true);
+        service().createDocumentLinkByName(baseId, W1doc1Name, ref1, true, true);
         
         // Get the document back again
         DocumentLink link = service().getDocumentLink(baseId, name1, ref1.id);        
@@ -564,7 +539,7 @@ public abstract class BaseRepositoryServiceTest {
     @Test
     public void testJsonRepresentation() throws RepositoryService.BaseException {
         QualifiedName name1 = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA);
+        service().createWorkspaceByName(ROOT_ID, name1, State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         Document doc1 = (Document)service().getDocument(ref1);
@@ -642,7 +617,7 @@ public abstract class BaseRepositoryServiceTest {
 		String workspace_id = randomWorkspaceId();
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-		service().createDocumentLink(workspace_id, null, ref1, true, true);
+		service().createDocumentLinkAndName(workspace_id, null, ref1, true, true);
 		assertEquals(service().catalogueById(workspace_id, null, false).count(), 1);
 		service().deleteDocument(workspace_id, QualifiedName.ROOT, ref1.id);
 		assertEquals(service().catalogueById(workspace_id, null, false).count(), 0);
@@ -655,20 +630,20 @@ public abstract class BaseRepositoryServiceTest {
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA);
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA);
         Reference ref3 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), EMPTY_METADATA);
-		service().createDocumentLink(workspace1, null, ref1, true, true);
-		service().createDocumentLink(workspace2, null, ref1, true, true);
-		service().createDocumentLink(workspace2, null, ref2, true, true);
-   		service().createDocumentLink(workspace2, null, ref3, true, true);
+		service().createDocumentLinkAndName(workspace1, null, ref1, true, true);
+		service().createDocumentLinkAndName(workspace2, null, ref1, true, true);
+		service().createDocumentLinkAndName(workspace2, null, ref2, true, true);
+   		service().createDocumentLinkAndName(workspace2, null, ref3, true, true);
 		assertEquals(2, service().listWorkspaces(ref1.id, null, Query.UNBOUNDED).count());
 		assertEquals(1, service().listWorkspaces(ref2.id, null, Query.UNBOUNDED).count());
 		assertEquals(1, service().listWorkspaces(ref3.id, null, Query.UNBOUNDED).count());
 	}
     
 	@Test
-	public void testSaveWorkspaceMetadata() throws InvalidWorkspace {
+	public void testSaveWorkspaceMetadata() throws InvalidWorkspace, InvalidObjectName {
         QualifiedName name0 = randomQualifiedName();
-        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, parseObject("{ 'Description': 'test metadata' }"));
-        Workspace workspace = service().getWorkspaceById(baseId);
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, parseObject("{ 'Description': 'test metadata' }"), true).getId();
+        Workspace workspace = service().getWorkspaceByName(baseId, null);
         assertEquals("test metadata", workspace.getMetadata().getString("Description"));
 	}    
     
@@ -694,18 +669,19 @@ public abstract class BaseRepositoryServiceTest {
     
 	@Test
 	public void testGetDocumentWithWorkspaceId() throws IOException, RepositoryService.BaseException {
-		String wsId = service().createWorkspaceById(null, State.Open, EMPTY_METADATA);
+		String wsId = service().createWorkspaceAndName(Constants.ROOT_ID, QualifiedName.ROOT, State.Open, EMPTY_METADATA, true).getId();
 		String originalText = randomText();
 		// Create a document in the workspace
-		Reference ref1 = service().createDocumentLinkByName(wsId, QualifiedName.of(randomUrlSafeName()), MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, false);
+		DocumentLink link1 = service().createDocumentLinkByName(wsId, QualifiedName.of(randomUrlSafeName()), MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA, false);
 		// now close the workspace
-		service().updateWorkspaceById(wsId, null, State.Closed, EMPTY_METADATA, false);
-		Reference ref2 = service().updateDocument(ref1.id, null, ()->toStream(randomText()), EMPTY_METADATA);
-		assertEquals(ref1.id, ref2.id);
-		String doc1 = getDocText(service().getDocument(ref1));
+		service().updateWorkspaceByName(wsId, null, State.Closed, EMPTY_METADATA, false);
+		Reference ref2 = service().updateDocument(link1.getId(), null, ()->toStream(randomText()), EMPTY_METADATA);
+		assertEquals(link1.getId(), ref2.id);
+		assertNotEquals(link1.getVersion(), ref2.version);
+		String doc1 = getDocText(service().getDocument(link1.getReference()));
 		String doc2 = getDocText(service().getDocument(ref2));
 		assertNotEquals(doc1, doc2);	
-		String wsDoc = getDocText(service().getDocumentLink(wsId, QualifiedName.ROOT, ref1.id));
+		String wsDoc = getDocText(service().getDocumentLink(wsId, QualifiedName.ROOT, link1.getId()));
 		assertEquals(originalText, wsDoc); 
 	}
     
@@ -742,14 +718,14 @@ public abstract class BaseRepositoryServiceTest {
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv1), EMPTY_METADATA);
         // Create a workspace
         QualifiedName workspaceName = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, workspaceName, State.Open, EMPTY_METADATA);
+        service().createWorkspaceByName(ROOT_ID, workspaceName, State.Open, EMPTY_METADATA, true);
         // Link document to workspace
-        service().createDocumentLink(ROOT_ID, workspaceName, ref1, true, true);
+        service().createDocumentLinkAndName(ROOT_ID, workspaceName, ref1, true, true);
         // Update document
         String textv2 = randomText();
 		Reference ref2 = service().updateDocument(ref1.id, MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv2), null);
         // Close workspace
-        service().updateWorkspaceByName(ROOT_ID, workspaceName, null, State.Closed, null, false);
+        service().updateWorkspaceByName(ROOT_ID, workspaceName, State.Closed, null, false);
         // Update document again
         String textv3 = randomText();
  		Reference ref3 = service().updateDocument(ref1.id, MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv3), null);
@@ -768,15 +744,15 @@ public abstract class BaseRepositoryServiceTest {
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(textv1), EMPTY_METADATA);
         // Create a workspace
         QualifiedName workspaceName = randomQualifiedName();
-        service().createWorkspaceByName(ROOT_ID, workspaceName, State.Open, EMPTY_METADATA);
+        service().createWorkspaceByName(ROOT_ID, workspaceName, State.Open, EMPTY_METADATA, true);
         // Link document to workspace
         QualifiedName documentName = workspaceName.add(randomUrlSafeName());
-        service().createDocumentLinkByName(ROOT_ID, documentName, ref1, true);
+        service().createDocumentLinkByName(ROOT_ID, documentName, ref1, true, true);
         // Close workspace
-        service().updateWorkspaceByName(ROOT_ID, workspaceName, null, State.Closed, null, false);
+        service().updateWorkspaceByName(ROOT_ID, workspaceName, State.Closed, null, false);
         // Update document again
         String textv2 = randomText();
- 		Reference ref3 = service().updateDocumentLinkByName(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
+ 		DocumentLink ref3 = service().updateDocumentLinkByName(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
     }
     
     //////------- End Versioning tests --------//////

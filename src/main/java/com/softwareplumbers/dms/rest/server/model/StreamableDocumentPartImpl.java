@@ -5,6 +5,9 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.dms.InputStreamSupplier;
+import com.softwareplumbers.dms.StreamableDocumentPart;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.common.QualifiedName;
 import java.io.IOException;
 import javax.json.JsonObject;
