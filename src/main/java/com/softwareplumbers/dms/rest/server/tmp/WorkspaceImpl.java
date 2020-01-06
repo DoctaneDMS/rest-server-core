@@ -16,6 +16,7 @@ import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractpattern.visitor.Builders;
 import com.softwareplumbers.common.abstractpattern.visitor.Visitor;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.DocumentNavigatorService;
@@ -126,8 +127,8 @@ class WorkspaceImpl implements Workspace {
 		else
 			newParent = root.getOrCreateWorkspace(name.parent, createWorkspace);
 
-		if (newParent == null) throw new InvalidWorkspace(name);
-		if (newParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
+		if (newParent == null) throw new InvalidWorkspace(root.id, name);
+		if (newParent.children.containsKey(name.part)) throw new InvalidWorkspace(root.id, name);
 		if (this.parent != null) this.parent.children.remove(this.name);
 		this.name = name.part;
 		this.parent = newParent;
@@ -202,7 +203,7 @@ class WorkspaceImpl implements Workspace {
 	public DocumentInfo update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
 		LOG.logEntering("update", reference, docName);
 		RepositoryObject objRef = children.get(docName);
-		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw LOG.logThrow("update", new InvalidObjectName(getName().add(docName)));
+		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw LOG.logThrow("update", new InvalidObjectName(Constants.ROOT_ID, getName().add(docName)));
 		DocumentInfo docRef = (DocumentInfo)objRef;
 		if (state == State.Open) {
 			if (!docRef.getId().equals(reference.id)) {
@@ -361,12 +362,12 @@ class WorkspaceImpl implements Workspace {
 				children.put(firstPart, childWorkspace);
 				service.registerWorkspace(childWorkspace);
 			} else 
-				throw new InvalidWorkspace(name);
+				throw new InvalidWorkspace(this.id, name);
 		} else {
 		    if (child.getType() == Type.WORKSPACE) 
 		        childWorkspace = (WorkspaceImpl)child;
 		    else
-		        throw new InvalidWorkspace(name);
+		        throw new InvalidWorkspace(this.id, name);
 		}
 		
 		
@@ -388,7 +389,7 @@ class WorkspaceImpl implements Workspace {
 		} else {
 			localName = name.part;
 			localParent = name.parent.isEmpty() ? this : getOrCreateWorkspace(name.parent, createParent);
-			if (localParent.children.containsKey(name.part)) throw new InvalidWorkspace(name);
+			if (localParent.children.containsKey(name.part)) throw new InvalidWorkspace(this.id, name);
 		}
 
 		WorkspaceImpl child = new WorkspaceImpl(service, navigator, localParent, id, localName, state, metadata);
@@ -431,7 +432,7 @@ class WorkspaceImpl implements Workspace {
 		if (name.isEmpty()) return this;
 		WorkspaceImpl ws = getOrCreateWorkspace(name.parent, false);
 		NamedRepositoryObject result = ws.children.get(name.part);
-		if (result == null) throw new InvalidObjectName(name);
+		if (result == null) throw new InvalidObjectName(this.id, name);
 		return result;	
 	}
 

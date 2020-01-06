@@ -59,7 +59,8 @@ public class Error {
 	public static JsonObject mapServiceError(InvalidWorkspace err) {
 		return Json.createObjectBuilder()
 				.add("error", "Workspace name " + err.workspace + " is invalid")
-				.add("workspaceName", err.workspace)
+				.add("workspaceId", err.rootId)
+				.add("workspaceName", err.workspace.toString())
 				.build();		
 	}
     
@@ -89,6 +90,7 @@ public class Error {
 	public static JsonObject mapServiceError(InvalidObjectName err) {
 		return Json.createObjectBuilder()
 				.add("error", "Object name " + err.name + " is not valid")
+				.add("workspaceId", err.rootId)
 				.add("name", err.name.toString())
 				.build();		
 	}

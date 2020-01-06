@@ -2,8 +2,6 @@ package com.softwareplumbers.dms;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import javax.json.JsonObject;
@@ -61,25 +59,28 @@ public interface RepositoryService {
 	/** Exception type for an invalid workspace name or id */
 	public static class InvalidWorkspace extends BaseException {
 		private static final long serialVersionUID = 2546274609900213587L;
-		public final String workspace;
-		public InvalidWorkspace(String workspace) {
-			super("Invalid workspace Id: " + workspace);
+		public final String rootId;
+        public final QualifiedName workspace;
+		public InvalidWorkspace(String rootId, QualifiedName workspace) {
+			super("Invalid workspace name: " + rootId + ":" + workspace);
 			this.workspace = workspace;
+            this.rootId = rootId;
 		}
-		public InvalidWorkspace(QualifiedName workspace) {
-			super("Invalid workspace name: " + workspace);
-			this.workspace = workspace.toString();
-		}
+        public InvalidWorkspace(String rootId) {
+            this(rootId, QualifiedName.ROOT);
+        }
 	}
 	
 	/** Exception type for an invalid name (for either document or workspace) */
 	public static class InvalidObjectName extends BaseException {
 
 		private static final long serialVersionUID = 7176066099090799797L;
+        public final String rootId;
 		public final QualifiedName name;
-		public InvalidObjectName(QualifiedName name) {
-			super("Invalid name: " + name);
+		public InvalidObjectName(String rootId, QualifiedName name) {
+			super("Invalid name: " + rootId + ":" + name);
 			this.name = name;
+            this.rootId = rootId;
 		}
 	}
 
@@ -288,7 +289,7 @@ public interface RepositoryService {
      * a way that guarantees uniqueness but may be implementation-specific.
 	 * 
 	 * @param rootId the Id of the 'root' workspace
-	 * @param workspaceName the fully qualified name of the workspace
+	 * @param documentName the fully qualified name of the document link
 	 * @param mediaType the type of document
 	 * @param stream a supplier function that produces a stream of binary data representing the document
 	 * @param metadata a Json object describing the document
@@ -299,7 +300,7 @@ public interface RepositoryService {
 	 */
 	public DocumentLink createDocumentLinkAndName(
 			String rootId,
-			QualifiedName workspaceName,
+			QualifiedName documentName,
 			MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
@@ -329,7 +330,6 @@ public interface RepositoryService {
      * @param workspace the Id of the workspace in which to create the document
      * @param documentName the name of the document in the workspace
 	 * @param reference Reference of document to link to
-	 * @param returnExisting if true, will return any existing object with given name rather than failing
 	 * @throws InvalidObjectName name if an object with the given name already exists
      * @throws InvalidWorkspaceState if workspace is already closed
 	 * @throws InvalidReference 
@@ -338,10 +338,9 @@ public interface RepositoryService {
     public default DocumentLink createDocumentLinkByName(
 	        Workspace workspace,
 	        String documentName,
-	        Reference reference,
-	        boolean returnExisting) throws InvalidObjectName, InvalidWorkspaceState, InvalidReference {
+	        Reference reference) throws InvalidObjectName, InvalidWorkspaceState, InvalidReference {
         try {
-            return createDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), reference, false, returnExisting);
+            return createDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), reference, false);
         } catch (InvalidWorkspace e) {
             throw new BaseRuntimeException(e);
         }
@@ -355,7 +354,6 @@ public interface RepositoryService {
      * @param workspaceName the fully qualified name of the document in the workspace
 	 * @param reference Reference of document to link to
 	 * @param createWorkspace controls if parent workspace will be created (if it doesn't exist)
-     * @param returnExisting controls if the name of an existing link to the document will be returned, or an error generated
      * @throws com.softwareplumbers.dms.RepositoryService.InvalidWorkspace
      * @throws com.softwareplumbers.dms.RepositoryService.InvalidReference
      * @throws InvalidObjectName if name already taken
@@ -366,7 +364,7 @@ public interface RepositoryService {
 	        String rootId,
 	        QualifiedName workspaceName,
 	        Reference reference,
-	        boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidReference, InvalidObjectName, InvalidWorkspaceState;
+	        boolean createWorkspace) throws InvalidWorkspace, InvalidReference, InvalidObjectName, InvalidWorkspaceState;
     
 	/** Create a link to an existing document by reference.
      * 
@@ -375,14 +373,13 @@ public interface RepositoryService {
      * @param workspace the workspace in which to create the document link
 	 * @param document  Document to link to
      * @param name name of document in the workspace
-     * @param returnExisting controls if the name of an existing link to the document will be returned, or an error generated
-     * @throws InvalidObjectName if name already taken
      * @throws InvalidWorkspaceState if workspace is already closed
+     * @throws InvalidObjectName if name already taken
      * @return the new DocumentLink object
 	 */
-    public default DocumentLink createDocumentLinkByName(Workspace workspace, String name, Document document, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName {
+    public default DocumentLink createDocumentLinkByName(Workspace workspace, String name, Document document) throws InvalidWorkspaceState, InvalidObjectName {
         try {
-            return createDocumentLinkByName(workspace, name, document.getReference(), returnExisting);
+            return createDocumentLinkByName(workspace, name, document.getReference());
         } catch (InvalidReference e) {
             throw new BaseRuntimeException(e);
         }
@@ -510,7 +507,7 @@ public interface RepositoryService {
     
     public default NamedRepositoryObject copyObject(NamedRepositoryObject source, Workspace target, String targetName) throws InvalidWorkspaceState, InvalidObjectName {
          switch (source.getType()) {
-             case DOCUMENT_LINK: return copyDocumentLink((DocumentLink)source, target, targetName, false);
+             case DOCUMENT_LINK: return copyDocumentLink((DocumentLink)source, target, targetName);
              case WORKSPACE: return copyWorkspace((Workspace)source, target, targetName);
              default: throw new RuntimeException("Invalid type " + source.getType());
          }
@@ -518,19 +515,19 @@ public interface RepositoryService {
     
     public NamedRepositoryObject copyObject(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createParent) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName;
     
-    public default DocumentLink copyDocumentLink(DocumentLink documentLink, Workspace target, String targetName, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName {
+    public default DocumentLink copyDocumentLink(DocumentLink documentLink, Workspace target, String targetName) throws InvalidWorkspaceState, InvalidObjectName {
         try {
-            return copyDocumentLink(Constants.ROOT_ID, documentLink.getName(), target.getId(), target.getName().add(targetName), false, returnExisting);
+            return copyDocumentLink(Constants.ROOT_ID, documentLink.getName(), target.getId(), target.getName().add(targetName), false);
         } catch (InvalidWorkspace ex) {
             throw new BaseRuntimeException(ex);
         }
     }
     
-    public DocumentLink copyDocumentLink(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createWorkspace, boolean returnExisting) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName;
+    public DocumentLink copyDocumentLink(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createWorkspace) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName;
     
-    public default DocumentLink copyDocumentLink(Workspace source, String sourceName, Workspace target, String targetName, boolean returnExisting) throws InvalidWorkspaceState, InvalidObjectName {
+    public default DocumentLink copyDocumentLink(Workspace source, String sourceName, Workspace target, String targetName) throws InvalidWorkspaceState, InvalidObjectName {
         try {
-            return copyDocumentLink(source.getId(), QualifiedName.of(sourceName), target.getId(), QualifiedName.of(targetName), false, returnExisting);
+            return copyDocumentLink(source.getId(), QualifiedName.of(sourceName), target.getId(), QualifiedName.of(targetName), false);
         } catch (InvalidWorkspace e) {
             throw new BaseRuntimeException(e);
         }

@@ -9,7 +9,6 @@ import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -443,7 +442,7 @@ public class Workspaces {
                     if (reference == null) {
                         throw new InvalidDocumentId("null");
                     } else {
-                        link = service.createDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, false);
+                        link = service.createDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
                     }
                     
                 } else {
@@ -494,9 +493,9 @@ public class Workspaces {
      *  | CREATE_OR_UPDATE | Create a new document link, do not fail, return name of any existing link to the specified document |
      * 
      * @param repository string identifier of a document repository
-     * @param objectName string identifier of a workspace or document
+     * @param workspacePath string identifier of a workspace or document
      * @param createWorkspace if true, proxy will create any parent workspaces specified in the path
-     * @param updateType controls update behavior on actual object referenced by objectName
+     * @param returnExisting if true, where a link already exists to referenced document, will return existing link
      * @param uriInfo URI of request used to build relative response
      * @param object JSON-format DocumentLink which contains a document reference
      * @param requestContext context (from which we get userMetadata)
@@ -509,11 +508,11 @@ public class Workspaces {
             @PathParam("repository") String repository,
             @PathParam("workspace") WorkspacePath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
-            @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
+            @QueryParam("returnExisting") @DefaultValue("false") boolean returnExisting,
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.logEntering("post", repository, workspacePath, createWorkspace, updateType, object);
+        LOG.logEntering("post", repository, workspacePath, createWorkspace, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -541,7 +540,7 @@ public class Workspaces {
                 if (metadata != null && !metadata.isEmpty()) {
                     service.updateDocument(reference.id, null, null, metadata);
                 }
-                DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, returnExisting);
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.logResponse("post", Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
