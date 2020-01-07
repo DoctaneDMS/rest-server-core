@@ -38,6 +38,7 @@ import com.softwareplumbers.dms.Workspace.State;
 import static com.softwareplumbers.dms.Constants.*;
 import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
+import com.softwareplumbers.dms.RepositoryService.BaseException;
 import com.softwareplumbers.dms.RepositoryService.InvalidWorkspaceState;
 import java.util.ArrayList;
 import java.util.List;
@@ -294,7 +295,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testUpdateWorkspaceReturnsSameId() throws InvalidWorkspace, InvalidObjectName {
+	public void testUpdateWorkspaceReturnsSameId() throws BaseException {
 		JsonObject DUMMY_METADATA = Json.createObjectBuilder()
 				.add("Branch", "XYZABC")
 				.add("Team", "TEAM1")
@@ -644,7 +645,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
 	@Test
-	public void testSaveWorkspaceMetadata() throws InvalidWorkspace, InvalidObjectName {
+	public void testSaveWorkspaceMetadata() throws BaseException {
         QualifiedName name0 = randomQualifiedName();
         String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, parseObject("{ 'Description': 'test metadata' }"), true).getId();
         Workspace workspace = service().getWorkspaceByName(baseId, null);

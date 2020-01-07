@@ -638,7 +638,7 @@ public interface RepositoryService {
 	 */
 	public Stream<Document> catalogueHistory(Reference ref, Query filter) throws InvalidReference;
 		
-    public default Workspace createWorkspaceByName(Workspace workspace, String name, Workspace.State state, JsonObject metadata) throws InvalidObjectName {
+    public default Workspace createWorkspaceByName(Workspace workspace, String name, Workspace.State state, JsonObject metadata) throws InvalidWorkspaceState, InvalidObjectName {
         try {
             return createWorkspaceByName(workspace.getId(), QualifiedName.of(name), state, metadata, false);
         } catch (InvalidWorkspace e) {
@@ -662,9 +662,9 @@ public interface RepositoryService {
 	 * @return the id of the created workspace
 	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist, or workspace already exists
 	 */
-	public Workspace createWorkspaceByName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspace;
+	public Workspace createWorkspaceByName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspaceState, InvalidWorkspace;
 
-    public default Workspace createWorkspaceAndName(Workspace workspace, Workspace.State state, JsonObject metadata) throws InvalidWorkspace {
+    public default Workspace createWorkspaceAndName(Workspace workspace, Workspace.State state, JsonObject metadata) throws InvalidWorkspaceState, InvalidWorkspace {
         return createWorkspaceAndName(workspace.getId(), QualifiedName.ROOT, state, metadata, false);
     }
     
@@ -684,7 +684,7 @@ public interface RepositoryService {
 	 * @return the id of the created workspace
 	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist, or workspace 
 	 */
-	public Workspace createWorkspaceAndName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspace;
+	public Workspace createWorkspaceAndName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspaceState, InvalidWorkspace;
 	
     public default Workspace updateWorkspace(Workspace workspace, Workspace.State state, JsonObject metadata, boolean createWorkspace) {
         try {
