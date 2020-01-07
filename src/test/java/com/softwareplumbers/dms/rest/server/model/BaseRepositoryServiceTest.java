@@ -227,7 +227,7 @@ public abstract class BaseRepositoryServiceTest {
 		JsonObject testMetadata1 = Json.createObjectBuilder().add("Branch", "slartibartfast").build();
 		JsonObject testMetadata2 = Json.createObjectBuilder().add("Team", "alcatraz").build();
 		service().createWorkspaceByName(ROOT_ID, base, State.Open, testMetadata1, true);
-		service().updateWorkspaceByName(ROOT_ID,base, null, testMetadata2, false);
+		service().updateWorkspaceByName(ROOT_ID, base, null, testMetadata2, false);
 		Workspace fetched = (Workspace) service().getObjectByName(ROOT_ID,base);
 		assertEquals("slartibartfast", fetched.getMetadata().getString("Branch"));
 		assertEquals("alcatraz", fetched.getMetadata().getString("Team"));
@@ -383,9 +383,10 @@ public abstract class BaseRepositoryServiceTest {
         DocumentLink link = service().createDocumentLinkByName(workspace, randomUrlSafeName(), ref1);
 	    Document doc1 = service().refresh(link);
 	    assertEquals(ref1, doc1.getReference());
-        service().updateDocumentLink(link, null, null, JsonUtil.parseObject("{'Description':'Text Document'}"));
+        JsonObject testMetadata = randomMetadata();
+        service().updateDocumentLink(link, null, null, testMetadata);
 	    Document doc2 = (Document)service().refresh(link);
-	    assertEquals("Text Document", doc2.getMetadata().getString("Description"));
+	    assertEquals(testMetadata, doc2.getMetadata());
 	}
     
         
