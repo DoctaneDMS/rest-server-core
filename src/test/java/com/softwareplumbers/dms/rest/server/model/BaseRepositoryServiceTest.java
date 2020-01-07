@@ -66,7 +66,8 @@ public abstract class BaseRepositoryServiceTest {
 
 	public abstract Reference randomDocumentReference();
 	public abstract String randomWorkspaceId();
-    public abstract JsonObject randomMetadata();
+    public abstract JsonObject randomDocumentMetadata();
+    public abstract JsonObject randomWorkspaceMetadata();
     public abstract String uniqueMetadataField();
 		
 	@Test
@@ -79,7 +80,7 @@ public abstract class BaseRepositoryServiceTest {
        
     @Test 
 	public void testWorkspaceCopyById() throws RepositoryService.BaseException {
-        JsonObject metadata = randomMetadata();
+        JsonObject metadata = randomWorkspaceMetadata();
 		Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , metadata, true);
         QualifiedName newName = randomQualifiedName();
         service().copyWorkspace(workspace.getId(), QualifiedName.ROOT, Constants.ROOT_ID, newName, true);
@@ -89,7 +90,7 @@ public abstract class BaseRepositoryServiceTest {
     
     @Test 
 	public void testWorkspaceCopyByName() throws RepositoryService.BaseException {
-        JsonObject metadata = randomMetadata();
+        JsonObject metadata = randomWorkspaceMetadata();
 		Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open , metadata, true);
         QualifiedName newName = randomQualifiedName();
         service().copyWorkspace(Constants.ROOT_ID, workspace.getName(), Constants.ROOT_ID, newName, true);
@@ -162,7 +163,7 @@ public abstract class BaseRepositoryServiceTest {
 	
 	@Test
 	public void testCopyWorkspace() throws RepositoryService.BaseException {
-        JsonObject metadata = randomMetadata();
+        JsonObject metadata = randomWorkspaceMetadata();
 		Workspace workspace = service().createWorkspaceAndName(Constants.ROOT_ID, QualifiedName.ROOT, State.Open, metadata, false);
         service().createDocumentLinkAndName(workspace, MediaType.TEXT_PLAIN_TYPE, ()->toStream(randomText()), Constants.EMPTY_METADATA);
 		QualifiedName wsName = QualifiedName.of(randomUrlSafeName());
@@ -383,7 +384,7 @@ public abstract class BaseRepositoryServiceTest {
         DocumentLink link = service().createDocumentLinkByName(workspace, randomUrlSafeName(), ref1);
 	    Document doc1 = service().refresh(link);
 	    assertEquals(ref1, doc1.getReference());
-        JsonObject testMetadata = randomMetadata();
+        JsonObject testMetadata = randomDocumentMetadata();
         service().updateDocumentLink(link, null, null, testMetadata);
 	    Document doc2 = (Document)service().refresh(link);
 	    assertEquals(testMetadata, doc2.getMetadata());
@@ -595,7 +596,7 @@ public abstract class BaseRepositoryServiceTest {
         ArrayList<byte[]> dataValues = new ArrayList<>();
         ArrayList<JsonObject> metadataValues = new ArrayList<>();
         
-        generateDocs(4, this::randomMetadata, (data, metadata, type) -> {
+        generateDocs(4, this::randomDocumentMetadata, (data, metadata, type) -> {
             dataValues.add(data);
             metadataValues.add(metadata);
             try {

@@ -46,9 +46,16 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	}
 
     @Override
-    public JsonObject randomMetadata() {
+    public JsonObject randomDocumentMetadata() {
         JsonObjectBuilder builder = Json.createObjectBuilder();
         builder.add("filename", UUID.randomUUID().toString());
+        return builder.build();
+    }
+
+    @Override
+    public JsonObject randomWorkspaceMetadata() {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+        builder.add("transaction", UUID.randomUUID().toString());
         return builder.build();
     }
 
