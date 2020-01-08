@@ -49,6 +49,7 @@ import org.apache.commons.io.IOUtils;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 import static com.softwareplumbers.dms.rest.server.model.TestUtils.*;
+import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.*;
 
@@ -501,9 +502,12 @@ public abstract class BaseRepositoryServiceTest {
 
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
+        JsonObject metadata1 = randomWorkspaceMetadata();
+        JsonObject metadata2 = randomWorkspaceMetadata();
+        JsonObject metadataSearch2 = Json.createObjectBuilder().add("metadata", Json.createObjectBuilder(metadata2)).build();
         String originalText = randomText();
-        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), JsonUtil.parseObject("{'Description':'Text Document'}"));
-        Reference ref2 = service().createDocument(MediaType.APPLICATION_OCTET_STREAM_TYPE, ()->toStream(originalText), JsonUtil.parseObject("{'Description':'Binary Document'}"));
+        Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), metadata1);
+        Reference ref2 = service().createDocument(MediaType.APPLICATION_OCTET_STREAM_TYPE, ()->toStream(originalText), metadata2);
         QualifiedName W1doc1Name = name1.add(randomUrlSafeName());
         QualifiedName W1doc2Name = name1.add(randomUrlSafeName());
         QualifiedName W2doc1Name = name2.add(randomUrlSafeName());
@@ -512,12 +516,10 @@ public abstract class BaseRepositoryServiceTest {
         service().createDocumentLinkByName(baseId, W1doc2Name, ref2, true);
         service().createDocumentLinkByName(baseId, W2doc1Name, ref1, true);
         service().createDocumentLinkByName(baseId, W2doc2Name, ref2, true);
-        // Close workspace 2
-        service().updateWorkspaceByName(baseId, name2, State.Closed, JsonUtil.parseObject("{'Description':'Closed Workspace'}"), false);
-        service().updateWorkspaceByName(baseId, name1, null, JsonUtil.parseObject("{'Description':'Open Workspace'}"), false);
-		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).collect(Collectors.toList());
+        service().updateWorkspaceByName(baseId, name2, State.Closed, null, false);
+		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.from(metadataSearch2), false).collect(Collectors.toList());
         
-        assertEquals(2, countMatchingMetadata(resultAll, m->Objects.equals(m.getString("Description"), "Text Document")));
+        assertEquals(2, resultAll.size());
 	}
 
     @Test
