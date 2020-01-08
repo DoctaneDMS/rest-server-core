@@ -404,12 +404,14 @@ public abstract class BaseRepositoryServiceTest {
 	    Document doc1 = service().getDocumentLinkByName(workspace, link1.getName().part);
 	    Document doc2 = service().getDocumentLinkByName(Constants.ROOT_ID, link1.getName());
 	    assertEquals(doc1.getReference(), doc2.getReference());
-        service().updateDocumentLinkByName(Constants.ROOT_ID, link1.getName(), null, null, JsonUtil.parseObject("{'Description':'Text Document1'}"), true, true);
+        JsonObject metadata1 = randomWorkspaceMetadata();
+        JsonObject metadata2 = randomWorkspaceMetadata();
+        service().updateDocumentLinkByName(Constants.ROOT_ID, link1.getName(), null, null, metadata1, true, true);
 	    Document doc3 = service().refresh(link1);
-	    assertEquals("Text Document1", doc3.getMetadata().getString("Description"));
-        service().updateDocumentLinkByName(workspace, link1.getName().part, null, null, JsonUtil.parseObject("{'Description':'Text Document2'}"), true);
+	    assertEquals(metadata1, doc3.getMetadata());
+        service().updateDocumentLinkByName(workspace, link1.getName().part, null, null, metadata2, true);
 	    Document doc4 = service().refresh(link1);
-	    assertEquals("Text Document2", doc4.getMetadata().getString("Description"));
+	    assertEquals(metadata2, doc4.getMetadata());
 	}
     
     @Test
