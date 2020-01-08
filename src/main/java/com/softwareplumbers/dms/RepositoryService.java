@@ -389,7 +389,7 @@ public interface RepositoryService {
         InputStreamSupplier stream, 
 		JsonObject metadata) throws InvalidWorkspaceState {
         try {
-            return updateDocumentLinkByName(Constants.ROOT_ID, link.getName(), mediaType, stream, metadata, false, false);
+            return updateDocumentLink(Constants.ROOT_ID, link.getName(), mediaType, stream, metadata, false, false);
         } catch (InvalidWorkspace | InvalidObjectName e) {
             throw new BaseRuntimeException(e);
         }
@@ -412,14 +412,14 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspaceState if workspace is already closed
      * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
 	 */
-    public default DocumentLink updateDocumentLinkByName(
+    public default DocumentLink updateDocumentLink(
 			Workspace workspace,
             String documentName,
 			MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata, 
 			boolean createDocument) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
-        return updateDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), mediaType, stream, metadata, false, createDocument);
+        return updateDocumentLink(workspace.getId(), QualifiedName.of(documentName), mediaType, stream, metadata, false, createDocument);
     }
     
 	/** Update a document in the repository.
@@ -440,7 +440,7 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspaceState if workspace is already closed
      * @throws InvalidObjectName if document does not exist in workspace (and createDocument is false)
 	 */
-	public DocumentLink updateDocumentLinkByName(
+	public DocumentLink updateDocumentLink(
 			String rootId,
 			QualifiedName documentName,
 			MediaType mediaType, 
@@ -449,9 +449,9 @@ public interface RepositoryService {
 			boolean createWorkspace,
 			boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState;
 	
-    public default DocumentLink updateDocumentLinkByName(Workspace workspace, String name, Reference reference, boolean createLink) throws InvalidReference, InvalidWorkspaceState, InvalidObjectName {
+    public default DocumentLink updateDocumentLink(Workspace workspace, String name, Reference reference, boolean createLink) throws InvalidReference, InvalidWorkspaceState, InvalidObjectName {
         try {
-            return updateDocumentLinkByName(workspace.getId(), QualifiedName.of(name), reference, false, createLink);
+            return updateDocumentLink(workspace.getId(), QualifiedName.of(name), reference, false, createLink);
         } catch (InvalidWorkspace e) {
             throw new BaseRuntimeException(e);
         }
@@ -473,7 +473,7 @@ public interface RepositoryService {
      * @throws InvalidReference if reference does not refer to a valid document
      * 
      */
-    public DocumentLink updateDocumentLinkByName(
+    public DocumentLink updateDocumentLink(
             String rootId,
             QualifiedName documentName,
             Reference reference,
@@ -481,13 +481,13 @@ public interface RepositoryService {
             boolean createLink) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference;
     
     
-    public default DocumentLink updateDocumentLinkByName(
+    public default DocumentLink updateDocumentLink(
             Workspace workspace,
             String name,
             Document document,
             boolean createLink) throws InvalidObjectName, InvalidWorkspaceState {
         try {   
-            return updateDocumentLinkByName(workspace, name, document.getReference(), createLink);
+            return updateDocumentLink(workspace, name, document.getReference(), createLink);
         } catch (InvalidReference ex) {
             throw new BaseRuntimeException(ex);
         }
@@ -495,7 +495,7 @@ public interface RepositoryService {
 
     public default DocumentLink updateDocumentLink(DocumentLink link, Reference reference) throws InvalidWorkspaceState, InvalidReference {
         try {
-            return updateDocumentLinkByName(Constants.ROOT_ID, link.getName(), reference, false, false);
+            return updateDocumentLink(Constants.ROOT_ID, link.getName(), reference, false, false);
         } catch (InvalidWorkspace | InvalidObjectName e) {
             throw new BaseRuntimeException(e);
         }

@@ -373,7 +373,7 @@ public abstract class BaseRepositoryServiceTest {
 	}
     
     @Test
-	public void testupdateDocumentLinkByName() throws RepositoryService.BaseException {
+	public void testupdateDocumentLink() throws RepositoryService.BaseException {
         Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), State.Open, EMPTY_METADATA, true);
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
@@ -401,10 +401,10 @@ public abstract class BaseRepositoryServiceTest {
 	    assertEquals(doc1.getReference(), doc2.getReference());
         JsonObject metadata1 = randomDocumentMetadata();
         JsonObject metadata2 = randomDocumentMetadata();
-        service().updateDocumentLinkByName(Constants.ROOT_ID, link1.getName(), null, null, metadata1, true, true);
+        service().updateDocumentLink(Constants.ROOT_ID, link1.getName(), null, null, metadata1, true, true);
 	    Document doc3 = service().refresh(link1);
 	    assertEquals(metadata1, doc3.getMetadata());
-        service().updateDocumentLinkByName(workspace, link1.getName().part, null, null, metadata2, true);
+        service().updateDocumentLink(workspace, link1.getName().part, null, null, metadata2, true);
 	    Document doc4 = service().refresh(link1);
 	    assertEquals(metadata2, doc4.getMetadata());
 	}
@@ -415,7 +415,7 @@ public abstract class BaseRepositoryServiceTest {
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         Reference ref2 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
-        DocumentLink link = service().updateDocumentLinkByName(workspace, randomUrlSafeName(), ref1, true);
+        DocumentLink link = service().updateDocumentLink(workspace, randomUrlSafeName(), ref1, true);
 	    Document doc1 = service().refresh(link);
 	    assertEquals(ref1, doc1.getReference());
     }
@@ -758,7 +758,7 @@ public abstract class BaseRepositoryServiceTest {
         service().updateWorkspaceByName(ROOT_ID, workspaceName, State.Closed, null, false);
         // Update document again
         String textv2 = randomText();
- 		DocumentLink ref3 = service().updateDocumentLinkByName(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
+ 		DocumentLink ref3 = service().updateDocumentLink(ROOT_ID, documentName, MediaType.WILDCARD_TYPE, ()->toStream(textv2), EMPTY_METADATA, true, true);
     }
     
     //////------- End Versioning tests --------//////

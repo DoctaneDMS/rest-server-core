@@ -446,7 +446,7 @@ public class Workspaces {
                     }
                     
                 } else {
-                    link = service.updateDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                    link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
                 
                 if (metadata != null && !metadata.isEmpty()) {
@@ -613,7 +613,7 @@ public class Workspaces {
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
 
-            DocumentLink result = service.updateDocumentLinkByName(
+            DocumentLink result = service.updateDocumentLink(
                     path.rootId, 
                     path.staticPath, 
                     computedMediaType,
