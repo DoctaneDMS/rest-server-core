@@ -120,11 +120,6 @@ public abstract class BaseRepositoryServiceTest {
 		QualifiedName name = QualifiedName.of(randomUrlSafeName());
 		Workspace test = (Workspace)service().getObjectByName(ROOT_ID,name);
 	}
-	
-	@Test (expected = InvalidWorkspace.class)
-	public void testGetWorkspaceNotFoundByIdError() throws RepositoryService.BaseException {
-		Workspace test = service().getWorkspaceByName(randomWorkspaceId(), null);
-	}
 
 	@Test (expected = InvalidWorkspace.class)
 	public void testUpdateWorkspaceNotFoundError() throws RepositoryService.BaseException {
@@ -404,8 +399,8 @@ public abstract class BaseRepositoryServiceTest {
 	    Document doc1 = service().getDocumentLinkByName(workspace, link1.getName().part);
 	    Document doc2 = service().getDocumentLinkByName(Constants.ROOT_ID, link1.getName());
 	    assertEquals(doc1.getReference(), doc2.getReference());
-        JsonObject metadata1 = randomWorkspaceMetadata();
-        JsonObject metadata2 = randomWorkspaceMetadata();
+        JsonObject metadata1 = randomDocumentMetadata();
+        JsonObject metadata2 = randomDocumentMetadata();
         service().updateDocumentLinkByName(Constants.ROOT_ID, link1.getName(), null, null, metadata1, true, true);
 	    Document doc3 = service().refresh(link1);
 	    assertEquals(metadata1, doc3.getMetadata());
