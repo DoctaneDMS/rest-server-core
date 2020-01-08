@@ -499,8 +499,8 @@ public abstract class BaseRepositoryServiceTest {
 
         QualifiedName name1 = QualifiedName.ROOT.add(randomUrlSafeName());
         QualifiedName name2 = QualifiedName.ROOT.add(randomUrlSafeName());
-        JsonObject metadata1 = randomWorkspaceMetadata();
-        JsonObject metadata2 = randomWorkspaceMetadata();
+        JsonObject metadata1 = randomDocumentMetadata();
+        JsonObject metadata2 = randomDocumentMetadata();
         JsonObject metadataSearch2 = Json.createObjectBuilder().add("metadata", Json.createObjectBuilder(metadata2)).build();
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), metadata1);
