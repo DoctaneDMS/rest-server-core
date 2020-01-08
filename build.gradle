@@ -43,6 +43,11 @@ javadoc {
     classpath = configurations.compile
 }
 
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
 task bootJar1(type: Jar, dependsOn: classes) {
   classifier 'standalone'
   from sourceSets.main.output
@@ -81,6 +86,7 @@ artifacts {
     archives sourcesJar 
     archives bootJar1
     archives testsJar
+    archives javadocJar
 }
 
 test {
@@ -128,6 +134,7 @@ dependencies {
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
     compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.18'
     compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.8'
+    compile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'
     compile group: 'org.opensaml', name: 'opensaml-core', version: '3.3.0'
