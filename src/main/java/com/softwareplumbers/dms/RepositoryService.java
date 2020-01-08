@@ -194,7 +194,7 @@ public interface RepositoryService {
 	 * 
 	 * Gets the most recent version of a document in the given workspace.
      * 
-     * Defined as equivalent to getDocuemntLink(workspace.getId(), QualifiedName.ROOT, documentId)
+     * Defined as equivalent to getDocumentLink(workspace.getId(), QualifiedName.ROOT, documentId)
  	 * 
 	 * @param documentId the Id of the requested document
      * @param workspace Workspace from which to fetch document
@@ -234,10 +234,10 @@ public interface RepositoryService {
      * @throws InvalidObjectName if document with name already exists in workspace
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
-    public default DocumentLink createDocumentLinkByName(Workspace workspace, String documentName, MediaType mediaType, 
+    public default DocumentLink createDocumentLink(Workspace workspace, String documentName, MediaType mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState {
-        return createDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), mediaType, stream, metadata, false);
+        return createDocumentLink(workspace.getId(), QualifiedName.of(documentName), mediaType, stream, metadata, false);
     }
     
 	/** Create a new document in the repository.Creates document within the given workspace.
@@ -257,7 +257,7 @@ public interface RepositoryService {
      * @throws InvalidObjectName if document with name already exists in workspace
 	 * @throws InvalidWorkspaceState if workspace is already closed
 	 */
-	public DocumentLink createDocumentLinkByName(
+	public DocumentLink createDocumentLink(
 			String rootId,
 			QualifiedName documentName,
 			MediaType mediaType, 
@@ -335,12 +335,12 @@ public interface RepositoryService {
 	 * @throws InvalidReference 
      * @return the new DocumentLink object
 	 */
-    public default DocumentLink createDocumentLinkByName(
+    public default DocumentLink createDocumentLink(
 	        Workspace workspace,
 	        String documentName,
 	        Reference reference) throws InvalidObjectName, InvalidWorkspaceState, InvalidReference {
         try {
-            return createDocumentLinkByName(workspace.getId(), QualifiedName.of(documentName), reference, false);
+            return createDocumentLink(workspace.getId(), QualifiedName.of(documentName), reference, false);
         } catch (InvalidWorkspace e) {
             throw new BaseRuntimeException(e);
         }
@@ -360,7 +360,7 @@ public interface RepositoryService {
      * @throws InvalidWorkspaceState if workspace is already closed
      * @return the new DocumentLink object
 	 */
-	public DocumentLink createDocumentLinkByName(
+	public DocumentLink createDocumentLink(
 	        String rootId,
 	        QualifiedName workspaceName,
 	        Reference reference,
@@ -377,9 +377,9 @@ public interface RepositoryService {
      * @throws InvalidObjectName if name already taken
      * @return the new DocumentLink object
 	 */
-    public default DocumentLink createDocumentLinkByName(Workspace workspace, String name, Document document) throws InvalidWorkspaceState, InvalidObjectName {
+    public default DocumentLink createDocumentLink(Workspace workspace, String name, Document document) throws InvalidWorkspaceState, InvalidObjectName {
         try {
-            return createDocumentLinkByName(workspace, name, document.getReference());
+            return createDocumentLink(workspace, name, document.getReference());
         } catch (InvalidReference e) {
             throw new BaseRuntimeException(e);
         }

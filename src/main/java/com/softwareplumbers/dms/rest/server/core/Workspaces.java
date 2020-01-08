@@ -442,7 +442,7 @@ public class Workspaces {
                     if (reference == null) {
                         throw new InvalidDocumentId("null");
                     } else {
-                        link = service.createDocumentLinkByName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
+                        link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
                     }
                     
                 } else {

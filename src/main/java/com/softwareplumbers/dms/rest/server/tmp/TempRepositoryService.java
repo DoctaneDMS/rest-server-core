@@ -229,7 +229,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public DocumentLink createDocumentLinkByName(String rootWorkspace, QualifiedName documentName, MediaType mediaType, InputStreamSupplier stream,
+	public DocumentLink createDocumentLink(String rootWorkspace, QualifiedName documentName, MediaType mediaType, InputStreamSupplier stream,
 			JsonObject metadata, boolean createWorkspace) throws InvalidWorkspace, InvalidWorkspaceState, InvalidObjectName {
 		return updateDocumentLinkByName(rootWorkspace, documentName, mediaType, stream, metadata, createWorkspace, true);
 	
@@ -495,21 +495,21 @@ public class TempRepositoryService implements RepositoryService {
     }
 
 	@Override
-    public DocumentLink createDocumentLinkByName(String rootId, QualifiedName documentName, Reference reference, boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference {
+    public DocumentLink createDocumentLink(String rootId, QualifiedName documentName, Reference reference, boolean createWorkspace) throws InvalidWorkspace, InvalidObjectName, InvalidWorkspaceState, InvalidReference {
 
-        LOG.logEntering("createDocumentLinkByName", rootId, documentName, reference);
+        LOG.logEntering("createDocumentLink", rootId, documentName, reference);
         
-        if (documentName == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidObjectName(rootId, documentName));
-        if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
+        if (documentName == null) throw LOG.logThrow("createDocumentLink", new InvalidObjectName(rootId, documentName));
+        if (reference == null) throw LOG.logThrow("createDocumentLink", new InvalidReference(reference));
         
         WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(documentName.parent, createWorkspace);
         
         Optional<NamedRepositoryObject> obj = workspace.getObject(documentName.part);
         
         if (obj.isPresent()) {
-            throw LOG.logThrow("createDocumentLinkByName", new InvalidObjectName(rootId, documentName));
+            throw LOG.logThrow("createDocumentLink", new InvalidObjectName(rootId, documentName));
         } else {
-            return LOG.logReturn("createDocumentLinkByName", workspace.add(reference, documentName.part));
+            return LOG.logReturn("createDocumentLink", workspace.add(reference, documentName.part));
         }
     }
 	
@@ -541,9 +541,9 @@ public class TempRepositoryService implements RepositoryService {
     @Override
     public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName workspaceName, Reference reference, boolean createWorkspace, boolean returnExisting) throws InvalidWorkspace, InvalidWorkspaceState, InvalidReference {
 
-        LOG.logEntering("createDocumentLinkByName", rootId, workspaceName, reference, createWorkspace);
+        LOG.logEntering("createDocumentLink", rootId, workspaceName, reference, createWorkspace);
         
-        if (reference == null) throw LOG.logThrow("createDocumentLinkByName", new InvalidReference(reference));
+        if (reference == null) throw LOG.logThrow("createDocumentLink", new InvalidReference(reference));
         
         WorkspaceImpl workspace;
         
@@ -597,7 +597,7 @@ public class TempRepositoryService implements RepositoryService {
     public DocumentLink copyDocumentLink(DocumentLink srcLink, Workspace targetWorkspace, String targetName) throws InvalidWorkspaceState, InvalidObjectName {
         Reference reference = srcLink.getReference();
         try {
-            DocumentLink tgtLink = createDocumentLinkByName(targetWorkspace.getId(), QualifiedName.of(targetName), srcLink.getReference(), false);
+            DocumentLink tgtLink = createDocumentLink(targetWorkspace.getId(), QualifiedName.of(targetName), srcLink.getReference(), false);
     		return LOG.logReturn("copyDocumentLink", tgtLink); 
         } catch (InvalidWorkspace | InvalidReference e) {
             throw new BaseRuntimeException(e);
@@ -610,7 +610,7 @@ public class TempRepositoryService implements RepositoryService {
 		DocumentLink srcLink = getDocumentLinkByName(sourceRootId, sourceName);
         Reference reference = srcLink.getReference();
         try {
-            DocumentLink tgtLink = createDocumentLinkByName(targetRootId, targetName, srcLink.getReference(), createWorkspace);
+            DocumentLink tgtLink = createDocumentLink(targetRootId, targetName, srcLink.getReference(), createWorkspace);
     		return LOG.logReturn("copyDocumentLink", tgtLink); 
         } catch (InvalidReference ref) {
             throw new BaseRuntimeException(ref);
