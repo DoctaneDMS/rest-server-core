@@ -13,6 +13,8 @@ import com.softwareplumbers.common.abstractquery.Query;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
+import com.softwareplumbers.dms.Exceptions.*;
+
 
 /**
  *
@@ -21,12 +23,12 @@ import javax.ws.rs.core.MediaType;
 public class PublicAuthorizationService implements AuthorizationService {
 
     @Override
-    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws RepositoryService.InvalidReference {
+    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
         return Query.UNBOUNDED;
     }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
+    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace {
         return Query.UNBOUNDED;
     }
 

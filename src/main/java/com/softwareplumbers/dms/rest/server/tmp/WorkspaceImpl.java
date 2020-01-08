@@ -24,17 +24,9 @@ import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Workspace;
-import com.softwareplumbers.dms.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.Exceptions.*;
 import com.softwareplumbers.dms.rest.server.util.Log;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import javax.json.JsonString;
-import javax.ws.rs.core.MediaType;
 
 class WorkspaceImpl implements Workspace {
 	

@@ -11,11 +11,11 @@ import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
 import com.softwareplumbers.dms.NamedRepositoryObject;
-import com.softwareplumbers.dms.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspaceState;
+import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
+import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
+import com.softwareplumbers.dms.Exceptions.InvalidReference;
+import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
+import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.math.BigDecimal;
 

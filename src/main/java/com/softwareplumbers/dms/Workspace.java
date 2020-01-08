@@ -6,8 +6,9 @@ import javax.json.JsonObjectBuilder;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.RepositoryObject.Type;
-import java.util.Optional;
+import static com.softwareplumbers.dms.Exceptions.*;
 
+import java.util.Optional;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 
@@ -61,7 +62,7 @@ public interface Workspace extends NamedRepositoryObject {
                 repository.catalogueByName(Constants.ROOT_ID, name, Query.UNBOUNDED, false)
                     .forEach(part -> childrenBuilder.add(part.toJson(repository, navigator, 0, childLevels-1)));
                 builder.add("parts", childrenBuilder);
-            } catch (RepositoryService.InvalidWorkspace err) {
+            } catch (InvalidWorkspace err) {
                 throw new RuntimeException(err);
             }
         }

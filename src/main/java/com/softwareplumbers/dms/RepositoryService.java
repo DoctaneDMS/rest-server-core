@@ -3,7 +3,7 @@ package com.softwareplumbers.dms;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import java.util.stream.Stream;
-
+import static com.softwareplumbers.dms.Exceptions.*;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
@@ -26,91 +26,6 @@ import javax.ws.rs.core.MediaType;
  */
 public interface RepositoryService {
     
-    //-------------- Exception classes --------------//
-    
-    public static class BaseException extends Exception {
-        public BaseException(String description) { super(description); }
-    }
-    
-    public static class BaseRuntimeException extends RuntimeException {
-        public BaseRuntimeException(BaseException e) { super(e); }
-    }
-
-	/** Exception type for an invalid document reference */
-	public static class InvalidReference extends BaseException {
-		private static final long serialVersionUID = 4890221706381667729L;
-		public final Reference reference;
-		public InvalidReference(Reference reference) {
-			super("Invalid reference: " + reference);
-			this.reference = reference;
-		}
-	}
-
-	/** Exception type for an invalid document id */
-	public static class InvalidDocumentId extends BaseException {
-		private static final long serialVersionUID = 4890221706381667729L;
-		public final String id;
-		public InvalidDocumentId(String id) {
-			super("Invalid document id: " + id);
-			this.id = id;
-		}
-	}
-
-	/** Exception type for an invalid workspace name or id */
-	public static class InvalidWorkspace extends BaseException {
-		private static final long serialVersionUID = 2546274609900213587L;
-		public final String rootId;
-        public final QualifiedName workspace;
-		public InvalidWorkspace(String rootId, QualifiedName workspace) {
-			super("Invalid workspace name: " + rootId + ":" + workspace);
-			this.workspace = workspace;
-            this.rootId = rootId;
-		}
-        public InvalidWorkspace(String rootId) {
-            this(rootId, QualifiedName.ROOT);
-        }
-	}
-	
-	/** Exception type for an invalid name (for either document or workspace) */
-	public static class InvalidObjectName extends BaseException {
-
-		private static final long serialVersionUID = 7176066099090799797L;
-        public final String rootId;
-		public final QualifiedName name;
-		public InvalidObjectName(String rootId, QualifiedName name) {
-			super("Invalid name: " + rootId + ":" + name);
-			this.name = name;
-            this.rootId = rootId;
-		}
-	}
-
-	/** Exception type for an invalid workspace state */
-	public static class InvalidWorkspaceState extends BaseException {
-		private static final long serialVersionUID = -4516622808487331082L;
-		public final String workspace;
-		public final Workspace.State state;
-		public final String other;
-		public InvalidWorkspaceState(QualifiedName workspace, Workspace.State state) {
-			super("Attempt to change workspace: " + workspace + " in state " + state);
-			this.workspace = workspace.toString();
-			this.state = state;
-			this.other = null;
-		}
-		public InvalidWorkspaceState(String workspace, Workspace.State state) {
-			super("Attempt to change workspace: " + workspace + " in state " + state);
-			this.workspace = workspace;
-			this.state = state;
-			this.other = null;
-		}
-		public InvalidWorkspaceState(String workspace, String other) {
-			super("Workspace: " + workspace + " invalid state: " + other);
-			this.workspace = workspace;
-			this.state = null;
-			this.other = other;
-			
-		}
-	}
-
     //-------------- Simple Document API ------------//
     
 	/** Get a document from a Reference.
@@ -354,8 +269,8 @@ public interface RepositoryService {
      * @param workspaceName the fully qualified name of the document in the workspace
 	 * @param reference Reference of document to link to
 	 * @param createWorkspace controls if parent workspace will be created (if it doesn't exist)
-     * @throws com.softwareplumbers.dms.RepositoryService.InvalidWorkspace
-     * @throws com.softwareplumbers.dms.RepositoryService.InvalidReference
+     * @throws InvalidWorkspace
+     * @throws InvalidReference
      * @throws InvalidObjectName if name already taken
      * @throws InvalidWorkspaceState if workspace is already closed
      * @return the new DocumentLink object
@@ -659,6 +574,7 @@ public interface RepositoryService {
 	 * @param state Initial/Updated state of workspace (optional)
 	 * @param metadata additional info describing the workspace
      * @param createParent flag whether to create parents if they don't exist
+     * @throws InvalidWorkspaceState if workspace is not open
 	 * @return the id of the created workspace
 	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist, or workspace already exists
 	 */
@@ -682,7 +598,8 @@ public interface RepositoryService {
 	 * @param metadata additional info describing the workspace
      * @param createParent flag whether to create parents if they don't exist
 	 * @return the id of the created workspace
-	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist, or workspace 
+	 * @throws InvalidWorkspace if createParent is false and parent workspace does not already exist
+     * @throws InvalidWorkspaceState if workspace is not open
 	 */
 	public Workspace createWorkspaceAndName(String rootId, QualifiedName name, Workspace.State state, JsonObject metadata, boolean createParent) throws InvalidWorkspaceState, InvalidWorkspace;
 	

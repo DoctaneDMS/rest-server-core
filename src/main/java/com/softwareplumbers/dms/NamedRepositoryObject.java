@@ -2,8 +2,7 @@ package com.softwareplumbers.dms;
 
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
+import static com.softwareplumbers.dms.Exceptions.*;
 import java.util.Optional;
 
 import javax.json.JsonObject;

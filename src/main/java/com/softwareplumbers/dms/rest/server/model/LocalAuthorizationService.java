@@ -19,6 +19,8 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
+import com.softwareplumbers.dms.Exceptions.*;
+
 
 /**
  *
@@ -64,7 +66,7 @@ public class LocalAuthorizationService implements AuthorizationService {
 
 
     @Override
-    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace, RepositoryService.InvalidDocumentId {
+    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 }

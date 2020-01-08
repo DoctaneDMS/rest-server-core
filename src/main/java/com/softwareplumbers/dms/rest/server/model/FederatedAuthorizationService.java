@@ -16,6 +16,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
+import com.softwareplumbers.dms.Exceptions.*;
 
 /**
  *
@@ -36,7 +37,7 @@ public class FederatedAuthorizationService implements AuthorizationService {
     public FederatedAuthorizationService() { }
     
     @Override
-    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws RepositoryService.InvalidReference {
+    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
             result = result.union(service.getDocumentACL(ref, type, metadata, role));
@@ -45,7 +46,7 @@ public class FederatedAuthorizationService implements AuthorizationService {
 
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace {
+    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
             result = result.union(service.getObjectACL(rootId, path, type, metadata, role));
@@ -54,7 +55,7 @@ public class FederatedAuthorizationService implements AuthorizationService {
 
 
     @Override
-    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws RepositoryService.InvalidObjectName, RepositoryService.InvalidWorkspace, RepositoryService.InvalidDocumentId {
+    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
             result = result.union(service.getObjectACLById(rootId, path, documentId, role));

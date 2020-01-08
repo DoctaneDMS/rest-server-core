@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
+import com.softwareplumbers.dms.Exceptions.*;
 
 /**
  *
@@ -50,7 +51,7 @@ class DocumentInfo implements DocumentLink {
     private Document linkedDocument() {
         try {
             return parent.service.getDocument(link);
-        } catch (RepositoryService.InvalidReference ex) {
+        } catch (InvalidReference ex) {
             throw WorkspaceImpl.LOG.logRethrow("DocumentInfo.getMetadata", new RuntimeException(ex));
         }
     }

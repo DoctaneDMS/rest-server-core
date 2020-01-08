@@ -11,10 +11,10 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.RepositoryService.InvalidDocumentId;
-import com.softwareplumbers.dms.RepositoryService.InvalidObjectName;
-import com.softwareplumbers.dms.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
+import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
+import com.softwareplumbers.dms.Exceptions.InvalidReference;
+import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 

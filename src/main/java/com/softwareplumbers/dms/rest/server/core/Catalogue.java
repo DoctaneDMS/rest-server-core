@@ -23,13 +23,12 @@ import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.dms.RepositoryService.InvalidReference;
-import com.softwareplumbers.dms.RepositoryService.InvalidWorkspace;
+import com.softwareplumbers.dms.Exceptions.InvalidReference;
+import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.DocumentNavigatorService;
 import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.rest.server.util.Log;
-import java.util.logging.Level;
 
 /** Handle catalog operations on repositories and documents.
  * 
