@@ -396,8 +396,8 @@ public abstract class BaseRepositoryServiceTest {
         String originalText = randomText();
         Reference ref1 = service().createDocument(MediaType.TEXT_PLAIN_TYPE, ()->toStream(originalText), EMPTY_METADATA);
         DocumentLink link1 = service().createDocumentLink(workspace, randomUrlSafeName(), ref1);
-	    Document doc1 = service().getDocumentLinkByName(workspace, link1.getName().part);
-	    Document doc2 = service().getDocumentLinkByName(Constants.ROOT_ID, link1.getName());
+	    Document doc1 = service().getDocumentLink(workspace, link1.getName().part);
+	    Document doc2 = service().getDocumentLink(Constants.ROOT_ID, link1.getName());
 	    assertEquals(doc1.getReference(), doc2.getReference());
         JsonObject metadata1 = randomDocumentMetadata();
         JsonObject metadata2 = randomDocumentMetadata();

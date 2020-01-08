@@ -171,7 +171,7 @@ public interface RepositoryService {
 	 * @throws InvalidWorkspace if rootId is not a valid workspace
      * @throws InvalidObjectName if name is not a valid document name within the root workspace
      */
-    public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
+    public DocumentLink getDocumentLink(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName;
 
 	/** Get a document from an Id and a workspace Id.
 	 * 
@@ -186,8 +186,8 @@ public interface RepositoryService {
 	 * @throws InvalidDocumentId if there is no document matching the reference in the repository 
      * @throws InvalidObjectName if path does not specify a valid workspace
 	 */    
-    public default DocumentLink getDocumentLinkByName(Workspace workspace, String documentName) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId {
-        return getDocumentLinkByName(workspace.getId(), QualifiedName.ROOT.add(documentName));
+    public default DocumentLink getDocumentLink(Workspace workspace, String documentName) throws InvalidWorkspace, InvalidObjectName, InvalidDocumentId {
+        return getDocumentLink(workspace.getId(), QualifiedName.ROOT.add(documentName));
     }
     
     /** Get a document from an Id and a workspace Id.
@@ -730,7 +730,7 @@ public interface RepositoryService {
 	/** Get current state of workspace, document, or document part
      * 
      * Note: this method should not be called by preference; one of the type-specific methods getWorkspaceByName,
-     * or getDocumentLinkByName, should be used where possible. This is because retrieving
+     * or getDocumentLink, should be used where possible. This is because retrieving
      * a repository object without knowing its type may be significantly more expensive.
 	 * 
 	 * @param rootId The workspace Id of the root workspace (name is interpreted relative to here). 
@@ -818,7 +818,7 @@ public interface RepositoryService {
 
     public default DocumentLink refresh(DocumentLink documentLink) {
         try {
-            return getDocumentLinkByName(Constants.ROOT_ID, documentLink.getName());
+            return getDocumentLink(Constants.ROOT_ID, documentLink.getName());
         } catch (InvalidWorkspace | InvalidObjectName e) {
             throw new BaseRuntimeException(e);
         }

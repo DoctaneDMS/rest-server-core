@@ -576,7 +576,7 @@ public class TempRepositoryService implements RepositoryService {
     }
 
     @Override
-    public DocumentLink getDocumentLinkByName(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
+    public DocumentLink getDocumentLink(String rootId, QualifiedName name) throws InvalidWorkspace, InvalidObjectName {
         NamedRepositoryObject object = getObjectByName(rootId, name);
         if (object.getType() == RepositoryObject.Type.DOCUMENT_LINK) return (DocumentLink)object;
         throw new InvalidObjectName(rootId, name);
@@ -607,7 +607,7 @@ public class TempRepositoryService implements RepositoryService {
     @Override
     public DocumentLink copyDocumentLink(String sourceRootId, QualifiedName sourceName, String targetRootId, QualifiedName targetName, boolean createWorkspace) throws InvalidWorkspaceState, InvalidWorkspace, InvalidObjectName {
   		LOG.logEntering("copyDocumentLink", sourceRootId, sourceName, targetRootId, targetName, createWorkspace);
-		DocumentLink srcLink = getDocumentLinkByName(sourceRootId, sourceName);
+		DocumentLink srcLink = getDocumentLink(sourceRootId, sourceName);
         Reference reference = srcLink.getReference();
         try {
             DocumentLink tgtLink = createDocumentLink(targetRootId, targetName, srcLink.getReference(), createWorkspace);
