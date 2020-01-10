@@ -255,7 +255,7 @@ public class Workspaces {
                                 metadata.setEntity(document.toJson(service, navigator, 1, 0));
                                 FormDataBodyPart file = new FormDataBodyPart();
                                 file.setName("file");
-                                file.setMediaType(document.getMediaType());
+                                file.setMediaType(MediaType.valueOf(document.getMediaType()));
                                 file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
                                 file.setEntity(new DocumentOutput(document));
                                 MultiPart response = new MultiPart()
@@ -616,7 +616,7 @@ public class Workspaces {
             DocumentLink result = service.updateDocumentLink(
                     path.rootId, 
                     path.staticPath, 
-                    computedMediaType,
+                    computedMediaType.toString(),
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
                     createWorkspace, 
@@ -685,7 +685,7 @@ public class Workspaces {
             DocumentLink result = service.createDocumentLinkAndName(
                     path.rootId, 
                     path.staticPath, 
-                    file_part.getMediaType(),
+                    file_part.getMediaType().toString(),
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
                     createWorkspace

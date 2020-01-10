@@ -22,13 +22,13 @@ public class StreamableDocumentPartImpl extends StreamableRepositoryObjectImpl i
     private final QualifiedName name;
     private final StreamableRepositoryObject document;
     
-    public StreamableDocumentPartImpl(StreamableRepositoryObject document, QualifiedName name, MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
+    public StreamableDocumentPartImpl(StreamableRepositoryObject document, QualifiedName name, String mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
         super(mediaType, doc_src, metadata);
         this.name = name;
         this.document = document;
     }
     
-    public StreamableDocumentPartImpl(StreamableRepositoryObject document, QualifiedName name, MediaType mediaType, byte[] data, JsonObject metadata) {
+    public StreamableDocumentPartImpl(StreamableRepositoryObject document, QualifiedName name, String mediaType, byte[] data, JsonObject metadata) {
         super(mediaType, data, metadata);
         this.name = name;
         this.document = document;

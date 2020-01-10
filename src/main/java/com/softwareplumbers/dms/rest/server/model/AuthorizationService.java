@@ -51,7 +51,7 @@ public interface AuthorizationService {
      * @return An access control list that can be used to determine if a user has the given role for the referenced document
      * @throws InvalidReference
      */
-    Query getDocumentACL(Reference ref, MediaType mediaType, JsonObject metadata, DocumentAccessRole role) throws InvalidReference;
+    Query getDocumentACL(Reference ref, String mediaType, JsonObject metadata, DocumentAccessRole role) throws InvalidReference;
     
     /** Get the Access Control List for a document.
      * 

@@ -23,7 +23,7 @@ import com.softwareplumbers.dms.Exceptions.*;
 public class PublicAuthorizationService implements AuthorizationService {
 
     @Override
-    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
+    public Query getDocumentACL(Reference ref, String type, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
         return Query.UNBOUNDED;
     }
 

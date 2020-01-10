@@ -413,7 +413,7 @@ public class TempRepositoryServerTest {
         JsonObject metadata = null;
         JsonObject data = null;
         InputStream is = null;
-        MediaType mediaType = null;
+        String mediaType = null;
         Reference reference = null;
         
         if (response.getStatus() == Response.Status.OK.getStatusCode()) {
@@ -426,7 +426,7 @@ public class TempRepositoryServerTest {
                     metadata = data.getJsonObject("metadata");
                 }
                 if (name.equals("file")) {
-                    mediaType = part.getMediaType();
+                    mediaType = part.getMediaType().toString();
                     is = part.getEntityAs(InputStream.class);
                 }
             }

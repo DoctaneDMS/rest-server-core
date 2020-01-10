@@ -24,7 +24,7 @@ import static com.softwareplumbers.dms.Constants.*;
 public abstract class StreamableRepositoryObjectImpl implements StreamableRepositoryObject {
 		
 	protected final byte[] data;
-	protected final MediaType mediaType;
+	protected final String mediaType;
 	protected final JsonObject metadata;
 
 	/** get metadata object
@@ -34,7 +34,7 @@ public abstract class StreamableRepositoryObjectImpl implements StreamableReposi
 
 	/** get media type of file */
 	@Override
-	public MediaType getMediaType() { return mediaType; }
+	public String getMediaType() { return mediaType; }
 
 	/** get length of file */
 	@Override
@@ -58,7 +58,7 @@ public abstract class StreamableRepositoryObjectImpl implements StreamableReposi
 	 * @param data byte array for underlying file
 	 * @param metadata associated meta-data in JSON format
 	 */
-	protected StreamableRepositoryObjectImpl(MediaType mediaType, byte[] data, JsonObject metadata) {
+	protected StreamableRepositoryObjectImpl(String mediaType, byte[] data, JsonObject metadata) {
 		this.data = data;
 		this.mediaType = mediaType;
 		this.metadata = metadata;
@@ -70,7 +70,7 @@ public abstract class StreamableRepositoryObjectImpl implements StreamableReposi
 	 * @param doc_src Supplies an input stream containing the file data
 	 * @param metadata associated meta-data in JSON format
 	 */
-	public StreamableRepositoryObjectImpl(MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
+	public StreamableRepositoryObjectImpl(String mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
 		try (InputStream stream = doc_src.get()) {
 			this.data = IOUtils.toByteArray(stream);
 		} 
@@ -84,7 +84,7 @@ public abstract class StreamableRepositoryObjectImpl implements StreamableReposi
 	 * @param doc_src Supplies an input stream containing the file data
 	 */
 	public StreamableRepositoryObjectImpl(String mediaType, InputStreamSupplier doc_src) throws IOException {
-		this(MediaType.valueOf(mediaType), doc_src, EMPTY_METADATA);
+		this(mediaType, doc_src, EMPTY_METADATA);
 	}
 	
 

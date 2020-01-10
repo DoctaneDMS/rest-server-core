@@ -20,12 +20,12 @@ public class DocumentImpl extends StreamableRepositoryObjectImpl implements Docu
     
     private final Reference reference;
     
-    public DocumentImpl(Reference reference, MediaType mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
+    public DocumentImpl(Reference reference, String mediaType, InputStreamSupplier doc_src, JsonObject metadata) throws IOException {
         super(mediaType, doc_src, metadata);
         this.reference = reference;
     }
     
-    public DocumentImpl(Reference reference, MediaType mediaType, byte[] data, JsonObject metadata) {
+    public DocumentImpl(Reference reference, String mediaType, byte[] data, JsonObject metadata) {
         super(mediaType, data, metadata);
         this.reference = reference;
     }

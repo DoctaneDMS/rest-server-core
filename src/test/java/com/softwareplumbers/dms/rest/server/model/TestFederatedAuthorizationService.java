@@ -77,7 +77,7 @@ public class TestFederatedAuthorizationService {
     }
 
     @Test public void testGetDocumentCreationACL() throws InvalidReference {
-        Query acl = service.getDocumentACL(null, MediaType.TEXT_PLAIN_TYPE, JsonValue.EMPTY_JSON_OBJECT, AuthorizationService.DocumentAccessRole.CREATE);
+        Query acl = service.getDocumentACL(null, "text/plain", JsonValue.EMPTY_JSON_OBJECT, AuthorizationService.DocumentAccessRole.CREATE);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_AND_SVC_AC), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_BRANCH), equalTo(false));       

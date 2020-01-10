@@ -149,6 +149,7 @@ dependencies {
     compile group: 'org.opensaml', name: 'opensaml-saml-impl', version: '3.3.0'
     compile group: 'org.apache.tika', name:'tika-parsers', version:'1.22_swp'
 
+    testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT', classifier: 'tests'
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }

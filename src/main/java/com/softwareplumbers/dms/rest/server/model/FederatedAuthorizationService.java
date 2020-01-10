@@ -37,7 +37,7 @@ public class FederatedAuthorizationService implements AuthorizationService {
     public FederatedAuthorizationService() { }
     
     @Override
-    public Query getDocumentACL(Reference ref, MediaType type, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
+    public Query getDocumentACL(Reference ref, String type, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
             result = result.union(service.getDocumentACL(ref, type, metadata, role));

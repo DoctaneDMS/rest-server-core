@@ -42,7 +42,7 @@ public class DocumentLinkImpl implements DocumentLink {
     }
 
     @Override
-    public MediaType getMediaType() {
+    public String getMediaType() {
         return document.getMediaType();
     }
 

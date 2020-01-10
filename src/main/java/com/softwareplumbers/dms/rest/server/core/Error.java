@@ -186,10 +186,14 @@ public class Error {
     }
     
     public static JsonObject unauthorized(Query acl, MediaType type, JsonObject metadata) {
+        return unauthorized(acl, type.toString(), metadata);      
+    }
+    
+    public static JsonObject unauthorized(Query acl, String type, JsonObject metadata) {
         return Json.createObjectBuilder()
             .add("error", "No rights to create document")
             .add("acl", acl.toJSON())
-            .add("mediaType", type.toString())
+            .add("mediaType", type)
             .add("metadata", metadata)
             .build();        
     }

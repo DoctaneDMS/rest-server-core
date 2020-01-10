@@ -52,17 +52,17 @@ public class XMLOutput implements StreamingOutput {
     	    SAXTransformerFactory factory = (SAXTransformerFactory)SAXTransformerFactory.newInstance();
     	    TransformerHandler handler;
         	Parser parser;
-            MediaType type = document.getMediaType();
+            MediaType type = MediaType.valueOf(document.getMediaType());
             String name = document instanceof DocumentLink ? ((DocumentLink)document).getName().part : null;
             
     	    try (InputStream stream = document.getData()) {
-                if (MediaTypes.isOpenOfficeXMLDoc(document.getMediaType(), name))
+                if (MediaTypes.isOpenOfficeXMLDoc(type, name))
                     parser = new OOXMLParser();
-                else if (MediaTypes.isLegacyOfficeDoc(document.getMediaType(), name))
+                else if (MediaTypes.isLegacyOfficeDoc(type, name))
                     parser = new OfficeParser();
-                else if (MediaTypes.isRFC822Message(document.getMediaType(), name)) 
+                else if (MediaTypes.isRFC822Message(type, name)) 
                     parser = new RFC822Parser();
-                else if (MediaTypes.isText(document.getMediaType(), name))
+                else if (MediaTypes.isText(type, name))
                     parser = new TXTParser();
                 else
                     throw new CannotConvertFormatException(type, name);

@@ -67,7 +67,7 @@ class DocumentInfo implements DocumentLink {
     }
 
     @Override
-    public MediaType getMediaType() {
+    public String getMediaType() {
         return linkedDocument().getMediaType();
     }
 

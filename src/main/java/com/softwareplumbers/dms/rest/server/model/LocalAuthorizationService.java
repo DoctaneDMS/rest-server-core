@@ -60,7 +60,7 @@ public class LocalAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getDocumentACL(Reference ref, MediaType mediaType, JsonObject metadata, DocumentAccessRole role) {
+    public Query getDocumentACL(Reference ref, String mediaType, JsonObject metadata, DocumentAccessRole role) {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 
