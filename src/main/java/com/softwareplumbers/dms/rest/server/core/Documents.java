@@ -143,23 +143,37 @@ public class Documents {
                 if (!acl.containsItem(userMetadata))
                     return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
                 
-    			FormDataBodyPart metadata = new FormDataBodyPart();
-    			metadata.setName("metadata");
-    			metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-    			// Breaking change 20190303 - returned Json includes id, version, as well as metadata 
-                // Old metadata is in 'metadata' property of returned object
-    			metadata.setEntity(document.toJson());
-    			FormDataBodyPart file = new FormDataBodyPart();
-    			file.setName("file");
-    			file.setMediaType(MediaType.valueOf(document.getMediaType()));
-    			file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-    			file.setEntity(new DocumentOutput(document));
-    			
-    			MultiPart response = new MultiPart()
-    				.bodyPart(metadata)
-    				.bodyPart(file);
-    			
-    			return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());
+                // So, for backwards compatibility with old buggy version, we will send a multipart response
+                // unless the client has specifically request JSON
+                if (!requestContext.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
+                    FormDataBodyPart metadata = new FormDataBodyPart();
+                    metadata.setName("metadata");
+                    metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                    // Breaking change 20190303 - returned Json includes id, version, as well as metadata 
+                    // Old metadata is in 'metadata' property of returned object
+                    metadata.setEntity(document.toJson());
+                    FormDataBodyPart file = new FormDataBodyPart();
+                    file.setName("file");
+                    file.setMediaType(MediaType.valueOf(document.getMediaType()));
+                    file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                    file.setEntity(new DocumentOutput(document));
+
+                    MultiPart response = new MultiPart()
+                        .bodyPart(metadata)
+                        .bodyPart(file);
+
+                    return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());
+                } else {                    
+                    Response response = Response
+                        .ok() 
+                        .type(MediaType.APPLICATION_JSON_TYPE)
+                        // Breaking change 20190303 - returned Json includes id, version, as well as metadata 
+                        // Old metadata is in 'metadata' property of returned object
+                        .entity(document.toJson())
+                        .build();
+                    
+                    return LOG.logResponse("get", response);        
+                }
     		} else {
     			return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
@@ -248,8 +262,8 @@ public class Documents {
                 .build());
     	} catch (InvalidContentType err) {
             return LOG.logResponse("get", Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
-        } catch (InvalidReference err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(err)));
+        } catch (InvalidReference e) {
+            return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
         
@@ -303,8 +317,8 @@ public class Documents {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
     		return LOG.logResponse("getMetadata", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
-    	} catch (InvalidReference ex) {
-            return LOG.logResponse("getMetadata", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(ex)));
+    	} catch (InvalidReference e) {
+            return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
 

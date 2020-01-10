@@ -71,6 +71,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.util.Arrays;
 import javax.json.JsonReader;
+import javax.ws.rs.core.Response.Status;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.client.ClientProperties;
 
@@ -91,6 +92,11 @@ public class TempRepositoryServerTest {
         put("eml", MediaType.valueOf("message/rfc822"));
 	}};
 
+    class HttpError extends RuntimeException {
+        public final int code;
+        public HttpError(int code) { super("HTTP Error " + code); this.code = code; }
+    }
+    
 	int port = 8080;
     
     /* Register a client that will use jersey's JSON processing 
@@ -173,7 +179,7 @@ public class TempRepositoryServerTest {
 			return response.readEntity(JsonObject.class);
 		} else {
 			System.out.println(response.toString());
-			throw new RuntimeException("Bad post");
+			throw new HttpError(response.getStatus());
 		}
     }
     
@@ -219,7 +225,7 @@ public class TempRepositoryServerTest {
 			return response.readEntity(JsonObject.class);
 		} else {
 			System.out.println(response.toString());
-			throw new RuntimeException("Bad put");
+			throw new HttpError(response.getStatus());
 		}
     }
     
@@ -251,7 +257,7 @@ public class TempRepositoryServerTest {
         
         if (response.getStatus() != Response.Status.ACCEPTED.getStatusCode()) {
             System.out.println(response.toString());
-            throw new RuntimeException("Bad put");
+			throw new HttpError(response.getStatus());
         }
     }
     
@@ -287,7 +293,7 @@ public class TempRepositoryServerTest {
         
         if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
             System.out.println(response.toString());
-            throw new RuntimeException("Bad put");
+			throw new HttpError(response.getStatus());
         }
         
         return response.readEntity(JsonObject.class);
@@ -312,7 +318,7 @@ public class TempRepositoryServerTest {
 			return response.readEntity(JsonObject.class);
 		} else {
 			System.out.println(response.toString());
-			throw new RuntimeException("Bad put");
+			throw new HttpError(response.getStatus());
 		}
     }
     
@@ -334,7 +340,7 @@ public class TempRepositoryServerTest {
 			return response.readEntity(resultType);
 		} else {
 			System.out.println(response.toString());
-			throw new RuntimeException("Bad get");
+			throw new HttpError(response.getStatus());
 		}
     }
 
@@ -376,7 +382,7 @@ public class TempRepositoryServerTest {
         if (response.getStatus() == Response.Status.OK.getStatusCode()) {
             return response.readEntity(resultType);
         } else {
-            throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
+            throw new HttpError(response.getStatus());
         }
 
     } 
@@ -439,7 +445,7 @@ public class TempRepositoryServerTest {
             }
         } 
 
-        throw new RuntimeException("Bad status " + response.getStatusInfo().getReasonPhrase());
+        throw new HttpError(response.getStatus());
     } 
     
     /** Utility function to get a document from the local test server
@@ -645,6 +651,29 @@ public class TempRepositoryServerTest {
 		assertTrue(docEquals("test1", doc));
 		
 	}
+    
+    @Test
+	public void getInvalidReferenceTest() throws IllegalStateException, IOException, ParseException {
+        try {
+    		StreamableRepositoryObjectImpl doc = getDocument("2321412341234");
+            fail();
+        } catch (HttpError err) {
+            assertEquals(Status.NOT_FOUND.getStatusCode(), err.code);
+        }	
+	}
+    
+    @Test
+	public void getInvalidReferenceTestWithMetadata() throws IllegalStateException, IOException, ParseException {
+
+        try {
+    		JsonObject doc = getDocumentJson("2321412341234", "metadata", JsonObject.class);
+            fail();
+        } catch (HttpError err) {
+            assertEquals(Status.NOT_FOUND.getStatusCode(), err.code);
+        }
+		
+	}
+	
 	
     /** Test that updating a document returns a new version.
      * 
@@ -913,6 +942,14 @@ public class TempRepositoryServerTest {
         putDocumentLink("/ws/tmp/anotherws2/myDoc", docId, UpdateType.CREATE);
         JsonArray result = getDocumentJson(docId, "workspaces", JsonArray.class);
         assertEquals(2, result.size());
+    }
+    
+    @Test
+    public void testGetMetadata() throws IOException, ParseException {
+        JsonObject response1 = postDocument("test2", null, "txt");
+        String docId = response1.getString("id");
+        JsonObject result = getDocumentJson(docId, "metadata", JsonObject.class);
+        assertEquals(getTestMetadata("/test2.json"), result.getJsonObject("metadata"));
     }
     
     @Test

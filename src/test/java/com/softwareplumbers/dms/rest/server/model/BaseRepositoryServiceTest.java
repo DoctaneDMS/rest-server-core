@@ -20,7 +20,6 @@ import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
-import javax.ws.rs.core.MediaType;
 
 import org.junit.Test;
 
@@ -37,6 +36,7 @@ import com.softwareplumbers.dms.Workspace.State;
 import static com.softwareplumbers.dms.Constants.*;
 import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
+import com.softwareplumbers.dms.common.test.DocumentServiceTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -55,14 +55,17 @@ import static org.hamcrest.Matchers.*;
  * metadata.
  * 
  */
-public abstract class BaseRepositoryServiceTest {
+public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
 	
+    @Override
 	public abstract RepositoryService service();
-    public abstract DocumentNavigatorService navigator();
-
+    @Override
 	public abstract Reference randomDocumentReference();
-	public abstract String randomWorkspaceId();
+    @Override
     public abstract JsonObject randomDocumentMetadata();
+            
+    public abstract DocumentNavigatorService navigator();
+ 	public abstract String randomWorkspaceId();
     public abstract JsonObject randomWorkspaceMetadata();
     public abstract String uniqueMetadataField();
 		
