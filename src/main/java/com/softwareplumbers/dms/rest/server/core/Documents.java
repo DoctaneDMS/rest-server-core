@@ -42,13 +42,9 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
-import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
-import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.json.JsonValue;
 import javax.ws.rs.container.ContainerRequestContext;
 
