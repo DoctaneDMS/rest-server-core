@@ -11,8 +11,8 @@
     <context:annotation-config />
 	
     <bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
-        <constructor-arg index="0" value="/tmp/doctane-proxy.keystore"/>
-        <constructor-arg index="1" value="password"/>
+        <constructor-arg index="0" value="/var/tmp/doctane-proxy.keystore"/>
+        <constructor-arg index="1" value="#{systemProperties['doctane.keystore.password']}"/>
         <!-- for some reason specifying a value attribute here does not work -->
         <constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
         <constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
