@@ -102,6 +102,12 @@ public class Error {
 				.build();		
 	}
 
+    public static JsonObject mapServiceError(InvalidRepository err) {
+		return Json.createObjectBuilder()
+				.add("error", "Invalid repository " + err.repository)
+				.add("name", err.repository)
+				.build();		
+	}
     
 	public static JsonObject mapServiceError(InvalidDocumentId err) {
 		return Json.createObjectBuilder()

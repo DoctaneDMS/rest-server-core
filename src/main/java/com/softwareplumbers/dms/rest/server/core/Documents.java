@@ -35,6 +35,7 @@ import org.glassfish.jersey.media.multipart.MultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartMediaTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
@@ -42,13 +43,9 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
-import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
-import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.json.JsonValue;
 import javax.ws.rs.container.ContainerRequestContext;
 
@@ -75,6 +72,22 @@ public class Documents {
 
 	private RepositoryServiceFactory repositoryServiceFactory;
     private AuthorizationServiceFactory authorizationServiceFactory;
+    
+    private  AuthorizationService getAuthorizationService(String repository) throws InvalidRepository {
+        try {
+            return authorizationServiceFactory.getService(repository);
+        } catch (NoSuchBeanDefinitionException e) {
+            throw new InvalidRepository(repository);
+        }
+    }
+    
+    private  RepositoryService getRepositoryService(String repository) throws InvalidRepository {
+        try {
+            return repositoryServiceFactory.getService(repository);
+        } catch (NoSuchBeanDefinitionException e) {
+            throw new InvalidRepository(repository);
+        }
+    }
     
 	///////////---------  methods --------////////////
 	    
@@ -128,7 +141,7 @@ public class Documents {
     ) {
         LOG.logEntering("get", repository, id, version);
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
@@ -177,6 +190,8 @@ public class Documents {
     		} else {
     			return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch(InvalidReference e) { 
     		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
@@ -213,8 +228,8 @@ public class Documents {
     ) {
         LOG.logEntering("getFile", repository, id, version, contentType);
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -252,6 +267,8 @@ public class Documents {
                     .entity(Error.documentNotFound(repository,id,version))
                     .build());    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -289,8 +306,8 @@ public class Documents {
     ) {
         LOG.logEntering("getMetadata", repository, id, version);
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -313,6 +330,8 @@ public class Documents {
     		} else {
     			return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -343,8 +362,8 @@ public class Documents {
     ) {
         LOG.logEntering("getWorkspaces", repository, id, version);
         try {
-            RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -356,7 +375,9 @@ public class Documents {
             if (links != null) links.forEach(item -> results.add(item.toJson()));
             return LOG.logResponse("getWorkspaces",Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build());
                     
-        } catch (RuntimeException e) {
+        } catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    	} catch (RuntimeException e) {
             LOG.log.severe(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.logResponse("getWorkspaces",Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
@@ -389,8 +410,8 @@ public class Documents {
     	) {
         LOG.logEntering("post", repository, Log.fmt(metadata_part), Log.fmt(file_part));
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -426,6 +447,8 @@ public class Documents {
     		} else {
     			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure()));    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
     		LOG.log.severe(e.getMessage());
     		e.printStackTrace(System.err);
@@ -455,8 +478,8 @@ public class Documents {
     	) {
         LOG.logEntering("postFile", repository, Log.fmt(request));
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -479,6 +502,8 @@ public class Documents {
     		} else {
     			return Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure());    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidReference e) {
     		return Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e));
         } catch (RuntimeException e) {
@@ -514,8 +539,8 @@ public class Documents {
     ) {
         LOG.logEntering("put", repository, id, Log.fmt(metadata_part), Log.fmt(file_part));
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -549,6 +574,8 @@ public class Documents {
     		} else {
     			return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
     		return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	} catch (RuntimeException e) {
@@ -585,8 +612,8 @@ public class Documents {
     ) {
         LOG.logEntering("updateFile", repository, id, workspace, createWorkspace, Log.fmt(request));
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -610,6 +637,8 @@ public class Documents {
     		} else {
     			return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
     		return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {
@@ -648,8 +677,8 @@ public class Documents {
     	) {
         LOG.logEntering("updateMetadata", repository, id, workspace, createWorkspace, metadata);
     	try {
-    		RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+    		RepositoryService service = getRepositoryService(repository);
+            AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -673,6 +702,8 @@ public class Documents {
     		} else {
     			return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
+    	} catch(InvalidRepository e) { 
+    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
     		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {

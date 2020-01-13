@@ -30,7 +30,9 @@ import org.springframework.stereotype.Component;
 
 import com.softwareplumbers.dms.rest.server.util.Log;
 import java.util.Optional;
+import javax.json.JsonValue;
 import javax.ws.rs.PathParam;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 
 /** Handle authentication operations
  * 
@@ -48,6 +50,14 @@ public class Authentication {
     private static final Log LOG = new Log(Authentication.class);
     
     private final AuthenticationServiceFactory authenticationServiceFactory;
+    
+    private  AuthenticationService getAuthenticationService(String repository) throws InvalidRepository {
+        try {
+            return authenticationServiceFactory.getService(repository);
+        } catch (NoSuchBeanDefinitionException e) {
+            throw new InvalidRepository(repository);
+        }
+    }
     
     /** Construct an authentication web service using an authentication back-end.
      * 
@@ -104,12 +114,11 @@ public class Authentication {
         @FormParam("RelayState") String relayState
     ) {
         LOG.logEntering("handleSamlResponse");
-        
-        AuthenticationService authService = authenticationServiceFactory.getService(repository);
-        SAMLProtocolHandlerService samlResponseHandler = authService.getSAMLResponseHandlerService();
-        
+                
         try {     
-            
+            AuthenticationService authService = getAuthenticationService(repository);
+            SAMLProtocolHandlerService samlResponseHandler = authService.getSAMLResponseHandlerService();
+    
             org.opensaml.saml.saml2.core.Response response = samlResponseHandler.parseSamlResponse(samlResponse);
         
             if (samlResponseHandler.validateSignature(response) && samlResponseHandler.hasDocumentViewerRole(response)) {
@@ -125,6 +134,8 @@ public class Authentication {
             }
         } catch(SAMLParsingError | URISyntaxException e) {
             return LOG.logResponse("handleSamlResponse",Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
+        } catch(InvalidRepository e) {
+            return LOG.logResponse("handleSamlResponse", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
         
     }
@@ -149,12 +160,12 @@ public class Authentication {
     ) {
         LOG.logEntering("handleServiceRequest");
         
-        AuthenticationService authService = authenticationServiceFactory.getService(repository);
-        
-        if (request == null) return Response.status(Status.NOT_ACCEPTABLE).build();
-        if (signature == null) return Response.status(Status.NOT_ACCEPTABLE).build();
-        
         try {
+            AuthenticationService authService = getAuthenticationService(repository);
+
+            if (request == null) return Response.status(Status.NOT_ACCEPTABLE).build();
+            if (signature == null) return Response.status(Status.NOT_ACCEPTABLE).build();
+        
             Optional<String> account = authService.getSignedRequestValidationService().validateSignature(request, signature);
             if (account.isPresent()) {
                 return LOG.logResponse("handleServiceRequest", authService.getRequestValidationService().sendIdentityToken(Response.ok(), account.get()).build());
@@ -163,6 +174,8 @@ public class Authentication {
             }
         } catch(RequestValidationError e) {
             return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
+        } catch (InvalidRepository e) {
+            return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
     
@@ -179,8 +192,12 @@ public class Authentication {
         @QueryParam("relayState") String relayState
     ) {
         LOG.logEntering("handleRedirect");
-        AuthenticationService authService = authenticationServiceFactory.getService(repository);
-        return LOG.logResponse("handleRedirect", authService.getSignonService().redirect(relayState));
+        try {
+            AuthenticationService authService = getAuthenticationService(repository);
+            return LOG.logResponse("handleRedirect", authService.getSignonService().redirect(relayState));
+        } catch (InvalidRepository e) {
+            return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+        }
     }
 
 }
