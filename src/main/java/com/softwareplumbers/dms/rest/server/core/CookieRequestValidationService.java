@@ -12,13 +12,14 @@ import javax.ws.rs.core.NewCookie;
 
 import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
 import com.softwareplumbers.keymanager.KeyManager;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Cookie-based Authentication Service.
  * 
@@ -27,7 +28,7 @@ import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
  */
 public class CookieRequestValidationService implements RequestValidationService {
     
-    private static final Log LOG = new Log(CookieRequestValidationService.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(CookieRequestValidationService.class);
     
     private final Key jwtSigningKey;
     private final String repository;
@@ -38,7 +39,7 @@ public class CookieRequestValidationService implements RequestValidationService 
     }
     
     public NewCookie generateCookie(String uid) {
-        LOG.logEntering("generateCookie", uid);
+        LOG.entry(uid);
         ZonedDateTime expirationDate = LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault());
         Date expirationDateAsDate = Date.from(expirationDate.toInstant());
         String jwt = Jwts.builder()
@@ -50,7 +51,7 @@ public class CookieRequestValidationService implements RequestValidationService 
              "DoctaneUserToken/"+repository, jwt, 
              "/", null, Cookie.DEFAULT_VERSION, "Doctane User Token", 
              NewCookie.DEFAULT_MAX_AGE, expirationDateAsDate, false, false);
-        return LOG.logReturn("generateCookie", cookie);    
+        return LOG.exit(cookie);    
     }
     
     /** Generate a cookie for the provided User Id.
@@ -61,8 +62,8 @@ public class CookieRequestValidationService implements RequestValidationService 
      */
     @Override
     public ResponseBuilder sendIdentityToken(ResponseBuilder response, String uid) {
-        LOG.logEntering("sendIdentityToken <response>, ", uid);
-        return LOG.logReturn("sendIdentityToken", response.cookie(generateCookie(uid)));
+        LOG.entry(uid);
+        return LOG.exit(response.cookie(generateCookie(uid)));
     }
     
     /** Validate that request is authenticated and generate an appropriate security context
@@ -72,9 +73,9 @@ public class CookieRequestValidationService implements RequestValidationService 
      */
     @Override
     public boolean validateRequest(ContainerRequestContext requestContext) {
-        LOG.logEntering("validateRequest", Log.fmt(requestContext));
+        LOG.entry(requestContext);
         Cookie cookie = requestContext.getCookies().get("DoctaneUserToken/"+repository);
-        LOG.log.finer(()->"DoctaneUserToken Cookie:" + cookie);
+        LOG.debug("DoctaneUserToken Cookie: {}", cookie);
         if (cookie != null) {
             String jws = cookie.getValue();
             try {
@@ -82,12 +83,12 @@ public class CookieRequestValidationService implements RequestValidationService 
                 requestContext.setSecurityContext(new JWTSecurityContext(claims));
                 requestContext.setProperty("validUntil", claims.getExpiration());
                 requestContext.setProperty("validFrom", claims.getNotBefore());
-                return LOG.logReturn("validateRequest", true);
+                return LOG.exit(true);
             } catch (JwtException exp) {
-                return LOG.logReturn("validateRequest", false);
+                return LOG.exit(false);
             }
         } else {
-            return LOG.logReturn("validateRequest", false);
+            return LOG.exit(false);
         }
     }
 

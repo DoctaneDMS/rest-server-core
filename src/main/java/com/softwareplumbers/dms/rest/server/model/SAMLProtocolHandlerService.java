@@ -6,7 +6,7 @@
 package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.dms.rest.server.util.IdioticShibbolethSpringResourceBridge;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -72,6 +72,7 @@ import org.opensaml.xmlsec.config.DefaultSecurityConfigurationBootstrap;
 import org.opensaml.xmlsec.keyinfo.KeyInfoCredentialResolver;
 import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.opensaml.xmlsec.signature.support.SignatureValidator;
+import org.slf4j.ext.XLoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -116,7 +117,7 @@ public class SAMLProtocolHandlerService {
         }
     }
     
-    private static final Log LOG = new Log(SAMLProtocolHandlerService.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(SAMLProtocolHandlerService.class);
     
     private final MetadataResolver idpMetadataResolver;
     private final Credential idpCredential;
@@ -127,7 +128,7 @@ public class SAMLProtocolHandlerService {
     private final String idpEndpoint;
     
     public SAMLProtocolHandlerService(String entityId) throws SAMLInitialisationError {
-        LOG.logEntering("<constructor>", entityId);
+        LOG.entry(entityId);
         
         try {
             InitializationService.initialize();        
@@ -143,7 +144,7 @@ public class SAMLProtocolHandlerService {
         } catch (InitializationException | IOException e) {
             throw new SAMLInitialisationError("can't initialize SAML subsystem", e);
         }
-        LOG.logExiting("<constructor>");
+        LOG.exit();
     }
     
     public SAMLProtocolHandlerService() throws SAMLInitialisationError {
@@ -311,7 +312,7 @@ public class SAMLProtocolHandlerService {
      * @throws com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError 
      */
     public String formatRequest(String ACSUrl, Optional<String> issuerId) throws SAMLOutputError {
-        LOG.logEntering("formatRequest", ACSUrl, issuerId);
+        LOG.entry(ACSUrl, issuerId);
         AuthnRequestBuilder authRequestBuilder = new AuthnRequestBuilder();
         AuthnRequest authRequest = authRequestBuilder.buildObject(SAML2_PROTOCOL, "AuthnRequest", "saml2p");
         authRequest.setAssertionConsumerServiceURL(ACSUrl);
@@ -336,7 +337,7 @@ public class SAMLProtocolHandlerService {
         } catch (MarshallingException | TransformerException | IOException e) {
             throw new SAMLOutputError("Error creating SAML request", e);
         }
-        try { encoded.close(); } catch (IOException e) {};
-        return LOG.logReturn("formatRequest", encoded.toString());
+        try { encoded.close(); } catch (IOException e) { LOG.catching(e); };
+        return LOG.exit(encoded.toString());
     }
 }

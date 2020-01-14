@@ -16,12 +16,16 @@ import java.io.OutputStream;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 import com.softwareplumbers.dms.Exceptions.*;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /**
  *
  * @author jonathan
  */
 class DocumentInfo implements DocumentLink {
+    
+    private static XLogger LOG = XLoggerFactory.getXLogger(DocumentInfo.class);
     
     public boolean deleted;
     public Reference link;
@@ -52,7 +56,7 @@ class DocumentInfo implements DocumentLink {
         try {
             return parent.service.getDocument(link);
         } catch (InvalidReference ex) {
-            throw WorkspaceImpl.LOG.logRethrow("DocumentInfo.getMetadata", new RuntimeException(ex));
+            throw LOG.throwing(new RuntimeException(ex));
         }
     }
 

@@ -43,11 +43,12 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import java.util.Arrays;
 import java.util.List;
 import javax.json.JsonValue;
 import javax.ws.rs.container.ContainerRequestContext;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Handle CRUD operations on documents.
  * 
@@ -64,7 +65,7 @@ public class Documents {
 	
 	///////////--------- Static member variables --------////////////
 
-	private static final Log LOG = new Log(Documents.class);
+	private static final XLogger LOG = XLoggerFactory.getXLogger(Documents.class);
     
     private static final List<MediaType> GET_FILE_RESULT_TYPES = Arrays.asList(MediaType.WILDCARD_TYPE, MediaType.APPLICATION_XHTML_XML_TYPE);
 
@@ -139,7 +140,7 @@ public class Documents {
     	@QueryParam("version") String version,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("get", repository, id, version);
+        LOG.entry(repository, id, version);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -154,7 +155,7 @@ public class Documents {
     		if (document != null) { 
                 Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
                 if (!acl.containsItem(userMetadata))
-                    return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
                 
                 // So, for backwards compatibility with old buggy version, we will send a multipart response
                 // unless the client has specifically request JSON
@@ -175,7 +176,7 @@ public class Documents {
                         .bodyPart(metadata)
                         .bodyPart(file);
 
-                    return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());
+                    return LOG.exit(Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());
                 } else {                    
                     Response response = Response
                         .ok() 
@@ -185,19 +186,19 @@ public class Documents {
                         .entity(document.toJson())
                         .build();
                     
-                    return LOG.logResponse("get", response);        
+                    return LOG.exit(response);        
                 }
     		} else {
-    			return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch(InvalidReference e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logReturn("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	} 
     }
     
@@ -226,21 +227,21 @@ public class Documents {
         @Context HttpHeaders headers,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("getFile", repository, id, version, contentType);
+        LOG.entry(repository, id, version, contentType);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-    			return LOG.logResponse("getFile", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
     		Document document = service.getDocument(new Reference(id, version));
             		
             if (document != null) { 
                 Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
                 if (!acl.containsItem(userMetadata))
-                    return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
 
         		StreamingOutput responseStream;	
                 List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), contentType);
@@ -255,32 +256,32 @@ public class Documents {
                     responseMediaType = MediaType.valueOf(document.getMediaType());
                 }
     		
-    			return LOG.logResponse("getFile", Response
+    			return LOG.exit(Response
     				.status(Status.OK)
     				.type(responseMediaType)
     				.entity(responseStream)
     				.build());
     		} else {
-    			return LOG.logResponse("getFile", Response
+    			return LOG.exit(Response
                     .status(Status.NOT_FOUND)
                     .type(MediaType.APPLICATION_JSON_TYPE)
                     .entity(Error.documentNotFound(repository,id,version))
                     .build());    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logResponse("getFile", Response
+    		return LOG.exit(Response
                 .status(Status.INTERNAL_SERVER_ERROR)
                 .type(MediaType.APPLICATION_JSON_TYPE)
                 .entity(Error.reportException(e))
                 .build());
     	} catch (InvalidContentType err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
         } catch (InvalidReference e) {
-            return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
         
@@ -304,23 +305,23 @@ public class Documents {
     	@QueryParam("version") String version,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("getMetadata", repository, id, version);
+        LOG.entry(repository, id, version);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-    			return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
     		Document document = service.getDocument(new Reference(id, version));
         
     		if (document != null) { 
                 Query acl = authorizationService.getDocumentACL(document, DocumentAccessRole.READ);
                 if (!acl.containsItem(userMetadata))
-                    return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
 
-    			return LOG.logResponse("getMetadata", Response
+    			return LOG.exit(Response
     				.status(Status.OK) 
                     .type(MediaType.APPLICATION_JSON_TYPE)
     				// Breaking change 20190303 - returned Json includes id, version, as well as metadata 
@@ -328,16 +329,16 @@ public class Documents {
     				.entity(document.toJson())
     				.build());
     		} else {
-    			return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logResponse("getMetadata", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	} catch (InvalidReference e) {
-            return LOG.logResponse("getMetadata", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
 
@@ -360,29 +361,29 @@ public class Documents {
         @QueryParam("version") String version,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("getWorkspaces", repository, id, version);
+        LOG.entry(repository, id, version);
         try {
             RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-                return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, null, QualifiedName.ROOT);
             JsonArrayBuilder results = Json.createArrayBuilder();
             Stream<DocumentLink> links = service.listWorkspaces(id, null, accessConstraint);
             if (links != null) links.forEach(item -> results.add(item.toJson()));
-            return LOG.logResponse("getWorkspaces",Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build());
+            return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build());
                     
         } catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
+            LOG.error(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("getWorkspaces",Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } catch (InvalidDocumentId e) {
-            return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
         }
     }    
     
@@ -408,23 +409,23 @@ public class Documents {
     	@FormDataParam("file") FormDataBodyPart file_part,
         @Context ContainerRequestContext requestContext        
     	) {
-        LOG.logEntering("post", repository, Log.fmt(metadata_part), Log.fmt(file_part));
+        LOG.entry(repository, metadata_part, file_part);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-    			return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     					
     		if (metadata_part == null) 
-    			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.missingMetadata()));
+    			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingMetadata()));
 
     		if (file_part == null) 
-    			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.missingFile()));
+    			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingFile()));
 
     		if (file_part.getMediaType() == null)
-    			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.missingContentType()));
+    			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingContentType()));
             
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
                         
@@ -432,7 +433,7 @@ public class Documents {
             
             Query acl = authorizationService.getDocumentACL(null, computedMediaType.toString(), metadata, DocumentAccessRole.CREATE);
             if (!acl.containsItem(userMetadata))
-                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, computedMediaType, metadata)));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, computedMediaType, metadata)));
             
     		Reference reference = 
     			service
@@ -445,16 +446,16 @@ public class Documents {
     		if (reference != null) {
     			return Response.status(Status.CREATED).type(MediaType.APPLICATION_JSON).entity(reference).build();
     		} else {
-    			return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure()));    			
+    			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure()));    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logResponse("post", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	} catch (InvalidReference e) {
-    		return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
         }
     }
     
@@ -476,7 +477,7 @@ public class Documents {
     	@Context HttpServletRequest request,
         @Context ContainerRequestContext requestContext        
     	) {
-        LOG.logEntering("postFile", repository, Log.fmt(request));
+        LOG.entry(repository, request);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
@@ -487,7 +488,7 @@ public class Documents {
             
             Query acl = authorizationService.getDocumentACL(null, request.getContentType(), JsonValue.EMPTY_JSON_OBJECT, DocumentAccessRole.CREATE);
             if (!acl.containsItem(userMetadata))
-                return LOG.logResponse("postFile", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, request.getContentType(), JsonValue.EMPTY_JSON_OBJECT)));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, request.getContentType(), JsonValue.EMPTY_JSON_OBJECT)));
 
     		Reference reference = 
     			service
@@ -503,11 +504,11 @@ public class Documents {
     			return Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure());    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidReference e) {
     		return Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e));
         } catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
     		return Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e));
     	} 
@@ -537,20 +538,20 @@ public class Documents {
     	@FormDataParam("file") FormDataBodyPart file_part,
         @Context ContainerRequestContext requestContext        
     ) {
-        LOG.logEntering("put", repository, id, Log.fmt(metadata_part), Log.fmt(file_part));
+        LOG.entry(repository, id, metadata_part, file_part);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-    			return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     					
     		if (metadata_part == null) 
-    			return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.missingMetadata()));
+    			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingMetadata()));
 
     		if (file_part == null) 
-    			return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.missingFile()));
+    			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingFile()));
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), file_part.getName());
 						
@@ -558,7 +559,7 @@ public class Documents {
                         
             Query acl = authorizationService.getDocumentACL(new Reference(id), computedMediaType.toString(), null, DocumentAccessRole.UPDATE);
             if (!acl.containsItem(userMetadata))
-                return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
            
             Reference reference = 
     			service
@@ -570,20 +571,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return LOG.logResponse("put", Error.errorResponse(Status.ACCEPTED,reference.toJson()));
+    			return LOG.exit(Error.errorResponse(Status.ACCEPTED,reference.toJson()));
     		} else {
-    			return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
-    		return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	} catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logResponse("put",Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	} catch (InvalidReference e) {
-    		return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
         }
     }
    
@@ -610,18 +611,18 @@ public class Documents {
     	@Context HttpServletRequest request,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("updateFile", repository, id, workspace, createWorkspace, Log.fmt(request));
+        LOG.entry(repository, id, workspace, createWorkspace, request);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-    			return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     		
             Query acl = authorizationService.getDocumentACL(new Reference(id), request.getContentType(), null, DocumentAccessRole.UPDATE);
             if (!acl.containsItem(userMetadata))
-                return LOG.logResponse("updateFile", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
 
     		Reference reference = 
     			service
@@ -633,20 +634,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return LOG.logResponse("updateFile", Error.errorResponse(Status.ACCEPTED,reference.toJson()));
+    			return LOG.exit(Error.errorResponse(Status.ACCEPTED,reference.toJson()));
     		} else {
-    			return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
-    		return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logResponse("updateFile", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	} catch (InvalidReference e) {
-    		return LOG.logResponse("updateFile", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
         }
     }
 
@@ -675,18 +676,18 @@ public class Documents {
         @Context ContainerRequestContext requestContext,
     	JsonObject metadata
     	) {
-        LOG.logEntering("updateMetadata", repository, id, workspace, createWorkspace, metadata);
+        LOG.entry(repository, id, workspace, createWorkspace, metadata);
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
-    			return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     					
     		Query acl = authorizationService.getDocumentACL(new Reference(id), null, null, DocumentAccessRole.UPDATE);
             if (!acl.containsItem(userMetadata))
-                return LOG.logResponse("updateMetadata", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
 
             Reference reference = 
     			service
@@ -698,20 +699,20 @@ public class Documents {
 					);
 
     		if (reference != null) {
-    			return LOG.logResponse("updateMetadata", Error.errorResponse(Status.ACCEPTED,reference.toJson()));
+    			return LOG.exit(Error.errorResponse(Status.ACCEPTED,reference.toJson()));
     		} else {
-    			return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
+    			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
     	} catch(InvalidRepository e) { 
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
-    		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {
-    		LOG.log.severe(e.getMessage());
+    		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
-    		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	} catch (InvalidReference e) {
-    		return LOG.logResponse("updateMetadata", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
         }
     }
     

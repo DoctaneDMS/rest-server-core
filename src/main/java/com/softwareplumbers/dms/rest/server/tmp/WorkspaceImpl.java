@@ -25,12 +25,13 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.Exceptions.*;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import javax.json.JsonString;
+import org.slf4j.ext.XLoggerFactory;
 
 class WorkspaceImpl implements Workspace {
 	
-	static Log LOG = new Log(WorkspaceImpl.class);
+	private static XLogger LOG = XLoggerFactory.getXLogger(WorkspaceImpl.class);
 	
 	
 	/**
@@ -148,25 +149,25 @@ class WorkspaceImpl implements Workspace {
 	
 	
 	public void add(Reference reference, Document doc) throws InvalidWorkspaceState {
-		LOG.logEntering("add", reference, doc);
+		LOG.entry(reference, doc);
 		add(reference, getContainmentName(doc));
-		LOG.logExiting("add");
+		LOG.exit();
 	}
 	
 	public DocumentInfo add(Reference reference, String docName) throws InvalidWorkspaceState {
-		LOG.logEntering("add", reference, docName);
+		LOG.entry(reference, docName);
 		if (state == State.Open) {
 			if (!service.referenceExists(this, reference)) {
 				Reference latest = new Reference(reference.id);
                 DocumentInfo result = new DocumentInfo(docName,latest,false, this);
 				this.children.put(docName, result);
 				service.registerWorkspaceReference(this, latest);
-                return LOG.logReturn("add", result);
+                return LOG.exit(result);
 			} else {
-                return LOG.logReturn("add", (DocumentInfo)this.children.get(docName));
+                return LOG.exit((DocumentInfo)this.children.get(docName));
             }
 		}
-		else throw LOG.logThrow("add", new InvalidWorkspaceState(name, state));
+		else throw LOG.throwing(new InvalidWorkspaceState(name, state));
 	}
     
     public Optional<DocumentInfo> findLink(Reference ref) {
@@ -179,23 +180,23 @@ class WorkspaceImpl implements Workspace {
     }
     
     public DocumentInfo add(Reference ref, boolean returnExisting) throws InvalidWorkspaceState, InvalidReference {
-		LOG.logEntering("add", ref, returnExisting);
+		LOG.entry(ref, returnExisting);
         Optional<DocumentInfo> existing = findLink(ref);
         if (existing.isPresent()) {
             if (returnExisting) 
-                return LOG.logReturn("add", existing.get());
+                return LOG.exit(existing.get());
             else
-                throw LOG.logThrow("add", new InvalidReference(ref));
+                throw LOG.throwing(new InvalidReference(ref));
         } else {
             String cname = getContainmentName(service.getDocument(ref));
-            return LOG.logReturn("add", add(ref, cname));
+            return LOG.exit(add(ref, cname));
         }        
     }
 	
 	public DocumentInfo update(Reference reference, String docName) throws InvalidWorkspaceState, InvalidObjectName {
-		LOG.logEntering("update", reference, docName);
+		LOG.entry(reference, docName);
 		RepositoryObject objRef = children.get(docName);
-		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw LOG.logThrow("update", new InvalidObjectName(Constants.ROOT_ID, getName().add(docName)));
+		if (objRef== null || objRef.getType() != Type.DOCUMENT_LINK) throw LOG.throwing(new InvalidObjectName(Constants.ROOT_ID, getName().add(docName)));
 		DocumentInfo docRef = (DocumentInfo)objRef;
 		if (state == State.Open) {
 			if (!docRef.getId().equals(reference.id)) {
@@ -203,19 +204,19 @@ class WorkspaceImpl implements Workspace {
 				service.registerWorkspaceReference(this, reference);
                 DocumentInfo newInfo = new DocumentInfo(docRef.name, new Reference(reference.id), false, this);
 				children.put(docName, newInfo);
-                return LOG.logReturn("update", newInfo);
+                return LOG.exit(newInfo);
 			} else {
-                return LOG.logReturn("update", docRef);
+                return LOG.exit(docRef);
             }
 		}
-		else throw LOG.logThrow("update", new InvalidWorkspaceState(name, state));
+		else throw LOG.throwing(new InvalidWorkspaceState(name, state));
 	}
 	
 	public NamedRepositoryObject deleteObjectByName(String docName) throws InvalidWorkspaceState {
-		LOG.logEntering("deleteObjectByName", docName);
+		LOG.entry(docName);
 		if (state == State.Open) {
 			NamedRepositoryObject obj = children.get(docName);
-			if (obj == null) return LOG.logReturn("deleteDocumentByName", null);
+			if (obj == null) return LOG.exit(null);
 			if (obj.getType() == Type.DOCUMENT_LINK) {
 			    DocumentInfo info = (DocumentInfo)obj;
 			    info.deleted = true;
@@ -225,20 +226,20 @@ class WorkspaceImpl implements Workspace {
 	            if (child.isEmpty()) {
 	                children.remove(docName);
 	                service.deregisterWorkspace(child);
-	                return LOG.logReturn("deleteWorkspaceByName", child);
+	                return LOG.exit(child);
 	            } else {
 	                throw new InvalidWorkspaceState(docName, "Not empty");
 	            }
 			    
 			}
-			return LOG.logReturn("deleteObjectByName", obj);
+			return LOG.exit(obj);
 		} else {
-			throw LOG.logThrow("deleteObjectByName",new InvalidWorkspaceState(docName, state));
+			throw LOG.throwing(new InvalidWorkspaceState(docName, state));
 		}
 	}
 		
 	public void deleteById(String id) throws InvalidDocumentId, InvalidWorkspaceState {
-		LOG.logEntering("deleteById", id);
+		LOG.entry(id);
 		if (state == State.Open) {
 			DocumentInfo info = children.values()
 				.stream()
@@ -246,13 +247,13 @@ class WorkspaceImpl implements Workspace {
 				.map(obj -> (DocumentInfo)obj)
 				.filter(i -> i.getId().equals(id))
 				.findFirst()
-				.orElseThrow(()->LOG.logThrow("deleteById",new InvalidDocumentId(id)));
+				.orElseThrow(()->LOG.throwing(new InvalidDocumentId(id)));
 			info.deleted = true;
 			service.deregisterWorkspaceReference(this, info.getReference());
 		} else {
-			throw LOG.logThrow("deleteById",new InvalidWorkspaceState(name, state));
+			throw LOG.throwing(new InvalidWorkspaceState(name, state));
 		}
-		LOG.logExiting("deleteById");
+		LOG.exit();
 	}
 
 	private Stream<DocumentInfo> getHistory(DocumentInfo doc, Query filter) {

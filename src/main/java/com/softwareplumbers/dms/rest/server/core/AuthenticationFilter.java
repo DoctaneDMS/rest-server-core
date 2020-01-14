@@ -1,6 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import java.io.IOException;
 
 import javax.ws.rs.core.Response;
@@ -14,6 +14,7 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
 import javax.annotation.Priority;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Authentication filter.
  * 
@@ -28,7 +29,7 @@ import javax.annotation.Priority;
 @Component
 public class AuthenticationFilter implements ContainerRequestFilter {
     
-    private static final Log LOG = new Log(AuthenticationFilter.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(AuthenticationFilter.class);
     
     private AuthenticationServiceFactory authServiceFactory;
         
@@ -54,7 +55,7 @@ public class AuthenticationFilter implements ContainerRequestFilter {
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {       
         String repository = requestContext.getUriInfo().getPathParameters().getFirst("repository");
-        LOG.logEntering("filter", repository);
+        LOG.entry(repository);
  
         
         boolean authenticated = false;
@@ -65,11 +66,11 @@ public class AuthenticationFilter implements ContainerRequestFilter {
                 authenticated = validationService.validateRequest(requestContext);
             } 
         } else {
-            LOG.log.warning("Could not find repository path parameter");
+            LOG.warn("Could not find repository path parameter");
         }
         
         if (!authenticated) requestContext.abortWith(Response.status(Status.UNAUTHORIZED).build());
-        LOG.logExiting("filter");
+        LOG.exit();
     }
 
 }

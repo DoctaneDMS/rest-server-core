@@ -9,7 +9,8 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 
 import com.softwareplumbers.dms.Constants;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Class representing workspace path.
  * 
@@ -35,7 +36,7 @@ import com.softwareplumbers.dms.rest.server.util.Log;
  */
 public class WorkspacePath {
     
-    private static final Log LOG = new Log(WorkspacePath.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(WorkspacePath.class);
     
     public final String rootId;
     public final QualifiedName staticPath;
@@ -119,7 +120,7 @@ public class WorkspacePath {
                 staticPath = staticPath.add(pathElement);
             }
         } catch (RuntimeException e) {
-            LOG.logWarning("valueOf", "Could not parse workspace path");    
+            LOG.catching(e);    
         }
         return new WorkspacePath(rootId, staticPath, queryPath, documentId, staticPartPath, queryPartPath);
     }

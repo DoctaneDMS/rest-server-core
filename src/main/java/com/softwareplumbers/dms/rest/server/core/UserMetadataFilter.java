@@ -1,7 +1,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import java.io.IOException;
 import javax.annotation.Priority;
 
@@ -14,6 +14,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import javax.json.JsonObject;
+import org.slf4j.ext.XLoggerFactory;
 
 /**
  * UserMetadata filter.
@@ -32,7 +33,7 @@ import javax.json.JsonObject;
 @Component
 public class UserMetadataFilter implements ContainerRequestFilter {
 
-    private static final Log LOG = new Log(UserMetadataFilter.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(UserMetadataFilter.class);
 
     private AuthorizationServiceFactory authorizationServiceFactory;
 
@@ -56,7 +57,7 @@ public class UserMetadataFilter implements ContainerRequestFilter {
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
         String repository = requestContext.getUriInfo().getPathParameters().getFirst("repository");
-        LOG.logEntering("filter", repository);
+        LOG.entry(repository);
 
         if (repository != null) {
             String userId = requestContext.getSecurityContext().getUserPrincipal().getName();
@@ -66,22 +67,20 @@ public class UserMetadataFilter implements ContainerRequestFilter {
                 requestContext.setProperty("userMetadata", userMetadata);
             } else {
                 requestContext.abortWith(
-                    LOG.logResponse(
-                        "filter", 
+                    LOG.exit(
                         Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository))
                     )
                 );
             }
         } else {
             requestContext.abortWith(
-                LOG.logResponse(
-                    "filter", 
+                LOG.exit(
                     Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository))
                 )
             );
         }
 
-        LOG.logExiting("filter");
+        LOG.exit();
     }
 
 }
