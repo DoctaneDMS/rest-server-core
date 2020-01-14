@@ -1,7 +1,5 @@
 package com.softwareplumbers.dms.rest.server.tmp;
 
-import java.util.logging.Logger;
-
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -16,6 +14,8 @@ import org.springframework.stereotype.Component;
 import com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory;
 import com.softwareplumbers.dms.rest.server.core.Error;
 import com.softwareplumbers.dms.RepositoryService;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Handle admin operations on mongodb repository.
  * 
@@ -28,7 +28,7 @@ import com.softwareplumbers.dms.RepositoryService;
 public class TempAdmin {
 	///////////--------- Static member variables --------////////////
 
-	private static Logger LOG = Logger.getLogger("adminTmp");
+	private static XLogger LOG = XLoggerFactory.getXLogger(TempAdmin.class);
 
 	///////////---------  member variables --------////////////
 
@@ -56,18 +56,18 @@ public class TempAdmin {
     @Produces({ MediaType.APPLICATION_JSON })
     public Response clear(
     	@PathParam("repository") String repository) {
+        LOG.entry(repository);
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
     		if (service == null) 
-    			return Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build();
+    			return LOG.exit(Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
     		if (!(service instanceof TempRepositoryService))
-    			return Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build();
+    			return LOG.exit(Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build());
     		((TempRepositoryService)service).clear();
-    		return Response.ok().type(MediaType.APPLICATION_JSON).build();
+    		return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).build());
     	} catch (Throwable e) {
-    		LOG.severe(e.getMessage());
-    		e.printStackTrace(System.err);
-    		return Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build();
+    		LOG.error(e.getMessage());
+    		return LOG.exit(Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());
     	}
     }
 
