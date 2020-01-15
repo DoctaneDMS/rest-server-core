@@ -157,9 +157,7 @@ public class Documents {
                 if (!acl.containsItem(userMetadata))
                     return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, document)));
                 
-                // So, for backwards compatibility with old buggy version, we will send a multipart response
-                // unless the client has specifically request JSON
-                if (!requestContext.getAcceptableMediaTypes().contains(MediaType.APPLICATION_JSON_TYPE)) {
+                if (requestContext.getAcceptableMediaTypes().contains(MediaType.MULTIPART_FORM_DATA_TYPE)) {
                     FormDataBodyPart metadata = new FormDataBodyPart();
                     metadata.setName("metadata");
                     metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
