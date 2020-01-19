@@ -28,7 +28,8 @@ import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.DocumentNavigatorService;
 import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Handle catalog operations on repositories and documents.
  * 
@@ -44,7 +45,7 @@ import com.softwareplumbers.dms.rest.server.util.Log;
 public class Catalogue {
 	///////////--------- Static member variables --------////////////
 
-	private static Log LOG = new Log(Catalogue.class);
+	private static XLogger LOG = XLoggerFactory.getXLogger(Catalogue.class);
 
 	///////////---------  member variables --------////////////
 
@@ -90,7 +91,7 @@ public class Catalogue {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     			if (service == null) 
-    				return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			Stream<? extends RepositoryObject> infos = null;
@@ -106,11 +107,11 @@ public class Catalogue {
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.
-    			return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
+    			return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
     	} catch (InvalidWorkspace err) {
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
     	} catch (Throwable e) {
-    		return LOG.logResponse("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	}
     }
 
@@ -136,7 +137,7 @@ public class Catalogue {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     			if (service == null) 
-    				return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			service.catalogueHistory(new Reference(id,version), query == null ? Query.UNBOUNDED : Query.urlDecode(query))
@@ -144,11 +145,11 @@ public class Catalogue {
     				.forEach(info->result.add(info));
     			
     			//TODO: must be able to do this in a stream somehow.
-    			return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
+    			return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
     	} catch (InvalidReference err) {
-    		return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
     	} catch (RuntimeException e) {
-    		return LOG.logResponse("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+    		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	}
     }
 
@@ -175,7 +176,7 @@ public class Catalogue {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     			if (service == null) 
-    				return LOG.logResponse("getParts", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+    				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
                 Document document = service.getDocument(new Reference(id,version));
@@ -186,15 +187,15 @@ public class Catalogue {
                         .filter(obj->filter.containsItem(obj))
                         .forEach(obj->result.add(obj));
     			//TODO: must be able to do this in a stream somehow.
-                    return LOG.logResponse("getParts", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
+                    return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
                 } else {
-                    return LOG.logResponse("getParts", Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("file cannot be split into parts")));
+                    return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("file cannot be split into parts")));
                 }
     			
     	} catch (InvalidReference err) {
-    		return LOG.logResponse("getParts", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
     	} catch (DocumentFormatException ex) { 
-            return LOG.logResponse("getParts", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.mapServiceError(ex)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.mapServiceError(ex)));
         } 
     }
     

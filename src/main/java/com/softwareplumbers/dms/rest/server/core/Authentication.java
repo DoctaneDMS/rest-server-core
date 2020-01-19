@@ -28,10 +28,10 @@ import javax.ws.rs.core.SecurityContext;
 
 import org.springframework.stereotype.Component;
 
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import java.util.Optional;
-import javax.json.JsonValue;
 import javax.ws.rs.PathParam;
+import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 
 /** Handle authentication operations
@@ -47,7 +47,7 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 @Singleton
 public class Authentication {
     
-    private static final Log LOG = new Log(Authentication.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(Authentication.class);
     
     private final AuthenticationServiceFactory authenticationServiceFactory;
     
@@ -84,7 +84,7 @@ public class Authentication {
     @GET
     @Produces({MediaType.APPLICATION_JSON})
     public Response getTokenValidity(@PathParam("repository") String repository, @Context ContainerRequestContext context) {
-        LOG.logEntering("getTokenValidity", repository, context);
+        LOG.entry(repository, context);
         SecurityContext secContext = context.getSecurityContext();
         JsonObjectBuilder builder = Json.createObjectBuilder();
         builder.add("user", secContext.getUserPrincipal().getName());
@@ -92,7 +92,7 @@ public class Authentication {
         Date validUntil = (Date)context.getProperty("validUntil");
         if (validFrom != null) builder.add("validFrom", DateTimeFormatter.ISO_INSTANT.format(validFrom.toInstant()));
         if (validUntil != null) builder.add("validUntil", DateTimeFormatter.ISO_INSTANT.format(validUntil.toInstant()));
-        return LOG.logResponse("getTokenValidity", Response.ok(MediaType.APPLICATION_JSON_TYPE).entity(builder.build()).build());      
+        return LOG.exit(Response.ok(MediaType.APPLICATION_JSON_TYPE).entity(builder.build()).build());      
     }
 
     /** Handle a SAML2 response
@@ -113,7 +113,7 @@ public class Authentication {
         @FormParam("SAMLResponse") String samlResponse,
         @FormParam("RelayState") String relayState
     ) {
-        LOG.logEntering("handleSamlResponse");
+        LOG.entry();
                 
         try {     
             AuthenticationService authService = getAuthenticationService(repository);
@@ -123,19 +123,19 @@ public class Authentication {
         
             if (samlResponseHandler.validateSignature(response) && samlResponseHandler.hasDocumentViewerRole(response)) {
                 URI location = new URI(relayState);
-                return LOG.logResponse("handleSamlResponse", 
+                return LOG.exit( 
                     authService.getRequestValidationService().sendIdentityToken(
                             Response.seeOther(location), 
                             samlResponseHandler.getName(response)
                     ).build()
                 );
             } else {
-                return LOG.logResponse("handleSamleResponse", Response.status(Status.FORBIDDEN).build());
+                return LOG.exit(Response.status(Status.FORBIDDEN).build());
             }
         } catch(SAMLParsingError | URISyntaxException e) {
-            return LOG.logResponse("handleSamlResponse",Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
         } catch(InvalidRepository e) {
-            return LOG.logResponse("handleSamlResponse", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
         
     }
@@ -158,7 +158,7 @@ public class Authentication {
         @QueryParam("request") String request,
         @QueryParam("signature") String signature
     ) {
-        LOG.logEntering("handleServiceRequest");
+        LOG.entry();
         
         try {
             AuthenticationService authService = getAuthenticationService(repository);
@@ -168,14 +168,14 @@ public class Authentication {
         
             Optional<String> account = authService.getSignedRequestValidationService().validateSignature(request, signature);
             if (account.isPresent()) {
-                return LOG.logResponse("handleServiceRequest", authService.getRequestValidationService().sendIdentityToken(Response.ok(), account.get()).build());
+                return LOG.exit(authService.getRequestValidationService().sendIdentityToken(Response.ok(), account.get()).build());
             } else {
-                return LOG.logResponse("handleServiceRequest", Response.status(Status.FORBIDDEN).build());
+                return LOG.exit(Response.status(Status.FORBIDDEN).build());
             }
         } catch(RequestValidationError e) {
-            return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
         } catch (InvalidRepository e) {
-            return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
     
@@ -191,12 +191,12 @@ public class Authentication {
         @PathParam("repository") String repository,
         @QueryParam("relayState") String relayState
     ) {
-        LOG.logEntering("handleRedirect");
+        LOG.entry();
         try {
             AuthenticationService authService = getAuthenticationService(repository);
-            return LOG.logResponse("handleRedirect", authService.getSignonService().redirect(relayState));
+            return LOG.exit(authService.getSignonService().redirect(relayState));
         } catch (InvalidRepository e) {
-            return LOG.logResponse("handleServiceRequest", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
 

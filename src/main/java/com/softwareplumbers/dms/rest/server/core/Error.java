@@ -16,17 +16,18 @@ import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import java.math.BigDecimal;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Generate error reports in Json */
 public class Error {
     
-    public static final Log LOG = new Log(Error.class);
+    public static final XLogger LOG = XLoggerFactory.getXLogger(Error.class);
 	
 	public static JsonObject repositoryNotFound(String repository) {
 		return Json.createObjectBuilder()
@@ -148,7 +149,7 @@ public class Error {
 	}
 
 	public static JsonObject reportException(Throwable e) {
-	    LOG.logError("reportException", e);
+	    LOG.catching(e);
 		return Json.createObjectBuilder().add("error", "Exception " + e.toString()).build();		
 	}
 	

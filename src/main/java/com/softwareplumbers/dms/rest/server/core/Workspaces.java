@@ -44,7 +44,7 @@ import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
-import com.softwareplumbers.dms.rest.server.util.Log;
+import org.slf4j.ext.XLogger;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
@@ -63,6 +63,7 @@ import java.util.List;
 import javax.ws.rs.POST;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
+import org.slf4j.ext.XLoggerFactory;
 
 
 /** Handle catalog operations on repositories and documents.
@@ -81,7 +82,7 @@ public class Workspaces {
     
     ///////////--------- Static member variables --------////////////
 
-    private static final Log LOG = new Log(Workspaces.class);
+    private static final XLogger LOG = XLoggerFactory.getXLogger(Workspaces.class);
     
     private static final List<MediaType> GET_RESULT_TYPES = Arrays.asList(
         MediaType.WILDCARD_TYPE,
@@ -186,18 +187,18 @@ public class Workspaces {
         @Context HttpHeaders headers,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("get", repository, workspacePath, filter, contentType, headers.getAcceptableMediaTypes());
+        LOG.entry(repository, workspacePath, filter, contentType, headers.getAcceptableMediaTypes());
         
         try {
             
             Query filterConstraint = filter != null && filter.length() > 0 ? Query.urlDecode(filter) : Query.UNBOUNDED;
-            LOG.log.fine(()->String.format("Decoded filter: " + filterConstraint));
+            LOG.debug("Decoded filter: {}", filterConstraint);
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
 
             if (!workspacePath.queryPath.isEmpty() || !workspacePath.queryPartPath.isEmpty()) {
                 Stream<NamedRepositoryObject> results;
@@ -218,8 +219,8 @@ public class Workspaces {
                 JsonArrayBuilder response = Json.createArrayBuilder();
                 results.forEach(item -> response.add(item.toJson(service, navigator, 1, 0)));
                 JsonArray responseObj = response.build();
-                LOG.log.finest(()->responseObj.toString());
-                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
+                LOG.debug("response: {}", responseObj);
+                return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
             } else {
   
                 // Path has no wildcards, so we are returning at most one object
@@ -232,14 +233,14 @@ public class Workspaces {
                 if (result != null) { 
                     Query acl = authorizationService.getObjectACL(result, AuthorizationService.ObjectAccessRole.READ);
                     if (!acl.containsItem(userMetadata)) {
-                        return LOG.logResponse("get", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, result)));
+                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, result)));
                     }
                     switch (result.getType()) {
                         case WORKSPACE:
                             if (workspacePath.staticPartPath.isEmpty()) {
-                        		return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,navigator,1,0)).build());                    		
+                        		return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,navigator,1,0)).build());                    		
                             } else {
-                                return LOG.logResponse("get", Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("Workspaces do not have document parts")));
+                                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("Workspaces do not have document parts")));
                             }
                     	case DOCUMENT_LINK:
                             String documentName = workspacePath.staticPath.part;
@@ -263,17 +264,17 @@ public class Workspaces {
                                 MultiPart response = new MultiPart()
                                     .bodyPart(metadata)
                                     .bodyPart(file);                                   
-                                return LOG.logResponse("get", Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
+                                return LOG.exit(Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
                             } else if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
                                 Document document = (Document)result;
-                                return LOG.logResponse("get", Response.ok()
+                                return LOG.exit(Response.ok()
                                     .type(MediaType.APPLICATION_XHTML_XML_TYPE)
                                     .entity(new XMLOutput(document)).build());                                	
                             } else if (requestedMediaType == MediaType.APPLICATION_JSON_TYPE) {
-                                return LOG.logResponse("get", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service, navigator, 1, 0)).build());
+                                return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service, navigator, 1, 0)).build());
                             } else {
                                 Document document = (Document)result;
-                                return LOG.logResponse("get", Response.ok()
+                                return LOG.exit(Response.ok()
                                     .header("content-disposition", "attachment; filename=" + URLEncoder.encode(documentName, StandardCharsets.UTF_8.name()))
                                     .type(document.getMediaType())
                                     .entity(new DocumentOutput(document)).build());
@@ -282,29 +283,28 @@ public class Workspaces {
                             throw new RuntimeException("Unknown result type:" + result.getType());
                     	}
                 } else {
-                    return LOG.logResponse("get", 
-                        Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
+                    return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
                 }
             }
 
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
         } catch (UnsupportedEncodingException err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(err)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(err)));
         } catch (InvalidObjectName err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
         } catch (InvalidContentType err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.BAD_REQUEST, Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.BAD_REQUEST, Error.mapServiceError(err)));
         } catch (DocumentFormatException err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.BAD_REQUEST, Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.BAD_REQUEST, Error.mapServiceError(err)));
         } catch (PartNotFoundException err) {
-            return LOG.logResponse("get", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(err)));
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
+            LOG.error(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("get", Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
         }
     }
 
@@ -327,14 +327,14 @@ public class Workspaces {
         @QueryParam("id") String documentId,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("getWorkspaces", repository);
+        LOG.entry(repository);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, null, QualifiedName.ROOT);
 
@@ -344,13 +344,13 @@ public class Workspaces {
                 .forEach(value -> result.add(value));
             
             //TODO: must be able to do this in a stream somehow.
-            return LOG.logResponse("getWorkspaces", Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
+            return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
+            LOG.error(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } catch (InvalidDocumentId e) {
-            return LOG.logResponse("getWorkspaces", Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
         }
     }
     
@@ -399,24 +399,24 @@ public class Workspaces {
             @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.logEntering("put", repository, workspacePath, createWorkspace, updateType, object);
+        LOG.entry(repository, workspacePath, createWorkspace, updateType, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (workspacePath == null || workspacePath.isEmpty())
-                return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             RepositoryObject.Type type = RepositoryObject.getType(object);
 
             Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, getRequiredRole(updateType));
                 
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
             }
             
             if (type == RepositoryObject.Type.WORKSPACE) {
@@ -432,7 +432,7 @@ public class Workspaces {
                     workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
                 
-                return LOG.logResponse("put", Response.accepted().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build());    
+                return LOG.exit(Response.accepted().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build());    
 
             } else {
 
@@ -455,26 +455,26 @@ public class Workspaces {
                     link = service.updateDocumentLink(link, null, null, metadata);
                 }
                 
-                return LOG.logResponse("put", Response.accepted().entity(link.toJson()).build());
+                return LOG.exit(Response.accepted().entity(link.toJson()).build());
             }
         } catch (InvalidWorkspace err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidReference err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            LOG.error(e.getMessage());
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
 
@@ -514,28 +514,28 @@ public class Workspaces {
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.logEntering("post", repository, workspacePath, createWorkspace, object);
+        LOG.entry(repository, workspacePath, createWorkspace, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("post", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (workspacePath == null || workspacePath.isEmpty())
-                return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
             Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
             }
 
             
             if (type == RepositoryObject.Type.WORKSPACE) {
-                return LOG.logResponse("post", Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("Can't post a new workspace - use put")));
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("Can't post a new workspace - use put")));
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 JsonObject metadata = object.getJsonObject("metadata");
@@ -544,26 +544,26 @@ public class Workspaces {
                 }
                 DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, returnExisting);
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
-                return LOG.logResponse("post", Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
+                return LOG.exit(Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
         } catch (InvalidWorkspace err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         }catch (InvalidReference err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            LOG.log.severe(err.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
-            return LOG.logResponse("put", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            LOG.error(e.getMessage());
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
 
@@ -596,21 +596,21 @@ public class Workspaces {
         @QueryParam("createDocument") @DefaultValue("true") boolean createDocument,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("putDocument", repository, path, metadata_part, Log.fmt(file_part), createWorkspace, createDocument);
+        LOG.entry(repository, path, metadata_part, file_part, createWorkspace, createDocument);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (path == null || path.isEmpty())
-                return LOG.logResponse("putDocument", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("post", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
             }
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
@@ -625,17 +625,17 @@ public class Workspaces {
                     createDocument
                     );
 
-            return LOG.logResponse("putDocument", Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
+            return LOG.exit(Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            return LOG.logResponse("putDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
+            LOG.error(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("putDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
     
@@ -667,21 +667,21 @@ public class Workspaces {
         @Context ContainerRequestContext requestContext,
         @Context UriInfo uriInfo
     ) {
-        LOG.logEntering("postDocument", repository, path, metadata_part, Log.fmt(file_part), createWorkspace);
+        LOG.entry(repository, path, metadata_part, file_part, createWorkspace);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (path == null || path.isEmpty())
-                return LOG.logResponse("postDocument", Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
-                return LOG.logResponse("postDocument", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
+                return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
             }
 
             DocumentLink result = service.createDocumentLinkAndName(
@@ -696,17 +696,17 @@ public class Workspaces {
             URI created = uriInfo.getAbsolutePathBuilder().path(result.getName().transform(Workspaces::stripBraces).join("/")).build();
 
 
-            return LOG.logResponse("postDocument", Response.created(created).type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
+            return LOG.exit(Response.created(created).type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            return LOG.logResponse("postDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
+            LOG.error(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("postDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         } 
     }
     
@@ -723,7 +723,7 @@ public class Workspaces {
         @PathParam("path") WorkspacePath path,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.logEntering("deleteDocument", repository, path);
+        LOG.entry(repository, path);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -731,40 +731,40 @@ public class Workspaces {
 
 
             if (service == null || authorizationService == null) 
-                return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             if (path.queryPath != QualifiedName.ROOT)
-                return LOG.logResponse("deleteDocument", Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("wildcards not permitted in deleted")));
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("wildcards not permitted in deleted")));
             
             if (path.documentId != null) {
                 Query acl = authorizationService.getObjectACLById(path.rootId, path.staticPath, path.documentId, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
                     service.deleteDocument(path.rootId, path.staticPath, path.documentId);
                 } else {
-                    return LOG.logResponse("deleteDocument", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath, path.documentId)));                
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath, path.documentId)));                
                 }
             } else {
                 Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, null, null, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
                     service.deleteObjectByName(path.rootId, path.staticPath);
                 } else {
-                    return LOG.logResponse("deleteDocument", Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath)));                                    
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath)));                                    
                 }
             }
 
-            return LOG.logResponse("deleteDocument", Response.status(Status.NO_CONTENT).build());
+            return LOG.exit(Response.status(Status.NO_CONTENT).build());
         } catch (InvalidWorkspace err) {
-            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
-            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidWorkspaceState err) {
-            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.FORBIDDEN,Error.mapServiceError(err)));
         } catch (InvalidDocumentId err) {
-            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (RuntimeException e) {
-            LOG.log.severe(e.getMessage());
+            LOG.error(e.getMessage());
             e.printStackTrace(System.err);
-            return LOG.logResponse("deleteDocument", Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
+            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
         }
     }    
 }
