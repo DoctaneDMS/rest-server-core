@@ -130,9 +130,9 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-logging")
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
-    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.18'
-    compile group: 'com.softwareplumbers.oss', name:'key-manager', version: 'master-SNAPSHOT'
-    compile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT'
+    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.20'
+    compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.8'
+    compile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.0.2'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'
     compile group: 'org.opensaml', name: 'opensaml-core', version: '3.3.0'
@@ -148,7 +148,7 @@ dependencies {
     compile group: 'org.apache.tika', name:'tika-parsers', version:'1.22_swp'
     compile group: 'org.slf4j', name: 'slf4j-ext', version: '1.7.30'
 
-    testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT', classifier: 'tests'
+    testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.0.2', classifier: 'tests'
     
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }
