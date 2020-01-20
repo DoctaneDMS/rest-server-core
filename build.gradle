@@ -69,7 +69,7 @@ task repackageTask1(type: BootRepackage, dependsOn: bootJar1) {
 jar {
 	enabled = true
 	// exclude services.xml from the library (because when we include this as a library we will specify our own services.xml)
-	exclude("services.xml","**/JerseyConfig.class","**/Application.class")
+	exclude("services.xml","**/JerseyConfig.class","**/Application.class","application.properties","logback-spring.xml")
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
