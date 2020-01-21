@@ -370,6 +370,17 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
 	    assertEquals(testMetadata, doc2.getMetadata());
 	}
     
+    @Test
+	public void testUpdateDocumentLinkWithCreateFolder() throws BaseException, IOException {
+
+        JsonObject metadata = randomDocumentMetadata();
+        String content = randomText();
+        DocumentLink link = service().updateDocumentLink(ROOT_ID, randomQualifiedName(), "text/plain", ()->toStream(content), metadata, true, true);
+	    Document doc2 = (Document)service().refresh(link);
+	    assertEquals(content, getDocText(doc2));
+	    assertEquals(metadata, doc2.getMetadata());
+	}
+    
         
     /* broadly speaking, when we have a folder id and name, test that we get the same result when reading/updating
     * the document either using the full path or the relative path from the folder id.
