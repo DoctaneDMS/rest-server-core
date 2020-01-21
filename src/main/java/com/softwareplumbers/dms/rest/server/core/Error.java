@@ -28,6 +28,10 @@ import org.slf4j.ext.XLoggerFactory;
 public class Error {
     
     public static final XLogger LOG = XLoggerFactory.getXLogger(Error.class);
+    
+    public static String printId(String id) {
+        return id == null ? "ROOT" : id;
+    }
 	
 	public static JsonObject repositoryNotFound(String repository) {
 		return Json.createObjectBuilder()
@@ -60,7 +64,7 @@ public class Error {
 	public static JsonObject mapServiceError(InvalidWorkspace err) {
 		return Json.createObjectBuilder()
 				.add("error", "Workspace name " + err.workspace + " is invalid")
-				.add("workspaceId", err.rootId)
+				.add("workspaceId", printId(err.rootId))
 				.add("workspaceName", err.workspace.toString())
 				.build();		
 	}
@@ -91,7 +95,7 @@ public class Error {
 	public static JsonObject mapServiceError(InvalidObjectName err) {
 		return Json.createObjectBuilder()
 				.add("error", "Object name " + err.name + " is not valid")
-				.add("workspaceId", err.rootId)
+				.add("workspaceId", printId(err.rootId))
 				.add("name", err.name.toString())
 				.build();		
 	}
