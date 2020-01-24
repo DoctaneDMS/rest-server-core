@@ -510,7 +510,7 @@ public class Workspaces {
             @PathParam("repository") String repository,
             @PathParam("workspace") WorkspacePath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
-            @QueryParam("returnExisting") @DefaultValue("false") boolean returnExisting,
+            @QueryParam("returnExisting") @DefaultValue("true") boolean returnExisting,
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
