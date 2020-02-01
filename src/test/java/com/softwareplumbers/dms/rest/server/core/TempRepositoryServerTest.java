@@ -307,7 +307,7 @@ public class TempRepositoryServerTest {
      * 
      */
     public JsonObject putWorkspace(String path, JsonObject data) throws IOException {
-    	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
+    	WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path + "?createWorkspace=true");
     	
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)

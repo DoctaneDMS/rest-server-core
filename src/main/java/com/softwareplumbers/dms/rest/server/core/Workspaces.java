@@ -55,6 +55,7 @@ import com.softwareplumbers.dms.DocumentNavigatorService;
 import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
 import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
+import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -427,15 +428,20 @@ public class Workspaces {
                 Workspace workspace;
 
                 if (updateType == UpdateType.CREATE) {
-                    workspace = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, true);
+                    Options.Create.Builder options = Options.Create.EMPTY
+                        .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
+                    workspace = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, options.build());
                 } else {
-                    workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
+                    Options.Update.Builder options = Options.Update.EMPTY
+                        .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
+                        .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE);
+                    workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, options.build());
                 }
                 
                 return LOG.exit(Response.accepted().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build());    
 
             } else {
-
+                
                 Reference reference = Document.getReference(object);                
                 JsonObject metadata = RepositoryObject.getMetadata(object);
                 DocumentLink link;
@@ -444,11 +450,15 @@ public class Workspaces {
                     if (reference == null) {
                         throw new InvalidDocumentId("null");
                     } else {
-                        link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
+                        Options.Create.Builder options = Options.Create.EMPTY.addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
+                        link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
                     }
                     
                 } else {
-                    link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                    Options.Update.Builder options = Options.Update.EMPTY
+                        .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
+                        .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE);
+                    link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
                 }
                 
                 if (metadata != null && !metadata.isEmpty()) {
@@ -542,7 +552,10 @@ public class Workspaces {
                 if (metadata != null && !metadata.isEmpty()) {
                     service.updateDocument(reference.id, null, null, metadata);
                 }
-                DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, returnExisting);
+                Options.Create.Builder options = Options.Create.EMPTY
+                    .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
+                    .addOptionIf(Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT, returnExisting);
+                DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.exit(Response.created(created).entity(link.toJson(service, navigator, 1, 0)).build());
             }
@@ -614,6 +627,10 @@ public class Workspaces {
             }
 
             MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
+            
+            Options.Update.Builder options = Options.Update.EMPTY
+                .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
+                .addOptionIf(Options.CREATE_MISSING_ITEM, createDocument);
 
             DocumentLink result = service.updateDocumentLink(
                     path.rootId, 
@@ -621,8 +638,7 @@ public class Workspaces {
                     computedMediaType.toString(),
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
-                    createWorkspace, 
-                    createDocument
+                    options.build()
                     );
 
             return LOG.exit(Response.accepted().type(MediaType.APPLICATION_JSON).entity(result.toJson()).build());
@@ -683,6 +699,9 @@ public class Workspaces {
             if (!acl.containsItem(userMetadata)) {
                 return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
             }
+            
+            Options.Create.Builder options = Options.Create.EMPTY.addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
+
 
             DocumentLink result = service.createDocumentLinkAndName(
                     path.rootId, 
@@ -690,7 +709,7 @@ public class Workspaces {
                     file_part.getMediaType().toString(),
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
-                    createWorkspace
+                    options.build()
                 );
             
             URI created = uriInfo.getAbsolutePathBuilder().path(result.getName().transform(Workspaces::stripBraces).join("/")).build();
