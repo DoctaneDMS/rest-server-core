@@ -146,7 +146,7 @@ dependencies {
     runtime group: 'org.glassfish', name: 'javax.json', version: '1.1.2'
     compile group: 'org.opensaml', name: 'opensaml-saml-impl', version: '3.3.0'
     compile group: 'org.apache.tika', name:'tika-parsers', version:'1.22_swp'
-    compile group: 'org.slf4j', name: 'slf4j-ext', version: '1.7.30'
+    compile group: 'org.slf4j', name: 'slf4j-ext', version: '1.7.31-SNAPSHOT'
 
     testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.0.2', classifier: 'tests'
     
