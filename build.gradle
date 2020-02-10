@@ -116,12 +116,20 @@ uploadArchives {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-dependencyManagement {
+
+dependencyManagement { 
      dependencies {
-          imports {
-          	mavenBom 'org.keycloak.bom:keycloak-adapter-bom:4.0.0.Final'
-     	  }
+          dependencySet(group:'org.slf4j', version: '1.7.31-SNAPSHOT') {
+               entry 'slf4j-api'
+               entry 'slf4j-ext'
+               entry 'jul-to-slf4j'
+          }        
      }
+}
+
+configurations.all {
+    // Check for updates to dependencies marked 'changing' every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
 dependencies {
@@ -147,6 +155,7 @@ dependencies {
     compile group: 'org.opensaml', name: 'opensaml-saml-impl', version: '3.3.0'
     compile group: 'org.apache.tika', name:'tika-parsers', version:'1.22_swp'
     compile group: 'org.slf4j', name: 'slf4j-ext', version: '1.7.31-SNAPSHOT'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31-SNAPSHOT'
 
     testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.0.2', classifier: 'tests'
     
