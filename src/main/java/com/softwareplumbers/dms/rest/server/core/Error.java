@@ -17,7 +17,7 @@ import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import org.slf4j.ext.XLogger;
-import java.math.BigDecimal;
+import javax.json.JsonValue;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -62,7 +62,7 @@ public class Error {
 		return Json.createObjectBuilder()
                 .add("code","INVALID_WORKSPACE")
 				.add("error", "Workspace name " + err.workspace + " is invalid")
-				.add("workspaceId", err.rootId)
+				.add("workspaceId", err.rootId == null ? JsonValue.NULL : Json.createValue(err.rootId))
 				.add("workspaceName", err.workspace.toString())
 				.build();		
 	}
@@ -95,7 +95,7 @@ public class Error {
 		return Json.createObjectBuilder()
                 .add("code","INVALID_OBJECT_NAME")
 				.add("error", "Object name " + err.name + " is not valid")
-				.add("workspaceId", err.rootId)
+				.add("workspaceId", err.rootId == null ? JsonValue.NULL : Json.createValue(err.rootId))
 				.add("name", err.name.toString())
 				.build();		
 	}
