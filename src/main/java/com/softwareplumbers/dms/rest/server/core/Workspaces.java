@@ -48,6 +48,7 @@ import org.slf4j.ext.XLogger;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService.ObjectAccessRole;
 
@@ -357,6 +358,7 @@ public class Workspaces {
     private static ObjectAccessRole getRequiredRole(UpdateType updateType) {
         switch (updateType) {
             case CREATE: return ObjectAccessRole.CREATE;
+            case COPY: return ObjectAccessRole.CREATE;
             case UPDATE: return ObjectAccessRole.UPDATE;
             case CREATE_OR_UPDATE: return ObjectAccessRole.CREATE;
             default:
@@ -423,11 +425,18 @@ public class Workspaces {
 
                 Workspace.State state = Workspace.getState(object);
                 JsonObject metadata = RepositoryObject.getMetadata(object);
+                QualifiedName name = NamedRepositoryObject.getName(object);
     
                 Workspace workspace;
 
                 if (updateType == UpdateType.CREATE) {
                     workspace = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, true);
+                } else if (updateType == UpdateType.COPY) {
+                    Query aclSource = authorizationService.getObjectACL(Constants.ROOT_ID, name, type, null, ObjectAccessRole.READ);
+                    if (!acl.containsItem(userMetadata)) {
+                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
+                    }
+                    workspace = service.copyWorkspace(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPartPath, createWorkspace);
                 } else {
                     workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
@@ -438,6 +447,8 @@ public class Workspaces {
 
                 Reference reference = Document.getReference(object);                
                 JsonObject metadata = RepositoryObject.getMetadata(object);
+                QualifiedName name = NamedRepositoryObject.getName(object);
+
                 DocumentLink link;
                 
                 if (updateType == UpdateType.CREATE) {
@@ -447,6 +458,12 @@ public class Workspaces {
                         link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace);
                     }
                     
+                } else if (updateType == UpdateType.COPY) {
+                    Query aclSource = authorizationService.getObjectACL(Constants.ROOT_ID, name, type, null, ObjectAccessRole.READ);
+                    if (!acl.containsItem(userMetadata)) {
+                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
+                    }
+                    link = service.copyDocumentLink(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPartPath, createWorkspace);
                 } else {
                     link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
