@@ -504,7 +504,7 @@ public class Workspaces {
      * @return A Response including JSON-format DocumentLink object with the full path of the created object
      */
     @POST
-    @Path("/{repository}/{workspace:[^?]*}")
+    @Path("/{repository}/{workspace:[^?]+}")
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response post(
             @PathParam("repository") String repository,
@@ -568,6 +568,36 @@ public class Workspaces {
         } 
     }
 
+    /**
+     * 
+     * Inelegant solution to URI pattern matching shitshow.
+     * 
+     * So fed up with chasing arcane problems with URI pattern matching with Jersey. 
+     * 
+     * @param repository
+     * @param workspacePath
+     * @param createWorkspace
+     * @param returnExisting
+     * @param uriInfo
+     * @param requestContext
+     * @param object
+     * @return 
+     */
+    @POST
+    @Path("/{repository}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    public Response postWithNoPath(
+            @PathParam("repository") String repository,
+            @PathParam("workspace") WorkspacePath workspacePath,
+            @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+            @QueryParam("returnExisting") @DefaultValue("true") boolean returnExisting,
+            @Context UriInfo uriInfo,
+            @Context ContainerRequestContext requestContext,
+            JsonObject object) {
+    
+        return post(repository, WorkspacePath.valueOf(""), createWorkspace, returnExisting, uriInfo, requestContext, object);
+        
+    }
     /** PUT document on path /ws/{repository}/{path}
      * 
      * A path as several elements separated by '/'. If the first
