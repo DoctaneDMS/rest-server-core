@@ -52,6 +52,7 @@ public class Error {
         
 	public static JsonObject mapServiceError(InvalidReference err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_REFERENCE")
 				.add("error", "Reference " + err.reference + " is invalid")
 				.add("reference", err.reference.toJson())
 				.build();		
@@ -59,6 +60,7 @@ public class Error {
 	
 	public static JsonObject mapServiceError(InvalidWorkspace err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_WORKSPACE")
 				.add("error", "Workspace name " + err.workspace + " is invalid")
 				.add("workspaceId", err.rootId)
 				.add("workspaceName", err.workspace.toString())
@@ -80,6 +82,7 @@ public class Error {
 
 	public static JsonObject mapServiceError(InvalidWorkspaceState err) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
+                .add("code","INVALID_WORKSPACE_STATE")
 				.add("error", "Workspace " + err.workspace + " is in invalid state " + err.state)
 				.add("workspaceName", err.workspace);
 		
@@ -90,6 +93,7 @@ public class Error {
 	
 	public static JsonObject mapServiceError(InvalidObjectName err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_OBJECT_NAME")
 				.add("error", "Object name " + err.name + " is not valid")
 				.add("workspaceId", err.rootId)
 				.add("name", err.name.toString())
@@ -112,6 +116,7 @@ public class Error {
     
 	public static JsonObject mapServiceError(InvalidDocumentId err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_DOCUMENT_ID")
 				.add("error", "Document " + err.id + " is not found")
 				.add("id", err.id)
 				.build();		
