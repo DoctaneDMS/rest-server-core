@@ -504,7 +504,7 @@ public class Workspaces {
      * @return A Response including JSON-format DocumentLink object with the full path of the created object
      */
     @POST
-    @Path("/{repository}/{workspace:[^?]+}")
+    @Path("/{repository}/{workspace:[^?]*}")
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response post(
             @PathParam("repository") String repository,
@@ -523,9 +523,6 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
-            if (workspacePath == null || workspacePath.isEmpty())
-                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
-
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
             Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, ObjectAccessRole.CREATE);
@@ -535,7 +532,11 @@ public class Workspaces {
 
             
             if (type == RepositoryObject.Type.WORKSPACE) {
-                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("Can't post a new workspace - use put")));
+                JsonObject metadata = object.getJsonObject("metadata");
+                Workspace.State state = Workspace.getState(object);
+                Workspace workspace = service.createWorkspaceAndName(workspacePath.rootId, workspacePath.staticPath, state, metadata, returnExisting);
+                URI created = uriInfo.getAbsolutePathBuilder().path(workspace.getName().transform(Workspaces::stripBraces).join("/")).build();
+                return LOG.exit(Response.created(created).entity(workspace.toJson(service, navigator, 0, 0)).build());                
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 JsonObject metadata = object.getJsonObject("metadata");
