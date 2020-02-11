@@ -14,6 +14,7 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
 import javax.annotation.Priority;
+import org.apache.log4j.MDC;
 import org.slf4j.ext.XLoggerFactory;
 
 /** Authentication filter.
@@ -69,7 +70,10 @@ public class AuthenticationFilter implements ContainerRequestFilter {
             LOG.warn("Could not find repository path parameter");
         }
         
-        if (!authenticated) requestContext.abortWith(Response.status(Status.UNAUTHORIZED).build());
+        if (authenticated) {
+            MDC.put("user", requestContext.getSecurityContext().getUserPrincipal().getName());
+        } 
+        else requestContext.abortWith(Response.status(Status.UNAUTHORIZED).build());
         LOG.exit();
     }
 
