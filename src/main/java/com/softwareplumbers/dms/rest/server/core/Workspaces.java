@@ -535,7 +535,7 @@ public class Workspaces {
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.entry(repository, workspacePath, createWorkspace, object);
+        LOG.entry(repository, workspacePath, createWorkspace, returnExisting, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
