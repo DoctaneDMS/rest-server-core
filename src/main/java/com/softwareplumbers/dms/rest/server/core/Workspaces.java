@@ -465,7 +465,11 @@ public class Workspaces {
                     }
                     link = service.copyDocumentLink(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPartPath, createWorkspace);
                 } else {
-                    link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                    if (reference == null || reference.id == null) {
+                        link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, null, null, metadata, false, false);
+                    } else {
+                        link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                    }
                 }
                 
                 if (metadata != null && !metadata.isEmpty()) {
