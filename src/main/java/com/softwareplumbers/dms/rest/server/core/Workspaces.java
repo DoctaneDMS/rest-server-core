@@ -436,7 +436,7 @@ public class Workspaces {
                     if (!acl.containsItem(userMetadata)) {
                         return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
                     }
-                    workspace = service.copyWorkspace(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPartPath, createWorkspace);
+                    workspace = service.copyWorkspace(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPath, createWorkspace);
                 } else {
                     workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, updateType == UpdateType.CREATE_OR_UPDATE);
                 }
