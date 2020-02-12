@@ -48,6 +48,7 @@ import org.slf4j.ext.XLogger;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService.ObjectAccessRole;
 
@@ -358,6 +359,7 @@ public class Workspaces {
     private static ObjectAccessRole getRequiredRole(UpdateType updateType) {
         switch (updateType) {
             case CREATE: return ObjectAccessRole.CREATE;
+            case COPY: return ObjectAccessRole.CREATE;
             case UPDATE: return ObjectAccessRole.UPDATE;
             case CREATE_OR_UPDATE: return ObjectAccessRole.CREATE;
             default:
@@ -424,13 +426,20 @@ public class Workspaces {
 
                 Workspace.State state = Workspace.getState(object);
                 JsonObject metadata = RepositoryObject.getMetadata(object);
+                QualifiedName name = NamedRepositoryObject.getName(object);
     
                 Workspace workspace;
 
                 if (updateType == UpdateType.CREATE) {
-                    Options.Create.Builder options = Options.Create.EMPTY
+                	Options.Create.Builder options = Options.Create.EMPTY
                         .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
                     workspace = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, options.build());
+                } else if (updateType == UpdateType.COPY) {
+                    Query aclSource = authorizationService.getObjectACL(Constants.ROOT_ID, name, type, null, ObjectAccessRole.READ);
+                    if (!acl.containsItem(userMetadata)) {
+                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
+                    }
+                    workspace = service.copyWorkspace(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPath, createWorkspace);
                 } else {
                     Options.Update.Builder options = Options.Update.EMPTY
                         .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
@@ -444,6 +453,8 @@ public class Workspaces {
                 
                 Reference reference = Document.getReference(object);                
                 JsonObject metadata = RepositoryObject.getMetadata(object);
+                QualifiedName name = NamedRepositoryObject.getName(object);
+
                 DocumentLink link;
                 
                 if (updateType == UpdateType.CREATE) {
@@ -454,11 +465,18 @@ public class Workspaces {
                         link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
                     }
                     
+                } else if (updateType == UpdateType.COPY) {
+                    Query aclSource = authorizationService.getObjectACL(Constants.ROOT_ID, name, type, null, ObjectAccessRole.READ);
+                    if (!acl.containsItem(userMetadata)) {
+                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
+                    }
+                    link = service.copyDocumentLink(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPartPath, createWorkspace);
                 } else {
-                    Options.Update.Builder options = Options.Update.EMPTY
-                        .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
-                        .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE);
-                    link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
+                    if (reference == null || reference.id == null) {
+                        link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, null, null, metadata, false, false);
+                    } else {
+                        link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, createWorkspace, updateType == UpdateType.CREATE_OR_UPDATE);
+                    }
                 }
                 
                 if (metadata != null && !metadata.isEmpty()) {
@@ -520,11 +538,11 @@ public class Workspaces {
             @PathParam("repository") String repository,
             @PathParam("workspace") WorkspacePath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
-            @QueryParam("returnExisting") @DefaultValue("false") boolean returnExisting,
+            @QueryParam("returnExisting") @DefaultValue("true") boolean returnExisting,
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
-        LOG.entry(repository, workspacePath, createWorkspace, object);
+        LOG.entry(repository, workspacePath, createWorkspace, returnExisting, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
@@ -532,9 +550,6 @@ public class Workspaces {
 
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
-
-            if (workspacePath == null || workspacePath.isEmpty())
-                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
 
@@ -545,7 +560,11 @@ public class Workspaces {
 
             
             if (type == RepositoryObject.Type.WORKSPACE) {
-                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("Can't post a new workspace - use put")));
+                JsonObject metadata = object.getJsonObject("metadata");
+                Workspace.State state = Workspace.getState(object);
+                Workspace workspace = service.createWorkspaceAndName(workspacePath.rootId, workspacePath.staticPath, state, metadata, returnExisting);
+                URI created = uriInfo.getAbsolutePathBuilder().path(workspace.getName().transform(Workspaces::stripBraces).join("/")).build();
+                return LOG.exit(Response.created(created).entity(workspace.toJson(service, navigator, 0, 0)).build());                
             } else {
                 Reference reference = Reference.fromJson(object.getJsonObject("reference"));
                 JsonObject metadata = object.getJsonObject("metadata");
@@ -580,6 +599,36 @@ public class Workspaces {
         } 
     }
 
+    /**
+     * 
+     * Inelegant solution to URI pattern matching shitshow.
+     * 
+     * So fed up with chasing arcane problems with URI pattern matching with Jersey. 
+     * 
+     * @param repository
+     * @param workspacePath
+     * @param createWorkspace
+     * @param returnExisting
+     * @param uriInfo
+     * @param requestContext
+     * @param object
+     * @return 
+     */
+    @POST
+    @Path("/{repository}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    public Response postWithNoPath(
+            @PathParam("repository") String repository,
+            @PathParam("workspace") WorkspacePath workspacePath,
+            @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
+            @QueryParam("returnExisting") @DefaultValue("true") boolean returnExisting,
+            @Context UriInfo uriInfo,
+            @Context ContainerRequestContext requestContext,
+            JsonObject object) {
+    
+        return post(repository, WorkspacePath.valueOf(""), createWorkspace, returnExisting, uriInfo, requestContext, object);
+        
+    }
     /** PUT document on path /ws/{repository}/{path}
      * 
      * A path as several elements separated by '/'. If the first

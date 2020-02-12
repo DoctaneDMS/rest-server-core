@@ -15,5 +15,7 @@ public enum UpdateType {
 	/** Update something, generate error if does not exists already */
     UPDATE, 
     /** Create or update, depending */
-    CREATE_OR_UPDATE
+    CREATE_OR_UPDATE,
+    /** Copy */
+    COPY
 }

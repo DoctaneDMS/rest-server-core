@@ -17,7 +17,7 @@ import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import org.slf4j.ext.XLogger;
-import java.math.BigDecimal;
+import javax.json.JsonValue;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -28,10 +28,6 @@ import org.slf4j.ext.XLoggerFactory;
 public class Error {
     
     public static final XLogger LOG = XLoggerFactory.getXLogger(Error.class);
-    
-    public static String printId(String id) {
-        return id == null ? "ROOT" : id;
-    }
 	
 	public static JsonObject repositoryNotFound(String repository) {
 		return Json.createObjectBuilder()
@@ -56,6 +52,7 @@ public class Error {
         
 	public static JsonObject mapServiceError(InvalidReference err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_REFERENCE")
 				.add("error", "Reference " + err.reference + " is invalid")
 				.add("reference", err.reference.toJson())
 				.build();		
@@ -63,8 +60,9 @@ public class Error {
 	
 	public static JsonObject mapServiceError(InvalidWorkspace err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_WORKSPACE")
 				.add("error", "Workspace name " + err.workspace + " is invalid")
-				.add("workspaceId", printId(err.rootId))
+				.add("workspaceId", err.rootId == null ? JsonValue.NULL : Json.createValue(err.rootId))
 				.add("workspaceName", err.workspace.toString())
 				.build();		
 	}
@@ -84,6 +82,7 @@ public class Error {
 
 	public static JsonObject mapServiceError(InvalidWorkspaceState err) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
+                .add("code","INVALID_WORKSPACE_STATE")
 				.add("error", "Workspace " + err.workspace + " is in invalid state " + err.state)
 				.add("workspaceName", err.workspace);
 		
@@ -94,8 +93,9 @@ public class Error {
 	
 	public static JsonObject mapServiceError(InvalidObjectName err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_OBJECT_NAME")
 				.add("error", "Object name " + err.name + " is not valid")
-				.add("workspaceId", printId(err.rootId))
+
 				.add("name", err.name.toString())
 				.build();		
 	}
@@ -116,6 +116,7 @@ public class Error {
     
 	public static JsonObject mapServiceError(InvalidDocumentId err) {
 		return Json.createObjectBuilder()
+                .add("code","INVALID_DOCUMENT_ID")
 				.add("error", "Document " + err.id + " is not found")
 				.add("id", err.id)
 				.build();		
