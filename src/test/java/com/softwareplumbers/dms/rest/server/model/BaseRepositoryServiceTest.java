@@ -70,7 +70,23 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
     public abstract JsonObject randomWorkspaceMetadata();
     public abstract String uniqueMetadataField();
 		
-
+    /** BEGIN -- Tests ServerSide only */
+    @Test 
+	public void testWorkspaceCopyById() throws BaseException {
+        JsonObject metadata = randomWorkspaceMetadata();
+		Workspace workspace = service().createWorkspaceByName(ROOT_ID, randomQualifiedName(), Workspace.State.Open , metadata, Options.CREATE_MISSING_PARENT);
+        QualifiedName newName = randomQualifiedName();
+        service().copyWorkspace(workspace.getId(), QualifiedName.ROOT, Constants.ROOT_ID, newName, true);
+        Workspace result = service().getWorkspaceByName(ROOT_ID, newName);
+        assertEquals(metadata, result.getMetadata());
+	}
+    
+    @Test(expected = InvalidWorkspace.class)
+	public void testWorkspaceCopyByIdWithNewPathOriginalMustExist() throws BaseException {
+        service().copyWorkspace(randomWorkspaceId(), QualifiedName.ROOT, Constants.ROOT_ID, randomQualifiedName(), true);
+	}
+    
+    /** END -- Tests ServerSide only */
        
     
     @Test
