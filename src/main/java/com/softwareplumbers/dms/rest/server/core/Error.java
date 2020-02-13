@@ -8,8 +8,6 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
 import com.softwareplumbers.dms.Document;
-import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
-import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
@@ -42,13 +40,6 @@ public class Error {
 				.add("cause", cause)
 				.build();
 	}
-    
-    public static JsonObject mapServiceError(DocumentFormatException e) {
-		return Json.createObjectBuilder()
-				.add("error", "Document cannot be parsed in the expected manner")
-				.add("cause", e.getMessage())
-				.build();		        
-    }
         
 	public static JsonObject mapServiceError(InvalidReference err) {
 		return Json.createObjectBuilder()
@@ -97,13 +88,6 @@ public class Error {
 				.add("error", "Object name " + err.name + " is not valid")
 
 				.add("name", err.name.toString())
-				.build();		
-	}
-	
-	public static JsonObject mapServiceError(PartNotFoundException err) {
-		return Json.createObjectBuilder()
-				.add("error", "Object part " + err.part + " is not valid")
-				.add("name", err.part.toString())
 				.build();		
 	}
 

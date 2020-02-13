@@ -1,6 +1,5 @@
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.dms.DocumentNavigatorService;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.RepositoryObject;
@@ -35,8 +34,6 @@ import com.softwareplumbers.dms.Exceptions.*;
 import com.softwareplumbers.dms.Workspace.State;
 
 import static com.softwareplumbers.dms.Constants.*;
-import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
-import com.softwareplumbers.dms.DocumentNavigatorService.PartNotFoundException;
 import com.softwareplumbers.dms.common.test.DocumentServiceTest;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +62,6 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
     @Override
     public abstract JsonObject randomDocumentMetadata();
             
-    public abstract DocumentNavigatorService navigator();
  	public abstract String randomWorkspaceId();
     public abstract JsonObject randomWorkspaceMetadata();
     public abstract String uniqueMetadataField();
@@ -120,7 +116,7 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         Reference ref2 = service().createDocument("application/octet-stream", ()->toStream(originalText), EMPTY_METADATA);
         service().createDocumentLink(workspace1, randomUrlSafeName(), ref1);
         service().createDocumentLink(workspace1, randomUrlSafeName(), ref2);
-		RepositoryObject[] result = service().catalogueByName(ROOT_ID, workspace1.getName().add("*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = service().catalogueByName(ROOT_ID, workspace1.getName().add("*"), Query.fromJson("{ 'mediaType': 'text/plain'}")).toArray(RepositoryObject[]::new);
 		assertEquals(1, result.length);
 		assertEquals(((Document)result[0]).getReference(), ref1);
 	}
@@ -131,8 +127,8 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         
         Workspace workspace2 = service().createWorkspaceByName(workspace1, randomUrlSafeName(), State.Closed, EMPTY_METADATA);
         Workspace workspace3 = service().createWorkspaceByName(workspace1, randomUrlSafeName(), State.Open, EMPTY_METADATA);
-		RepositoryObject[] resultAll = service().catalogueByName(workspace1, QualifiedName.of("*"), Query.UNBOUNDED, false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] result = service().catalogueByName(workspace1, QualifiedName.of("*"), Query.fromJson("{ 'state': 'Closed'}"), false).toArray(RepositoryObject[]::new);
+		RepositoryObject[] resultAll = service().catalogueByName(workspace1, QualifiedName.of("*"), Query.UNBOUNDED).toArray(RepositoryObject[]::new);
+		RepositoryObject[] result = service().catalogueByName(workspace1, QualifiedName.of("*"), Query.fromJson("{ 'state': 'Closed'}")).toArray(RepositoryObject[]::new);
 		assertEquals(2, resultAll.length);
 		assertEquals(1, result.length);
 		assertEquals(workspace2.getName(), ((Workspace)result[0]).getName());
@@ -158,10 +154,10 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         service().createDocumentLink(workspace1.getId(), W2doc2Name, ref2, Options.CREATE_MISSING_PARENT);
         // Close worspace 2
         service().updateWorkspaceByName(workspace1.getId(), name2, State.Closed, EMPTY_METADATA);
-		JsonObject[] resultAll = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.UNBOUNDED, false).map(item->item.toJson()).toArray(JsonObject[]::new);
-		RepositoryObject[] resultClosed = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }"), false).toArray(RepositoryObject[]::new);
-		RepositoryObject[] resultText = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}"), false).toArray(RepositoryObject[]::new);
-		JsonObject[] resultClosedAndText = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}"), false).map(item->item.toJson()).toArray(JsonObject[]::new);
+		JsonObject[] resultAll = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.UNBOUNDED).map(item->item.toJson()).toArray(JsonObject[]::new);
+		RepositoryObject[] resultClosed = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'parent': { 'state': 'Closed'} }")).toArray(RepositoryObject[]::new);
+		RepositoryObject[] resultText = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain'}")).toArray(RepositoryObject[]::new);
+		JsonObject[] resultClosedAndText = service().catalogueByName(workspace1, QualifiedName.of("*", "*"), Query.fromJson("{ 'mediaType': 'text/plain', 'parent': { 'state': 'Closed'}}")).map(item->item.toJson()).toArray(JsonObject[]::new);
 		assertEquals(4, resultAll.length);
 		assertEquals(2, resultClosed.length);
 		assertEquals(2, resultText.length);
@@ -194,7 +190,7 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         service().createDocumentLink(baseId, W2doc1Name, ref1, Options.CREATE_MISSING_PARENT);
         service().createDocumentLink(baseId, W2doc2Name, ref2, Options.CREATE_MISSING_PARENT);
         service().updateWorkspaceByName(baseId, name2, State.Closed, null);
-		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.from(metadataSearch2), false).collect(Collectors.toList());
+		List<NamedRepositoryObject> resultAll = service().catalogueByName(baseId, QualifiedName.of("*", "*"), Query.from(metadataSearch2)).collect(Collectors.toList());
         
         assertEquals(2, resultAll.size());
 	}
@@ -215,25 +211,13 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         
         // Get the document back again
         DocumentLink link = service().getDocumentLink(baseId, name1, ref1.id);        
-        assertEquals(originalText, getDocText(link));
+        assertEquals(originalText, getDocText(service(), link));
 
         // Get the document back again using implicit root
         DocumentLink link2 = service().getDocumentLink(null, name0.addAll(name1), ref1.id);
-        assertEquals(originalText, getDocText(link2));
+        assertEquals(originalText, getDocText(service(), link2));
     }
     
-
-    
-    @Test
-    public void testJsonRepresentationDocumentPart() throws IOException, DocumentFormatException, PartNotFoundException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP.toString(), ()->BaseRepositoryServiceTest.class.getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
-        DocumentPart testDocx = navigator().getPartByName(zipDoc, QualifiedName.of("test", "subdir", "testdoc.docx"));
-        JsonObject json = testDocx.toJson(service(), navigator(), 0, 0);
-        assertEquals("test", json.getJsonObject("document").getString("id"));
-        assertEquals(MediaTypes.MICROSOFT_WORD_XML.toString(), json.getString("mediaType"));
-        assertEquals(false, json.getBoolean("navigable"));
-	}
-
     @Test
 	public void testRepositorySearch() throws IOException, InvalidWorkspace {
         
@@ -259,7 +243,7 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
 		RepositoryObject[] result = service().catalogue(search, false).toArray(RepositoryObject[]::new);
 		
         assertEquals(result.length, 1);
-		assertEquals(getDocText((Document)result[0]), IOUtils.toString(dataValues.get(itemToSearch), "UTF-8"));
+		assertEquals(getDocText(service(), (Document)result[0]), IOUtils.toString(dataValues.get(itemToSearch), "UTF-8"));
 	}
 	
 	
@@ -269,9 +253,9 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         String originalText = randomText();
         Reference ref1 = service().createDocument("text/plain", ()->toStream(originalText), EMPTY_METADATA);
 		service().createDocumentLinkAndName(workspace_id, null, ref1, Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT, Options.CREATE_MISSING_PARENT);
-		assertEquals(service().catalogueById(workspace_id, null, false).count(), 1);
+		assertEquals(service().catalogueById(workspace_id, null).count(), 1);
 		service().deleteDocument(workspace_id, QualifiedName.ROOT, ref1.id);
-		assertEquals(service().catalogueById(workspace_id, null, false).count(), 0);
+		assertEquals(service().catalogueById(workspace_id, null).count(), 0);
 	}
 	
 	@Test 
@@ -329,10 +313,10 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
 		Reference ref2 = service().updateDocument(link1.getId(), null, ()->toStream(randomText()), EMPTY_METADATA);
 		assertEquals(link1.getId(), ref2.id);
 		assertNotEquals(link1.getVersion(), ref2.version);
-		String doc1 = getDocText(service().getDocument(link1.getReference()));
-		String doc2 = getDocText(service().getDocument(ref2));
+		String doc1 = getDocText(service(), service().getDocument(link1.getReference()));
+		String doc2 = getDocText(service(), service().getDocument(ref2));
 		assertNotEquals(doc1, doc2);	
-		String wsDoc = getDocText(service().getDocumentLink(wsId, QualifiedName.ROOT, link1.getId()));
+		String wsDoc = getDocText(service(), service().getDocumentLink(wsId, QualifiedName.ROOT, link1.getId()));
 		assertEquals(originalText, wsDoc); 
 	}
     
@@ -385,7 +369,7 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
         // We should see the version of the document that was current when the workspace was closed
         assertEquals(ref2, doc.getReference());
         // Double check
-        assertEquals(textv2, getDocText(doc));
+        assertEquals(textv2, getDocText(service(), doc));
     }
     
     @Test(expected = InvalidWorkspaceState.class)

@@ -19,11 +19,10 @@ import javax.json.JsonObject;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Document;
-import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
-import com.softwareplumbers.dms.DocumentNavigatorService;
-import com.softwareplumbers.dms.InputStreamSupplier;
+import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Reference;
@@ -31,8 +30,13 @@ import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.*;
 import com.softwareplumbers.dms.Options;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.Workspace.State;
+import com.softwareplumbers.dms.common.impl.DocumentImpl;
+import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
+import java.io.InputStream;
+import java.io.OutputStream;
 import org.slf4j.ext.XLogger;
 import java.util.Iterator;
 import org.slf4j.ext.XLoggerFactory;
@@ -56,12 +60,12 @@ public class TempRepositoryService implements RepositoryService {
 	public static final JsonObject EMPTY_METADATA = Json.createObjectBuilder().build();
 	
 	///////////--------- Private member variables --------////////////
-	private final TreeMap<Reference,DocumentImpl> store = new TreeMap<>();
+	private final TreeMap<Reference,Document> store = new TreeMap<>();
 	private final TreeMap<String, WorkspaceImpl> workspacesById = new TreeMap<>();
 	private final TreeMap<String, Set<String>> workspacesByDocument = new TreeMap<>();
-    private final DocumentNavigatorService navigator;
 	WorkspaceImpl root;
 	private final QualifiedName nameAttribute;
+    RepositoryObjectFactory factory = RepositoryObjectFactory.getInstance();
 	
 	private WorkspaceImpl getRoot(String rootId) throws InvalidWorkspace {
 		WorkspaceImpl myRoot = root;
@@ -76,7 +80,7 @@ public class TempRepositoryService implements RepositoryService {
 		WorkspaceImpl myRoot = root;
 		if (rootId != null) {
             if (createWorkspace)
-    			myRoot = workspacesById.computeIfAbsent(rootId, id -> new WorkspaceImpl(this, navigator, null, id, null, State.Open, EMPTY_METADATA));
+    			myRoot = workspacesById.computeIfAbsent(rootId, id -> new WorkspaceImpl(this, null, id, null, State.Open, EMPTY_METADATA));
             else {
                 myRoot = workspacesById.get(rootId);
                 if (myRoot == null) throw new InvalidWorkspace(rootId);
@@ -85,15 +89,14 @@ public class TempRepositoryService implements RepositoryService {
 		return myRoot;
 	}
 	
-	public TempRepositoryService(DocumentNavigatorService navigator, QualifiedName nameAttribute) {
+	public TempRepositoryService(QualifiedName nameAttribute) {
 		this.nameAttribute = nameAttribute;
-        this.navigator = navigator;
-        this.root = new WorkspaceImpl(this, navigator, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
+        this.root = new WorkspaceImpl(this, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
 
 	}
 	
-	public TempRepositoryService(DocumentNavigatorService navigator, String nameAttribute) {
-		this(navigator, QualifiedName.parse(nameAttribute, "/"));
+	public TempRepositoryService(String nameAttribute) {
+		this(QualifiedName.parse(nameAttribute, "/"));
 	}
 	
 	/** Return attribute value used as default name when adding a document to a workspace
@@ -113,7 +116,7 @@ public class TempRepositoryService implements RepositoryService {
 		LOG.entry(reference);
 		Document result = null;
 		if (reference.version == null) {
-			Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(reference);
+			Map.Entry<Reference,Document> previous = store.floorEntry(reference);
 
 			if (previous != null && reference.id.equals(previous.getKey().id)) 
 				result = previous.getValue();  
@@ -170,7 +173,7 @@ public class TempRepositoryService implements RepositoryService {
 		
 		if (workspace == null) {
 			if (workspaceId == null) workspaceId = UUID.randomUUID().toString();
-			workspace = new WorkspaceImpl(this, navigator, null, workspaceId, null, State.Open, EMPTY_METADATA);
+			workspace = new WorkspaceImpl(this, null, workspaceId, null, State.Open, EMPTY_METADATA);
 			workspacesById.put(workspaceId, workspace);
 		}
 		
@@ -183,12 +186,10 @@ public class TempRepositoryService implements RepositoryService {
 	public Reference createDocument(String mediaType, InputStreamSupplier stream, JsonObject metadata) {
 		LOG.entry(mediaType, metadata);
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
-		try {
-			DocumentImpl new_document = new DocumentImpl(new_reference,mediaType, stream, metadata);
+
+			Document new_document = factory.buildDocument(new_reference, mediaType, stream, metadata, false);
 			store.put(new_reference, new_document);
-		} catch (IOException e) {
-			throw LOG.throwing(new RuntimeException(e));
-		}
+
 		return LOG.exit(new_reference);
 	}
 	
@@ -204,7 +205,7 @@ public class TempRepositoryService implements RepositoryService {
 		WorkspaceImpl workspace = myRoot.getOrCreateWorkspace(documentName.parent, Options.CREATE_MISSING_PARENT.isIn(options));
 		Reference new_reference;
         DocumentInfo result;
-		try {
+
 			Optional<DocumentLink> doc = workspace.getDocument(documentName.part);
 			if (doc.isPresent()) {
 				new_reference = newVersionReference(doc.get().getId());
@@ -218,15 +219,13 @@ public class TempRepositoryService implements RepositoryService {
 			} else {
 				if (Options.CREATE_MISSING_ITEM.isIn(options)) {
 					new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
-					DocumentImpl new_document = new DocumentImpl(new_reference, mediaType, stream, metadata);
+					Document new_document = factory.buildDocument(new_reference, mediaType, stream, metadata, false);
 					result = workspace.add(new_reference, documentName.part);
 					store.put(new_reference, new_document);
 				} else 
 					throw new InvalidObjectName(rootWorkspace, documentName);
 			}
-		} catch (IOException e) {
-			throw new RuntimeException(LOG.throwing(e));	
-		}
+
 		return LOG.exit(result.toStatic());
 	}
 	
@@ -248,19 +247,22 @@ public class TempRepositoryService implements RepositoryService {
 		return new Reference(id, newVersion(old_reference.version));	
 	}
 	
-	private DocumentImpl updateDocument(
+	private Document updateDocument(
 			Reference new_reference, 
 			String mediaType, 
 			InputStreamSupplier stream, 
 			JsonObject metadata) throws InvalidReference {
 		LOG.entry(new_reference, mediaType, metadata);
-		Map.Entry<Reference,DocumentImpl> previous = store.floorEntry(new Reference(new_reference.id));
+		Map.Entry<Reference,Document> previous = store.floorEntry(new Reference(new_reference.id));
 		if (previous != null && previous.getKey().id.equals(new_reference.id)) {
-			DocumentImpl newDocument = previous.getValue().setReference(new_reference);
 			try {
-				if (metadata != null) newDocument = newDocument.setMetadata(MetadataMerge.merge(newDocument.getMetadata(), metadata));
-				if (stream != null) newDocument = newDocument.setData(stream);			
-				store.put(new_reference, newDocument);
+                JsonObject previousMetadata = previous.getValue().getMetadata();
+                InputStream previousStream = previous.getValue().getData(this);
+				metadata = metadata == null ? previousMetadata : MetadataMerge.merge(previousMetadata, metadata);
+				stream = stream == null ? ()->previousStream : stream;			
+                Document newDocument = factory.buildDocument(new_reference, mediaType, stream, metadata, true);
+
+                store.put(new_reference, newDocument);
 				return LOG.exit(newDocument);
 			} catch (IOException e) {
 				throw new RuntimeException(LOG.throwing(e));
@@ -278,7 +280,7 @@ public class TempRepositoryService implements RepositoryService {
 		LOG.entry(id, mediaType, metadata);
 		try {
 			Reference new_reference = newVersionReference(id);
-			DocumentImpl newDocument = updateDocument(new_reference, mediaType, stream, metadata);
+			Document newDocument = updateDocument(new_reference, mediaType, stream, metadata);
 			return LOG.exit(new_reference);
 		} catch (InvalidReference ref) {
 			throw LOG.throwing(new InvalidDocumentId(id));
@@ -322,15 +324,15 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, Query filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, Query filter, Options.Search... options) throws InvalidWorkspace {
 
-		LOG.entry(filter, searchHistory);
+		LOG.entry(workspaceId, filter, Options.loggable(options));
 		
 		if (workspaceId == null) throw LOG.throwing(new InvalidWorkspace("null"));
 
 		WorkspaceImpl workspace = workspacesById.get(workspaceId);
 		if (workspace == null) throw LOG.throwing(new InvalidWorkspace(workspaceId));
-		return LOG.exit(workspace.catalogue(filter, searchHistory));
+		return LOG.exit(workspace.catalogue(filter, Options.SEARCH_OLD_VERSIONS.isIn(options)));
 	}
 
 	static String nextSeq(String string) {
@@ -344,19 +346,19 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName workspaceName, Query filter, boolean searchHistory) throws InvalidWorkspace {
+	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName workspaceName, Query filter, Options.Search... options) throws InvalidWorkspace {
 
-		LOG.entry(workspaceName, filter, searchHistory);
+		LOG.entry(rootId, workspaceName, filter, Options.loggable(options));
 
 		if (workspaceName == null) LOG.throwing(new InvalidWorkspace("null"));
 		
-		return LOG.exit(getRoot(rootId).catalogue(workspaceName, filter, searchHistory));
+		return LOG.exit(getRoot(rootId).catalogue(workspaceName, filter, Options.SEARCH_OLD_VERSIONS.isIn(options)));
 	}
 
 	
 	public void clear() {
 		store.clear();
-		root = new WorkspaceImpl(this, navigator, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
+		root = new WorkspaceImpl(this, null, UUID.randomUUID().toString(), null, State.Open, EMPTY_METADATA);
 		workspacesById.clear();
 		workspacesByDocument.clear();
 	}
@@ -368,7 +370,7 @@ public class TempRepositoryService implements RepositoryService {
         // Medatadata fields that used to be in the root of the query namespace must now be prefixed with 'metadata'.
 	      final Predicate<Document> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.toJson());
 	        Reference first = new Reference(ref.id, newVersion("0"));
-	        Collection<DocumentImpl> history = store.subMap(first, true, ref, true).values();
+	        Collection<Document> history = store.subMap(first, true, ref, true).values();
 	        if (history.isEmpty()) throw new InvalidReference(ref);
 	        return history
 	            .stream()
@@ -410,7 +412,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 	
 	@Override
-	public NamedRepositoryObject getObjectByName(String rootId, QualifiedName objectName) throws InvalidObjectName, InvalidWorkspace {
+	public NamedRepositoryObject getObjectByName(String rootId, QualifiedName objectName, Options.Get... options) throws InvalidObjectName, InvalidWorkspace {
 		LOG.entry(objectName);
         WorkspaceImpl root = getRoot(rootId);
 		NamedRepositoryObject result = objectName == null ? root : root.getObject(objectName);
@@ -453,7 +455,7 @@ public class TempRepositoryService implements RepositoryService {
 	}
 
 	@Override
-	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter) throws InvalidDocumentId {
+	public Stream<DocumentLink> listWorkspaces(String id, QualifiedName pathFilter, Query filter, Options.Search... options) throws InvalidDocumentId {
 		LOG.entry(id);
         if (store.subMap(new Reference(id, ""), new Reference(id, null)).isEmpty()) throw new InvalidDocumentId(id);
 		Set<String> workspaceIds = workspacesByDocument.get(id);
@@ -466,7 +468,7 @@ public class TempRepositoryService implements RepositoryService {
 				} catch (InvalidDocumentId e) {
 					throw new RuntimeException("unexpected " + e);
 				}
-			}).filter(item->filter.containsItem(item.toJson(this, navigator, 1, 0)))
+			}).filter(item->filter.containsItem(item.toJson(this, 1, 0)))
 		);
 	}
 
@@ -565,10 +567,10 @@ public class TempRepositoryService implements RepositoryService {
 		Reference new_reference;
 		try {
 			new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
-			DocumentImpl new_document = new DocumentImpl(new_reference, mediaType, stream, metadata);
+			Document new_document = factory.buildDocument(new_reference, mediaType, stream, metadata, false);
 			store.put(new_reference, new_document);
 			return LOG.exit(workspace.add(new_reference, false));
-		} catch (InvalidReference | IOException e) {
+		} catch (InvalidReference e) {
 			throw new RuntimeException(LOG.throwing(e));	
 		}
 	}
@@ -623,7 +625,7 @@ public class TempRepositoryService implements RepositoryService {
     }
     
     public void copyWorkspaceContent(Workspace workspace, Workspace targetWorkspace) throws InvalidWorkspaceState, InvalidObjectName {
-        Stream<NamedRepositoryObject> searchResults = catalogueByName(workspace, QualifiedName.of("*"), Query.UNBOUNDED, false);
+        Stream<NamedRepositoryObject> searchResults = catalogueByName(workspace, QualifiedName.of("*"), Query.UNBOUNDED);
         
         for (Iterator<NamedRepositoryObject> iter = searchResults.iterator(); iter.hasNext(); ) { 
             try { 
@@ -661,6 +663,46 @@ public class TempRepositoryService implements RepositoryService {
              case WORKSPACE: return copyWorkspace((Workspace)srcObject, tgtWorkspace, targetName.part);
              default: throw new RuntimeException("Invalid type " + srcObject.getType());
         }
+    }
+
+    @Override
+    public InputStream getData(String rootId, QualifiedName objectName, Options.Get... gets) throws InvalidObjectName, IOException {
+        try {
+            return ((StreamableRepositoryObject)getObjectByName(rootId, objectName)).getData(this);
+        } catch (InvalidWorkspace e) {
+            throw new InvalidObjectName(rootId, objectName);
+        }
+    }
+
+    @Override
+    public void writeData(String rootId, QualifiedName objectName, OutputStream out, Options.Get... gets) throws InvalidObjectName, IOException {
+        try {
+            ((StreamableRepositoryObject)getObjectByName(rootId, objectName)).writeDocument(this, out);
+        } catch (InvalidWorkspace e) {
+            throw new InvalidObjectName(rootId, objectName);
+        }
+    }
+
+    @Override
+    public DocumentPart getPart(Reference rfrnc, QualifiedName objectName) throws InvalidReference, InvalidObjectName {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public InputStream getData(Reference rfrnc, Optional<QualifiedName> partName) throws InvalidReference, InvalidObjectName, IOException {
+        if (partName.isPresent()) throw new UnsupportedOperationException("Not supported yet.");
+        else return getDocument(rfrnc).getData(this);
+    }
+
+    @Override
+    public void writeData(Reference rfrnc, Optional<QualifiedName> partName, OutputStream out) throws InvalidReference, InvalidObjectName, IOException {
+        if (partName.isPresent()) throw new UnsupportedOperationException("Not supported yet.");
+        else getDocument(rfrnc).writeDocument(this, out);
+    }
+
+    @Override
+    public Stream<DocumentPart> catalogueParts(Reference rfrnc, QualifiedName qn) throws InvalidReference, InvalidObjectName {
+        return Collections.EMPTY_LIST.stream();
     }
 
 }

@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.dms.RepositoryBrowser;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -14,11 +15,12 @@ import com.softwareplumbers.dms.StreamableRepositoryObject;
  */
 public class DocumentOutput implements StreamingOutput {   	
 	private final StreamableRepositoryObject document;
+    private final RepositoryBrowser service;
 
 	@Override
 	public void write(OutputStream output) throws IOException, WebApplicationException {
-		document.writeDocument(output);			
+		document.writeDocument(service, output);			
 	}
 	
-	public DocumentOutput(StreamableRepositoryObject document) { this.document = document; }
+	public DocumentOutput(RepositoryBrowser service, StreamableRepositoryObject document) { this.service = service; this.document = document; }
 }

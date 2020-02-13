@@ -168,7 +168,7 @@ public class Documents {
                     file.setName("file");
                     file.setMediaType(MediaType.valueOf(document.getMediaType()));
                     file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                    file.setEntity(new DocumentOutput(document));
+                    file.setEntity(new DocumentOutput(service, document));
 
                     MultiPart response = new MultiPart()
                         .bodyPart(metadata)
@@ -247,10 +247,10 @@ public class Documents {
                 MediaType responseMediaType;
                 
                 if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
-                    responseStream = new XMLOutput(document);
+                    responseStream = new XMLOutput(service, document);
                     responseMediaType = MediaType.APPLICATION_XHTML_XML_TYPE;
                 } else {
-                    responseStream = new DocumentOutput(document);
+                    responseStream = new DocumentOutput(service, document);
                     responseMediaType = MediaType.valueOf(document.getMediaType());
                 }
     		

@@ -5,16 +5,17 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.dms.DocumentNavigatorService;
 import com.softwareplumbers.dms.StreamableDocumentPart;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.core.MediaTypes;
 import static com.softwareplumbers.dms.Constants.EMPTY_METADATA;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
+import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 import javax.ws.rs.core.MediaType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -27,57 +28,48 @@ import org.junit.Test;
  */
 public class TestZipFileNavigatorService {
     
-    ZipFileNavigatorService nav = new ZipFileNavigatorService();
+    ZipFileHandler nav = new ZipFileHandler();
+    RepositoryObjectFactory factory = RepositoryObjectFactory.getInstance();
 
     @Test
-    public void testListSimpleZipfile() throws IOException, DocumentNavigatorService.DocumentFormatException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzip.zip"), EMPTY_METADATA);
-        List<DocumentPart> parts = nav.catalogParts(zipDoc).collect(Collectors.toList());
-        assertEquals(3, parts.size());
-        assertEquals("testdoc.docx", parts.get(0).getName().part);
-        assertEquals("testdoc_outlook2010.msg", parts.get(1).getName().part);
-        assertEquals("test1.txt", parts.get(2).getName().part);
-        assertEquals(MediaTypes.MICROSOFT_WORD_XML, MediaType.valueOf(((StreamableDocumentPart)parts.get(0)).getMediaType()));
-        assertEquals(MediaTypes.MICROSOFT_OUTLOOK, MediaType.valueOf(((StreamableDocumentPart)parts.get(1)).getMediaType()));
-        assertEquals("text/plain", ((StreamableDocumentPart)parts.get(2)).getMediaType());
+    public void testListSimpleZipfile() throws IOException, InvalidObjectName {
+        Document zipDoc = factory.buildDocument(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzip.zip"), EMPTY_METADATA, true);
+        DocumentPart parts = nav.build(null, zipDoc, Optional.empty());
+        assertEquals(3, parts.getChildren(null).count());
+        StreamableDocumentPart part1 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("testdoc.docx"));
+        StreamableDocumentPart part2 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("testdoc_outlook2010.msg"));
+        StreamableDocumentPart part3 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("test1.txt"));
+        assertEquals("testdoc.docx", part1.getName().part);
+        assertEquals("testdoc_outlook2010.msg", part2.getName().part);
+        assertEquals("test1.txt", part3.getName().part);
+        assertEquals(MediaTypes.MICROSOFT_WORD_XML, MediaType.valueOf(part1.getMediaType()));
+        assertEquals(MediaTypes.MICROSOFT_OUTLOOK, MediaType.valueOf(part2.getMediaType()));
+        assertEquals("text/plain", part3.getMediaType());
     }
     
     @Test
-    public void testListZipDir() throws IOException, DocumentNavigatorService.DocumentFormatException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
-        List<DocumentPart> parts = nav.catalogParts(zipDoc).collect(Collectors.toList());
-        assertEquals(5, parts.size());
-        assertEquals("test1.txt", parts.get(1).getName().part);
-        assertEquals("test2.txt", parts.get(2).getName().part);
-        assertEquals("testdoc.docx", parts.get(4).getName().part);
-        assertEquals("text/plain", ((StreamableDocumentPart)parts.get(1)).getMediaType());
-        assertEquals("text/plain", ((StreamableDocumentPart)parts.get(2)).getMediaType());
-        assertEquals(MediaTypes.MICROSOFT_WORD_XML.toString(), ((StreamableDocumentPart)parts.get(4)).getMediaType());
+    public void testListZipDir() throws IOException, InvalidObjectName  {
+        Document zipDoc = factory.buildDocument(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA, true);
+        DocumentPart parts = nav.build(null, zipDoc, Optional.empty());
+        assertEquals(1, parts.getChildren(null).count());
+        StreamableDocumentPart part1 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("test","test1.txt"));
+        StreamableDocumentPart part2 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("test","test2.txt"));        
+        StreamableDocumentPart part3 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("test","subdir","testdoc.docx"));
+        assertEquals("test1.txt", part1.getName().part);
+        assertEquals("test2.txt", part2.getName().part);
+        assertEquals("testdoc.docx", part3.getName().part);
+        assertEquals("text/plain", part1.getMediaType());
+        assertEquals("text/plain", part2.getMediaType());
+        assertEquals(MediaTypes.MICROSOFT_WORD_XML.toString(), part3.getMediaType());
     }
     
-    @Test
-    public void testFindZipPart() throws IOException, DocumentNavigatorService.DocumentFormatException, DocumentNavigatorService.PartNotFoundException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
-        DocumentPart test1 = nav.getPartByName(zipDoc, QualifiedName.of("test","test1.txt"));
-        DocumentPart test2 = nav.getPartByName(zipDoc, QualifiedName.of("test","test2.txt"));
-        DocumentPart testDocx = nav.getPartByName(zipDoc, QualifiedName.of("test", "subdir", "testdoc.docx"));
-        assertEquals("test1.txt", test1.getName().part);
-        assertEquals("test2.txt", test2.getName().part);
-        assertEquals("testdoc.docx", testDocx.getName().part);
-    }
-    
-    @Test(expected = DocumentNavigatorService.PartNotFoundException.class)
-    public void testCantFindZipPart() throws IOException, DocumentNavigatorService.DocumentFormatException, DocumentNavigatorService.PartNotFoundException {
-        StreamableRepositoryObjectImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
-        DocumentPart testDocx = nav.getPartByName(zipDoc, QualifiedName.of("booyah", "subdir", "testdoc.docx"));
-    }
     
     @Test
     public void testCanNavigate() throws IOException {
-        DocumentImpl zipDoc = new DocumentImpl(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA);
-        assertTrue("can navigate a zipfile", nav.canNavigate(zipDoc));
-        DocumentImpl textDoc = new DocumentImpl(new Reference("test"), "text/plain", ()->getClass().getResourceAsStream("/test1.txt"), EMPTY_METADATA);
-        assertFalse("can't navigate a text file", nav.canNavigate(textDoc));
+        Document zipDoc = factory.buildDocument(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA, true);
+        assertTrue("can navigate a zipfile", nav.canHandle(zipDoc));
+        Document textDoc = factory.buildDocument(new Reference("test"), "text/plain", ()->getClass().getResourceAsStream("/test1.txt"), EMPTY_METADATA, true);
+        assertFalse("can't navigate a text file", nav.canHandle(textDoc));
     }
     
 }

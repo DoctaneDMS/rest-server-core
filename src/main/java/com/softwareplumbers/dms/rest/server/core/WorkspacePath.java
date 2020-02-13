@@ -9,6 +9,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 
 import com.softwareplumbers.dms.Constants;
+import java.util.Optional;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
@@ -25,10 +26,10 @@ import org.slf4j.ext.XLoggerFactory;
  * /abc/xyz/~Asdf32HT to retrieve the version of a document that is current in the given workspace, and a path
  * like abc/ * /~ASd3343 to list all the sub-workspace of 'abc' in which the given document reference is present.
  *
- * An path elements appearing after a document id are assumed to be part identifiers; documents such as zip
+ * An path elements appearing after a document id must be part identifiers; documents such as zip
  * files may be composed of many sub-documents which can be separately accessed via the workspace
- * API. The '~' character may also be used by itself to indicate that the following elements in the path actually
- * reference such sub-documents. Thus /abc/~ASD23_4sf/myfile.doc references a document 'myfile.doc' in the compound
+ * API. The '~' character indicates the root part - which is typically a directory of contents of 
+ * the compound doc. Thus /abc/~ASD23_4sf/myfile.doc references a document 'myfile.doc' in the compound
  * document with id ASD23_4sf which is in folder abc. /abc/zipfile.zip/~/myfile.doc references a named document inside
  * the file named 'myfile.zip' inside the same folder.
  * 
@@ -42,16 +43,16 @@ public class WorkspacePath {
     public final QualifiedName staticPath;
     public final QualifiedName queryPath;
     public final String documentId;
-    public final QualifiedName staticPartPath;
-    public final QualifiedName queryPartPath;
+    public final Optional<QualifiedName> partPath;
+    public final boolean queryPart;
 
-    public WorkspacePath(String rootId, QualifiedName staticPath, QualifiedName queryPath, String documentId, QualifiedName staticPartPath, QualifiedName queryPartPath) {
+    public WorkspacePath(String rootId, QualifiedName staticPath, QualifiedName queryPath, String documentId, Optional<QualifiedName> partPath, boolean queryPart) {
         this.rootId = rootId;
         this.staticPath = staticPath;
         this.queryPath = queryPath;
         this.documentId = documentId;
-        this.staticPartPath = staticPartPath;
-        this.queryPartPath = queryPartPath;
+        this.partPath = partPath;
+        this.queryPart = queryPart;
     }
 
     /** Detect whether a path element is an id.
@@ -84,10 +85,10 @@ public class WorkspacePath {
     public static WorkspacePath valueOf(String path) {
         String rootId = Constants.ROOT_ID;
         QualifiedName staticPath = QualifiedName.ROOT;
-        QualifiedName staticPartPath = QualifiedName.ROOT;
         QualifiedName queryPath = QualifiedName.ROOT;
-        QualifiedName queryPartPath = QualifiedName.ROOT;
+        Optional<QualifiedName> partPath = Optional.empty();
         String documentId = null;
+        boolean queryPart = false;
         boolean seenPartDelimeter = false;
         try {
             for (String pathElement : path.split("/")) {
@@ -96,11 +97,12 @@ public class WorkspacePath {
                     seenPartDelimeter = true;
                     continue;
                 } 
-                if (seenPartDelimeter || documentId != null) {
-                    if (!queryPartPath.isEmpty() || isQueryElement(pathElement))
-                        queryPartPath = queryPartPath.add(pathElement);
+                if (seenPartDelimeter) {
+                    if (isQueryElement(pathElement)) queryPart = true;
+                    if (partPath.isPresent()) 
+                        partPath = Optional.of(partPath.get().add(pathElement));
                     else
-                        staticPartPath = staticPartPath.add(pathElement);
+                        partPath = Optional.of(QualifiedName.of(pathElement));
                     continue;
                 } 
                 if (isId(pathElement)) {
@@ -122,7 +124,7 @@ public class WorkspacePath {
         } catch (RuntimeException e) {
             LOG.catching(e);    
         }
-        return new WorkspacePath(rootId, staticPath, queryPath, documentId, staticPartPath, queryPartPath);
+        return new WorkspacePath(rootId, staticPath, queryPath, documentId, partPath, queryPart);
     }
     
     public String toString() {
@@ -131,16 +133,14 @@ public class WorkspacePath {
         if (staticPath != QualifiedName.ROOT) result.append("/").append(staticPath.join("/"));
         if (queryPath != QualifiedName.ROOT) result.append("/").append(queryPath.join("/"));
         if (documentId != null) result.append("/").append(documentId);
-        if (staticPartPath != QualifiedName.ROOT) result.append("/").append(staticPartPath.join("/"));
-        if (queryPartPath != QualifiedName.ROOT) result.append("/").append(queryPartPath.join("/"));
+        if (partPath.isPresent()) result.append("/~/").append(partPath.get().join("/"));
         return result.toString();
     }
     
     public boolean isEmpty() {
         return Constants.ROOT_ID == rootId
             && staticPath == QualifiedName.ROOT
-            && staticPartPath == QualifiedName.ROOT
-            && queryPath == QualifiedName.ROOT
-            && queryPartPath == QualifiedName.ROOT;
+            && (!partPath.isPresent())
+            && queryPath == QualifiedName.ROOT;
     }
 }

@@ -56,13 +56,12 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.softwareplumbers.dms.rest.server.model.StreamableRepositoryObjectImpl;
 import com.softwareplumbers.dms.Document;
-import com.softwareplumbers.dms.rest.server.model.DocumentImpl;
-import com.softwareplumbers.dms.rest.server.model.StreamableDocumentPartImpl;
 import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryBrowser;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
+import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.InitializationFailure;
@@ -122,10 +121,10 @@ public class TempRepositoryServerTest {
 		}
 	}
 
-    private static boolean docEquals(String name, StreamableRepositoryObject document) throws IOException {
+    private static boolean docEquals(String name, StreamableRepositoryObject document, RepositoryBrowser service) throws IOException {
 		byte[] testfile = IOUtils.toByteArray(getTestFile("/" + name + ".txt"));
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		document.writeDocument(stream);
+		document.writeDocument(service, stream);
 		JsonObject metadata = getTestMetadata("/" + name + ".json");
 		return metadata.equals(document.getMetadata()) && Arrays.equals(testfile, stream.toByteArray());
 	}
@@ -353,7 +352,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public StreamableRepositoryObjectImpl getDocument(String id) throws IOException, ParseException {
+    public StreamableRepositoryObject getDocument(String id) throws IOException, ParseException {
 		
     	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/" + id);
 
@@ -395,7 +394,7 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public StreamableRepositoryObjectImpl getDocumentFromWorkspace(String path) throws IOException, ParseException {
+    public StreamableRepositoryObject getDocumentFromWorkspace(String path) throws IOException, ParseException {
         
         WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/" + path);
 
@@ -409,18 +408,16 @@ public class TempRepositoryServerTest {
      * @throws IOException In the case of low-level IO error
      * @throws ParseException If response cannot be parsed
      */
-    public StreamableRepositoryObjectImpl getDocumentFromTarget(WebTarget target) throws IOException, ParseException {
+    public StreamableRepositoryObject getDocumentFromTarget(WebTarget target) throws IOException, ParseException {
         
         Response response = target
                 .request(MediaType.MULTIPART_FORM_DATA)
                 .cookie(cookieHandler.generateCookie("test_user"))
                 .get();
         
-        JsonObject metadata = null;
         JsonObject data = null;
         InputStream is = null;
-        String mediaType = null;
-        Reference reference = null;
+        MediaType mediaType = null;
         
         if (response.getStatus() == Response.Status.OK.getStatusCode()) {
             MultiPart entity = response.readEntity(MultiPart.class);
@@ -429,19 +426,15 @@ public class TempRepositoryServerTest {
                 String name = new FormDataContentDisposition(cd).getName();
                 if (name.equals("metadata")) {
                     data = part.getEntityAs(JsonObject.class);
-                    metadata = data.getJsonObject("metadata");
                 }
                 if (name.equals("file")) {
-                    mediaType = part.getMediaType().toString();
                     is = part.getEntityAs(InputStream.class);
+                    mediaType = part.getMediaType();
                 }
             }
-            if (metadata != null && is != null) {
-                InputStream doc_source = is;
-                if (data.getString("type").equals(RepositoryObject.Type.STREAMABLE_DOCUMENT_PART.toString()))
-                    return new StreamableDocumentPartImpl(null, QualifiedName.parse(data.getString("name"),"/"), mediaType, ()->doc_source, metadata);                    
-                else
-                    return new DocumentImpl(new Reference(data.getString("id"), data.getString("version")), mediaType, ()->doc_source, metadata);
+            if (data != null && is != null) {
+                final InputStream doc_source = is;
+                return RepositoryObjectFactory.getInstance().build(data, mediaType.toString(), ()->doc_source);
             }
         } 
 
@@ -644,18 +637,18 @@ public class TempRepositoryServerTest {
 		
 		assertNotNull(id);
 		
-		StreamableRepositoryObjectImpl doc = getDocument(id);
+		StreamableRepositoryObject doc = getDocument(id);
 		
 		assertNotNull(doc);
 		
-		assertTrue(docEquals("test1", doc));
+		assertTrue(docEquals("test1", doc, null));
 		
 	}
     
     @Test
 	public void getInvalidReferenceTest() throws IllegalStateException, IOException, ParseException {
         try {
-    		StreamableRepositoryObjectImpl doc = getDocument("2321412341234");
+    		StreamableRepositoryObject doc = getDocument("2321412341234");
             fail();
         } catch (HttpError err) {
             assertEquals(Status.NOT_FOUND.getStatusCode(), err.code);
@@ -926,7 +919,7 @@ public class TempRepositoryServerTest {
     public void testGetDocumentXMLFromWorkspace() throws IOException, ParseException, TransformerException {
         JsonObject response1 = putDocument("testdoc", "/ws/tmp/wsname/doc1", "docx");
         assertNotNull(response1);
-        StreamableRepositoryObjectImpl doc = getDocumentFromWorkspace("wsname/doc1");
+        StreamableRepositoryObject doc = getDocumentFromWorkspace("wsname/doc1");
         assertNotNull(doc);
         org.w3c.dom.Document xmlDoc = getXMLDocumentFromWorkspace(MediaType.APPLICATION_XHTML_XML_TYPE, "wsname/doc1");
         NodeList h1s = xmlDoc.getElementsByTagName("h1");
@@ -986,9 +979,9 @@ public class TempRepositoryServerTest {
     @Test
     public void testGetZipFilePart() throws IOException, ParseException {
         JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
-        StreamableRepositoryObjectImpl doc = getDocumentFromWorkspace("/wsname3/testzip/~/test/test1.txt");
+        StreamableRepositoryObject doc = getDocumentFromWorkspace("/wsname3/testzip/~/test/test1.txt");
         byte[] original = IOUtils.resourceToByteArray("/test1.txt");
-        byte[] unzipped = IOUtils.toByteArray(doc.getData());
+        byte[] unzipped = IOUtils.toByteArray(doc.getData(null));
         assertArrayEquals(original, unzipped);   
     }
     

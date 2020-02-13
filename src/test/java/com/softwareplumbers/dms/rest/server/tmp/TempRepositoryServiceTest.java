@@ -6,10 +6,9 @@ import org.junit.Before;
 
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
-import com.softwareplumbers.dms.DocumentNavigatorService;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.dms.rest.server.model.ZipFileNavigatorService;
+import com.softwareplumbers.dms.rest.server.model.ZipFileHandler;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
@@ -17,23 +16,18 @@ import javax.json.JsonObjectBuilder;
 public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	
 	public TempRepositoryService service;
-    public ZipFileNavigatorService navigator;
+    public ZipFileHandler navigator;
 	
 	@Before
 	public void createService() {
-		service = new TempRepositoryService(new ZipFileNavigatorService(), QualifiedName.of("filename"));
-        navigator = new ZipFileNavigatorService();
+		service = new TempRepositoryService(QualifiedName.of("filename"));
+        navigator = new ZipFileHandler();
 	}
 
 	@Override
 	public RepositoryService service() {
 		return service;
 	}
-    
-    @Override
-    public DocumentNavigatorService navigator() {
-        return navigator;
-    }
 
 	@Override
 	public Reference randomDocumentReference() {

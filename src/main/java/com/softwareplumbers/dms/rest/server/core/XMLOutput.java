@@ -23,6 +23,8 @@ import javax.xml.transform.TransformerConfigurationException;
 
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
+import com.softwareplumbers.dms.RepositoryBrowser;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.tika.parser.microsoft.OfficeParser;
@@ -43,7 +45,8 @@ public class XMLOutput implements StreamingOutput {
         }
     }
 
-		private final Document document;
+		private final StreamableRepositoryObject document;
+        private final RepositoryBrowser service;
 
 		@Override
 		public void write(OutputStream output) throws IOException, WebApplicationException {
@@ -55,7 +58,7 @@ public class XMLOutput implements StreamingOutput {
             MediaType type = MediaType.valueOf(document.getMediaType());
             String name = document instanceof DocumentLink ? ((DocumentLink)document).getName().part : null;
             
-    	    try (InputStream stream = document.getData()) {
+    	    try (InputStream stream = document.getData(service)) {
                 if (MediaTypes.isOpenOfficeXMLDoc(type, name))
                     parser = new OOXMLParser();
                 else if (MediaTypes.isLegacyOfficeDoc(type, name))
@@ -79,6 +82,6 @@ public class XMLOutput implements StreamingOutput {
             }
 		}
 		
-		public XMLOutput(Document document) { this.document = document; }
+		public XMLOutput(RepositoryBrowser service, StreamableRepositoryObject document) { this.service = service; this.document = document; }
 }
 

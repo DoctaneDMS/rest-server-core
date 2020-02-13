@@ -16,6 +16,12 @@ import java.io.OutputStream;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 import com.softwareplumbers.dms.Exceptions.*;
+import com.softwareplumbers.dms.NamedRepositoryObject;
+import com.softwareplumbers.dms.RepositoryBrowser;
+import com.softwareplumbers.dms.RepositoryObject;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
@@ -76,13 +82,13 @@ class DocumentInfo implements DocumentLink {
     }
 
     @Override
-    public void writeDocument(OutputStream target) throws IOException {
-        linkedDocument().writeDocument(target);
+    public void writeDocument(RepositoryBrowser service, OutputStream target) throws IOException {
+        linkedDocument().writeDocument(service, target);
     }
 
     @Override
-    public InputStream getData() throws IOException {
-        return linkedDocument().getData();
+    public InputStream getData(RepositoryBrowser service) throws IOException {
+        return linkedDocument().getData(service);
     }
 
     @Override
@@ -98,6 +104,26 @@ class DocumentInfo implements DocumentLink {
     @Override
     public Reference getReference() {
         return linkedDocument().getReference();
+    }
+
+    @Override
+    public Optional<RepositoryObject> getParent(RepositoryBrowser rb) { 
+        return Optional.of(parent);
+    }
+
+    @Override
+    public boolean isNavigable() {
+        return false;
+    }
+
+    @Override
+    public Stream<NamedRepositoryObject> getChildren(RepositoryBrowser rb) {
+        return Collections.EMPTY_LIST.stream();
+    }
+
+    @Override
+    public byte[] getDigest() {
+        return linkedDocument().getDigest();
     }
     
 }

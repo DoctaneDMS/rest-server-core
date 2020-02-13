@@ -26,8 +26,10 @@ import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.DocumentNavigatorService;
-import com.softwareplumbers.dms.DocumentNavigatorService.DocumentFormatException;
+import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
+import com.softwareplumbers.dms.NamedRepositoryObject;
+import com.softwareplumbers.dms.Options;
+import javax.json.JsonValue;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
@@ -50,7 +52,6 @@ public class Catalogue {
 	///////////---------  member variables --------////////////
 
 	private RepositoryServiceFactory repositoryServiceFactory;
-    private DocumentNavigatorService documentNavigatorService;
     
 	///////////---------  methods --------////////////
     
@@ -62,11 +63,6 @@ public class Catalogue {
     @Autowired
     public void setRepositoryServiceFactory(RepositoryServiceFactory serviceFactory) {
         this.repositoryServiceFactory = serviceFactory;
-    }
-    
-    @Autowired
-    public void setDocumentNavigatorService(DocumentNavigatorService documentNavigatorService) {
-        this.documentNavigatorService = documentNavigatorService;
     }
     
     /** GET a catalog on path /cat/{repository}
@@ -98,7 +94,7 @@ public class Catalogue {
     			Query queryQuery = query == null ? Query.UNBOUNDED : Query.urlDecode(query);
     			
     			if (workspace != null)
-    				infos = service.catalogueById(workspace, queryQuery , searchHistory);
+    				infos = service.catalogueById(workspace, queryQuery , Options.Search.EMPTY.addOptionIf(Options.SEARCH_OLD_VERSIONS, searchHistory).build());
     			else
     				infos = service.catalogue(queryQuery, searchHistory);
     			
@@ -108,9 +104,9 @@ public class Catalogue {
     			
     			//TODO: must be able to do this in a stream somehow.
     			return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
-    	} catch (InvalidWorkspace err) {
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
-    	} catch (Throwable e) {
+    	} catch (InvalidWorkspace e) {
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
+        } catch (RuntimeException e) {
     		return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
     	}
     }
@@ -175,28 +171,22 @@ public class Catalogue {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
-    			if (service == null) 
-    				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
-    		
-    			JsonArrayBuilder result = Json.createArrayBuilder(); 
-                Document document = service.getDocument(new Reference(id,version));
-                Query filter = query == null ? Query.UNBOUNDED : Query.urlDecode(query);
-                if (documentNavigatorService.canNavigate(document)) {
-                    documentNavigatorService.catalogParts(document, QualifiedName.ROOT)
-                        .map(DocumentPart::toJson)
-                        .filter(obj->filter.containsItem(obj))
-                        .forEach(obj->result.add(obj));
-    			//TODO: must be able to do this in a stream somehow.
-                    return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
-                } else {
-                    return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.badOperation("file cannot be split into parts")));
-                }
-    			
+            if (service == null) 
+                return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+
+            JsonArrayBuilder result = Json.createArrayBuilder(); 
+            Query filter = query == null ? Query.UNBOUNDED : Query.urlDecode(query);
+            service.catalogueParts(new Reference(id,version), QualifiedName.ROOT)
+                    .map(DocumentPart::toJson)
+                    .filter(obj->filter.containsItem(obj))
+                    .forEach(obj->result.add(obj));
+            //TODO: must be able to do this in a stream somehow.
+            return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());    			
     	} catch (InvalidReference err) {
     		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
-    	} catch (DocumentFormatException ex) { 
-            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.mapServiceError(ex)));
-        } 
+    	} catch (InvalidObjectName err) {
+    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+    	} 
     }
     
 }
