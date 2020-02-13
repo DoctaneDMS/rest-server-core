@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory;
 import com.softwareplumbers.dms.rest.server.core.Error;
 import com.softwareplumbers.dms.RepositoryService;
+import java.util.Optional;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
@@ -61,10 +62,13 @@ public class TempAdmin {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
     		if (service == null) 
     			return LOG.exit(Response.status(Status.NOT_FOUND).entity(Error.repositoryNotFound(repository)).build());
-    		if (!(service instanceof TempRepositoryService))
+            Optional<TempRepositoryService> tmpService = service.getImplementation(TempRepositoryService.class);
+    		if (tmpService.isPresent()) {
+                tmpService.get().clear();
+        		return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).build());
+            } else {
     			return LOG.exit(Response.status(Status.BAD_REQUEST).entity(Error.unexpectedFailure()).build());
-    		((TempRepositoryService)service).clear();
-    		return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).build());
+            }
     	} catch (Throwable e) {
     		LOG.error(e.getMessage());
     		return LOG.exit(Response.status(Status.INTERNAL_SERVER_ERROR).entity(Error.reportException(e)).build());

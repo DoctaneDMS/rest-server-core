@@ -211,8 +211,8 @@ public class TempRepositoryServerTest {
                  getTestMetadata("/"+name+".json"),
                  MediaType.APPLICATION_JSON_TYPE);
         
-        multiPart.bodyPart(file);
         multiPart.bodyPart(metadata);
+        multiPart.bodyPart(file);
 
     	Response response = target
     			.request(MediaType.APPLICATION_JSON)

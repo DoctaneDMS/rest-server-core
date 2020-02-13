@@ -34,7 +34,7 @@ public class TestZipFileNavigatorService {
     @Test
     public void testListSimpleZipfile() throws IOException, InvalidObjectName {
         Document zipDoc = factory.buildDocument(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzip.zip"), EMPTY_METADATA, true);
-        DocumentPart parts = nav.build(null, zipDoc, Optional.empty());
+        DocumentPart parts = nav.build(null, zipDoc);
         assertEquals(3, parts.getChildren(null).count());
         StreamableDocumentPart part1 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("testdoc.docx"));
         StreamableDocumentPart part2 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("testdoc_outlook2010.msg"));
@@ -50,7 +50,7 @@ public class TestZipFileNavigatorService {
     @Test
     public void testListZipDir() throws IOException, InvalidObjectName  {
         Document zipDoc = factory.buildDocument(new Reference("test"), MediaTypes.ZIP.toString(), ()->getClass().getResourceAsStream("/testzipdir.zip"), EMPTY_METADATA, true);
-        DocumentPart parts = nav.build(null, zipDoc, Optional.empty());
+        DocumentPart parts = nav.build(null, zipDoc);
         assertEquals(1, parts.getChildren(null).count());
         StreamableDocumentPart part1 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("test","test1.txt"));
         StreamableDocumentPart part2 = (StreamableDocumentPart)parts.getChild(null, QualifiedName.of("test","test2.txt"));        

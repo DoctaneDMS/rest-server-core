@@ -8,6 +8,7 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
+import com.softwareplumbers.dms.rest.server.model.PartHandlerService;
 import com.softwareplumbers.dms.rest.server.model.ZipFileHandler;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -15,13 +16,12 @@ import javax.json.JsonObjectBuilder;
 
 public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	
-	public TempRepositoryService service;
-    public ZipFileHandler navigator;
+	public RepositoryService service;
 	
 	@Before
 	public void createService() {
 		service = new TempRepositoryService(QualifiedName.of("filename"));
-        navigator = new ZipFileHandler();
+        service = new PartHandlerService(service, new ZipFileHandler());
 	}
 
 	@Override

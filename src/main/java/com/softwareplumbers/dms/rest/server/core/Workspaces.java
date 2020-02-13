@@ -187,7 +187,7 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
 
-            if (!workspacePath.queryPath.isEmpty() && !workspacePath.queryPart) {
+            if (!workspacePath.queryPath.isEmpty() || workspacePath.queryPart) {
                 Stream<NamedRepositoryObject> results;
                 Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, workspacePath.rootId, workspacePath.staticPath);
                 Query combinedConstraint = accessConstraint.intersect(filterConstraint);
@@ -229,11 +229,7 @@ public class Workspaces {
                     switch (result.getType()) {
                         case WORKSPACE:
                         case DOCUMENT_PART:
-                            if (!workspacePath.partPath.isPresent()) {
-                        		return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,1,0)).build());                    		
-                            } else {
-                                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("Workspaces do not have document parts")));
-                            }
+                            return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,1,0)).build());                    		
                     	case DOCUMENT_LINK:
                         case STREAMABLE_DOCUMENT_PART:
                             String documentName = workspacePath.staticPath.part;

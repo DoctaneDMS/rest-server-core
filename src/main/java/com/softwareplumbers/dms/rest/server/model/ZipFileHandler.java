@@ -38,7 +38,7 @@ import org.apache.commons.io.IOUtils;
  *
  * @author Jonathan Essex
  */
-public class ZipFileHandler {
+public class ZipFileHandler implements PartHandler {
     
     private static class ZipFileData implements LocalData {
         public final LocalData delegate;
@@ -94,18 +94,32 @@ public class ZipFileHandler {
             output.write(data);
         }
     }
+    
+    private ZipFileData createEntry(QualifiedName name, Optional<QualifiedName> parentName, Document zipfile) {
+        ZipFileData newEntry = new ZipFileData(LocalData.NONE, zipfile, null);
+        DocumentPart part = new DocumentPartImpl(zipfile.getReference(), parentName, QualifiedName.ROOT, Constants.EMPTY_METADATA, true, newEntry);
+        newEntry.self = part;
+        return newEntry;
+    }
+    
+    private ZipFileData getOrCreateEntry(Map<QualifiedName, ZipFileData> localData, Optional<QualifiedName> parentName, Document zipfile, QualifiedName name) {
+        return localData.computeIfAbsent(name, entryName->createEntry(entryName, parentName, zipfile));
+    }
             
-    public DocumentPart build(RepositoryService service, Document zipfile, Optional<QualifiedName> parentName) throws IOException {
+    public DocumentPart build(RepositoryService service, Document zipfile) {
 
         Map<QualifiedName, ZipFileData> localData = new HashMap<>();
+        Optional<QualifiedName> parentName = zipfile instanceof NamedRepositoryObject ? Optional.of(((NamedRepositoryObject)zipfile).getName()) : Optional.empty();
 
+        DocumentPart root = getOrCreateEntry(localData, parentName, zipfile, QualifiedName.ROOT).self;
+        
         try (ZipInputStream zifs = new ZipInputStream(zipfile.getData(service))) {
             ZipEntry currentEntry = zifs.getNextEntry();    
         
             while (currentEntry != null) {
                 QualifiedName name = QualifiedName.parse(currentEntry.getName(), "/");
-                Optional<ZipFileData> parentData = name.isEmpty() ? Optional.empty() : Optional.of(localData.get(name.parent));
-                RepositoryObject parentObject = name.isEmpty() ? zipfile : parentData.get().self;
+                ZipFileData parentData = getOrCreateEntry(localData, parentName, zipfile, name.parent);
+                RepositoryObject parentObject = parentData.self;
                 DocumentPart result;
                 ZipFileData node;
                 if (currentEntry.isDirectory()) {
@@ -118,10 +132,13 @@ public class ZipFileHandler {
                     result = new StreamableDocumentPartImpl(zipfile.getReference(), parentName, name, type.toString(), node.data.length, Constants.NO_DIGEST, Constants.EMPTY_METADATA, false, node);
                 }
                 node.self = result;
-                if (parentData.isPresent()) parentData.get().children.add(result);
+                parentData.children.add(result);
+                localData.put(name, node);
                 zifs.closeEntry();
                 currentEntry = zifs.getNextEntry();
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         
         // Technically we should try to correct any directory entries with zero members to navigable = false;

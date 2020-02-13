@@ -6,7 +6,8 @@
 	xsi:schemaLocation="
  	http://www.springframework.org/schema/beans
 	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
-       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" xmlns:aop="http://www.springframework.org/schema/aop">
     
     <context:annotation-config />
 	
@@ -19,9 +20,17 @@
         <constructor-arg index="4"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
     </bean>
 
-    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
-        <constructor-arg index="0" ref="documentNavigatorService"/>
-        <constructor-arg index="1" value="filename"/>
+    <bean id="base" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
+        <constructor-arg index="0" type="java.lang.String" value="filename"/>
+    </bean>
+    
+    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
+        <property name="baseRepository" ref="base"/>
+        <property name="handlers">
+            <array>
+                <bean class="com.softwareplumbers.dms.rest.server.model.ZipFileHandler"/>
+            </array>
+        </property>
     </bean>
     
     <bean id="dummyValidation" class="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" scope="singleton">
@@ -96,7 +105,5 @@
             </props>
         </property>
     </bean>
-    
-    <bean id="documentNavigatorService" class="com.softwareplumbers.dms.rest.server.model.ZipFileNavigatorService"/>
- 
+     
 </beans>

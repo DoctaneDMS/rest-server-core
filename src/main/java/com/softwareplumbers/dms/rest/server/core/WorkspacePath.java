@@ -94,15 +94,12 @@ public class WorkspacePath {
             for (String pathElement : path.split("/")) {
                 if (pathElement.length() == 0) continue;
                 if (isPartDelimeter(pathElement)) {
-                    seenPartDelimeter = true;
+                    partPath = Optional.of(QualifiedName.ROOT);
                     continue;
                 } 
-                if (seenPartDelimeter) {
+                if (partPath.isPresent()) {
                     if (isQueryElement(pathElement)) queryPart = true;
-                    if (partPath.isPresent()) 
-                        partPath = Optional.of(partPath.get().add(pathElement));
-                    else
-                        partPath = Optional.of(QualifiedName.of(pathElement));
+                    partPath = Optional.of(partPath.get().add(pathElement));
                     continue;
                 } 
                 if (isId(pathElement)) {

@@ -33,7 +33,6 @@ import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.Workspace.State;
-import com.softwareplumbers.dms.common.impl.DocumentImpl;
 import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -186,10 +185,12 @@ public class TempRepositoryService implements RepositoryService {
 	public Reference createDocument(String mediaType, InputStreamSupplier stream, JsonObject metadata) {
 		LOG.entry(mediaType, metadata);
 		Reference new_reference = new Reference(UUID.randomUUID().toString(),newVersion("0"));
-
+        try {
 			Document new_document = factory.buildDocument(new_reference, mediaType, stream, metadata, false);
 			store.put(new_reference, new_document);
-
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 		return LOG.exit(new_reference);
 	}
 	
@@ -205,7 +206,7 @@ public class TempRepositoryService implements RepositoryService {
 		WorkspaceImpl workspace = myRoot.getOrCreateWorkspace(documentName.parent, Options.CREATE_MISSING_PARENT.isIn(options));
 		Reference new_reference;
         DocumentInfo result;
-
+        try {
 			Optional<DocumentLink> doc = workspace.getDocument(documentName.part);
 			if (doc.isPresent()) {
 				new_reference = newVersionReference(doc.get().getId());
@@ -225,7 +226,9 @@ public class TempRepositoryService implements RepositoryService {
 				} else 
 					throw new InvalidObjectName(rootWorkspace, documentName);
 			}
-
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 		return LOG.exit(result.toStatic());
 	}
 	
@@ -570,7 +573,7 @@ public class TempRepositoryService implements RepositoryService {
 			Document new_document = factory.buildDocument(new_reference, mediaType, stream, metadata, false);
 			store.put(new_reference, new_document);
 			return LOG.exit(workspace.add(new_reference, false));
-		} catch (InvalidReference e) {
+		} catch (InvalidReference | IOException e) {
 			throw new RuntimeException(LOG.throwing(e));	
 		}
 	}
@@ -704,5 +707,8 @@ public class TempRepositoryService implements RepositoryService {
     public Stream<DocumentPart> catalogueParts(Reference rfrnc, QualifiedName qn) throws InvalidReference, InvalidObjectName {
         return Collections.EMPTY_LIST.stream();
     }
-
+    
+    public <T> Optional<T> getImplementation(Class<T> clazz) {
+        return clazz.isAssignableFrom(clazz) ? Optional.of((T)this) : Optional.empty();
+    }
 }

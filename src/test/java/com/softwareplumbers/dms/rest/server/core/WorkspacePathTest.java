@@ -124,7 +124,7 @@ public class WorkspacePathTest {
 
     @Test
     public void testWorkpaceIdDocumentIdWithParts() {
-        WorkspacePath  path = WorkspacePath.valueOf("~123/abc/def/s*/x*/~sdfg/234/ghi");
+        WorkspacePath  path = WorkspacePath.valueOf("~123/abc/def/s*/x*/~sdfg/~/234/ghi");
         assertEquals(QualifiedName.of("234","ghi"), path.partPath.get());
         assertFalse(path.queryPart);
         assertEquals(QualifiedName.of("s*","x*"), path.queryPath);
@@ -135,8 +135,8 @@ public class WorkspacePathTest {
     
     @Test
     public void testWorkpaceIdDocumentIdWithQueryParts() {
-        WorkspacePath  path = WorkspacePath.valueOf("~123/abc/def/s*/x*/~sdfg/234/ghi?");
-        assertEquals(QualifiedName.of("234","ghi?"), path.partPath);
+        WorkspacePath  path = WorkspacePath.valueOf("~123/abc/def/s*/x*/~sdfg/~/234/ghi?");
+        assertEquals(QualifiedName.of("234","ghi?"), path.partPath.get());
         assertTrue(path.queryPart);
         assertEquals(QualifiedName.of("s*","x*"), path.queryPath);
         assertEquals("sdfg", path.documentId);

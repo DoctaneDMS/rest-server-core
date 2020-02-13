@@ -5,8 +5,12 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentPart;
+import com.softwareplumbers.dms.RepositoryService;
+import java.io.IOException;
+import java.util.Optional;
 
 /**
  *
@@ -14,6 +18,6 @@ import com.softwareplumbers.dms.DocumentPart;
  */
 public interface PartHandler {
 
-    DocumentPart build(Document document);   
+    DocumentPart build(RepositoryService service, Document document);   
     boolean canHandle(Document document);
 }

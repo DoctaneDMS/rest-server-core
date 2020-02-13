@@ -24,14 +24,26 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
 
-/**
+/** RepositoryDecorator allows us to layer additional services on top of Repository.
  *
  * @author metadatanathan
  */
 public class RepositoryDecorator implements RepositoryService {
     
-    RepositoryService baseRepository;
-
+    protected RepositoryService baseRepository;
+    
+    public RepositoryDecorator(RepositoryService baseRepository) {
+        this.baseRepository = baseRepository;
+    }
+    
+    public RepositoryDecorator() {
+        this(null);
+    }
+    
+    public final void setBaseRepository(RepositoryService baseRepository) {
+        this.baseRepository = baseRepository;        
+    }
+ 
     @Override
     public Reference createDocument(String mediaType, InputStreamSupplier iss, JsonObject metadata) {
         return baseRepository.createDocument(mediaType, iss, metadata);
@@ -190,6 +202,10 @@ public class RepositoryDecorator implements RepositoryService {
     @Override
     public Stream<DocumentLink> listWorkspaces(String rootId, QualifiedName objectName, Query query, Options.Search... options) throws Exceptions.InvalidDocumentId {
         return baseRepository.listWorkspaces(rootId, objectName, query, options);
+    }
+    
+    public <T> Optional<T> getImplementation(Class<T> clazz) {
+        return clazz.isAssignableFrom(getClass()) ? Optional.of((T)this) : baseRepository.getImplementation(clazz);
     }
     
 }

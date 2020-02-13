@@ -43,6 +43,7 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
+import java.io.ByteArrayInputStream;
 import org.slf4j.ext.XLogger;
 import java.util.Arrays;
 import java.util.List;
@@ -407,7 +408,7 @@ public class Documents {
     	@FormDataParam("file") FormDataBodyPart file_part,
         @Context ContainerRequestContext requestContext        
     	) {
-        LOG.entry(repository, metadata_part, file_part);
+        LOG.entry(repository, metadata_part.getName(), file_part.getName());
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
@@ -475,7 +476,7 @@ public class Documents {
     	@Context HttpServletRequest request,
         @Context ContainerRequestContext requestContext        
     	) {
-        LOG.entry(repository, request);
+        LOG.entry(repository, request.getMethod());
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
@@ -536,7 +537,7 @@ public class Documents {
     	@FormDataParam("file") FormDataBodyPart file_part,
         @Context ContainerRequestContext requestContext        
     ) {
-        LOG.entry(repository, id, metadata_part, file_part);
+        LOG.entry(repository, id, metadata_part.getName(), file_part.getName());
     	try {
     		RepositoryService service = getRepositoryService(repository);
             AuthorizationService authorizationService = getAuthorizationService(repository);
@@ -559,12 +560,14 @@ public class Documents {
             if (!acl.containsItem(userMetadata))
                 return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, id)));
            
+            byte[] data = file_part.getEntityAs(byte[].class);
+            
             Reference reference = 
     			service
     				.updateDocument(
     					id,
     					computedMediaType.toString(),
-    					()->file_part.getEntityAs(InputStream.class),
+    					()->new ByteArrayInputStream(data),
 						metadata
 					);
 
