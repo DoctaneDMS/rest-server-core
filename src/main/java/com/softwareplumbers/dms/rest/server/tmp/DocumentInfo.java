@@ -6,19 +6,21 @@
 package com.softwareplumbers.dms.rest.server.tmp;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Reference;
-import com.softwareplumbers.dms.RepositoryService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import javax.json.JsonObject;
-import javax.ws.rs.core.MediaType;
 import com.softwareplumbers.dms.Exceptions.*;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.RepositoryBrowser;
 import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.common.impl.DocumentLinkImpl;
+import com.softwareplumbers.dms.common.impl.LocalData;
+import com.softwareplumbers.dms.common.impl.StreamInfo;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -125,5 +127,23 @@ class DocumentInfo implements DocumentLink {
     public byte[] getDigest() {
         return linkedDocument().getDigest();
     }
+
+    @Override
+    public DocumentLink setMetadata(JsonObject metadata) {
+        return new DocumentLinkImpl(getName(), getReference(), getMediaType(), getLength(), getDigest(), metadata, isNavigable(), LocalData.NONE);
+    }
+
+    @Override
+    public DocumentLink setNavigable(boolean navigable) {
+        return new DocumentLinkImpl(getName(), getReference(), getMediaType(), getLength(), getDigest(), getMetadata(), navigable, LocalData.NONE);
+    }
+
+    @Override
+    public DocumentLink setData(String type, InputStreamSupplier supplier) throws IOException {
+        StreamInfo info = StreamInfo.of(supplier);
+        LocalData.ResultNode newLocalData = new LocalData.ResultNode(LocalData.NONE, null, null, info.supplier);
+        return new DocumentLinkImpl(getName(), getReference(), getMediaType(), info.length, info.digest, getMetadata(), isNavigable(), newLocalData);
+    }
+
     
 }

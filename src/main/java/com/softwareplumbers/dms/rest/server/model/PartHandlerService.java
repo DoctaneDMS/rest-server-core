@@ -22,6 +22,7 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.StreamableDocumentPart;
+import com.softwareplumbers.dms.StreamableRepositoryObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -44,6 +45,26 @@ public class PartHandlerService extends RepositoryDecorator {
   
     private final Map<Reference, DocumentPart> cache = Collections.synchronizedMap(new WeakHashMap<>());
     private PartHandler[] handlers;
+    
+    @Override
+    public <T extends RepositoryObject> T mapResult(T result) {
+        switch(result.getType()) {
+            case DOCUMENT:
+            case DOCUMENT_LINK:
+                Optional<PartHandler> handler = getHandler((Document)result);
+                if (handler.isPresent())
+                    return (T)result.setNavigable(true);
+                else
+                    return result;
+            default:
+                return result;
+        }
+    }    
+    
+    @Override
+    public <T extends RepositoryObject> Stream<T> mapResult(Stream<T> result) {
+        return result.map(this::mapResult);
+    }   
     
     public PartHandlerService(RepositoryService repository, PartHandler... handlers) {
         super(repository);

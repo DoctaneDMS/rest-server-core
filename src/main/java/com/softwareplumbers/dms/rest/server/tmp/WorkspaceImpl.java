@@ -25,6 +25,8 @@ import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.Exceptions.*;
 import com.softwareplumbers.dms.RepositoryBrowser;
+import com.softwareplumbers.dms.common.impl.DocumentLinkImpl;
+import com.softwareplumbers.dms.common.impl.LocalData;
 import org.slf4j.ext.XLogger;
 import javax.json.JsonString;
 import org.slf4j.ext.XLoggerFactory;
@@ -444,7 +446,7 @@ class WorkspaceImpl implements Workspace {
 		return metadata;
 	}
 
-	public void setMetadata(JsonObject metadata) {
+	public void setMetadataInternal(JsonObject metadata) {
 		this.metadata = metadata;
 	}
 	
@@ -465,4 +467,14 @@ class WorkspaceImpl implements Workspace {
 				.findFirst()
 				.orElseThrow(()->new InvalidDocumentId(documentId)); 
 	}
+    
+    @Override
+    public Workspace setMetadata(JsonObject metadata) {
+        return new com.softwareplumbers.dms.common.impl.WorkspaceImpl(getName(), getId(), getState(), metadata, isNavigable(), LocalData.NONE);
+    }
+
+    @Override
+    public Workspace setNavigable(boolean navigable) {
+        return new com.softwareplumbers.dms.common.impl.WorkspaceImpl(getName(), getId(), getState(), getMetadata(), navigable, LocalData.NONE);
+    }
 }

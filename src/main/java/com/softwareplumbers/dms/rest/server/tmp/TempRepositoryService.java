@@ -261,8 +261,10 @@ public class TempRepositoryService implements RepositoryService {
 			try {
                 JsonObject previousMetadata = previous.getValue().getMetadata();
                 InputStream previousStream = previous.getValue().getData(this);
+                String previousType = previous.getValue().getMediaType();
 				metadata = metadata == null ? previousMetadata : MetadataMerge.merge(previousMetadata, metadata);
-				stream = stream == null ? ()->previousStream : stream;			
+				stream = stream == null ? ()->previousStream : stream;	
+                mediaType = mediaType == null ? previousType : mediaType;
                 Document newDocument = factory.buildDocument(new_reference, mediaType, stream, metadata, true);
 
                 store.put(new_reference, newDocument);
@@ -409,7 +411,7 @@ public class TempRepositoryService implements RepositoryService {
 		} else { 
 			ws = workspace.get();
 			if (state != null) ws.setState(state);
-			ws.setMetadata(MetadataMerge.merge(ws.getMetadata(), metadata));
+			ws.setMetadataInternal(MetadataMerge.merge(ws.getMetadata(), metadata));
 		}
 		return LOG.exit(ws);
 	}
