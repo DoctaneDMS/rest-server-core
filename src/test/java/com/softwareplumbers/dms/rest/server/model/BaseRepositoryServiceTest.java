@@ -277,9 +277,9 @@ public abstract class BaseRepositoryServiceTest extends DocumentServiceTest {
 	@Test
 	public void testSaveWorkspaceMetadata() throws BaseException {
         QualifiedName name0 = randomQualifiedName();
-        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, parseObject("{ 'Description': 'test metadata' }"), Options.CREATE_MISSING_PARENT).getId();
+        String baseId = service().createWorkspaceByName(ROOT_ID, name0, State.Open, parseObject("{ 'EventDescription': 'test metadata' }"), Options.CREATE_MISSING_PARENT).getId();
         Workspace workspace = service().getWorkspaceByName(baseId, null);
-        assertEquals("test metadata", workspace.getMetadata().getString("Description"));
+        assertEquals("test metadata", workspace.getMetadata().getString("EventDescription"));
 	}    
     
     //////------- Versioning tests --------//////
