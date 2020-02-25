@@ -393,10 +393,7 @@ public class TempRepositoryService implements RepositoryService {
 		if (rootId != null) {
 		   myRoot = workspacesById.get(rootId);
 		   if (myRoot == null) {
-		       if (Options.CREATE_MISSING_PARENT.isIn(options))
-		           myRoot = root.createWorkspace(rootId, name, state, metadata, true);
-		       else
-		           throw new InvalidWorkspace(rootId);
+		        throw new InvalidWorkspace(rootId);
 		   }
 		}
 		
@@ -404,9 +401,13 @@ public class TempRepositoryService implements RepositoryService {
 
 		WorkspaceImpl ws;
 		if (!workspace.isPresent()) {
-			if (Options.CREATE_MISSING_PARENT.isIn(options))
-				ws = myRoot.createWorkspace(UUID.randomUUID().toString(), name, state, metadata, true);
-			else
+			if (Options.CREATE_MISSING_ITEM.isIn(options)) {                
+                Optional<WorkspaceImpl> parent = myRoot.getWorkspace(name.parent);
+                if (parent.isPresent() || Options.CREATE_MISSING_PARENT.isIn(options))                        
+                    ws = myRoot.createWorkspace(UUID.randomUUID().toString(), name, state, metadata, true);
+                else
+                    throw LOG.throwing(new InvalidWorkspace(rootId, name));
+            } else
 				throw LOG.throwing(new InvalidWorkspace(rootId, name));
 		} else { 
 			ws = workspace.get();
