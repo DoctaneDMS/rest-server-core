@@ -477,4 +477,9 @@ class WorkspaceImpl implements Workspace {
     public Workspace setNavigable(boolean navigable) {
         return new com.softwareplumbers.dms.common.impl.WorkspaceImpl(getName(), getId(), getState(), getMetadata(), navigable, LocalData.NONE);
     }
+    
+    @Override
+    public String toString() {
+        return toJson().toString();
+    }
 }
