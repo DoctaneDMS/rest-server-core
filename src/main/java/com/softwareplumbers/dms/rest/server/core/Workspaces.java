@@ -552,7 +552,7 @@ public class Workspaces {
                 URI created = uriInfo.getAbsolutePathBuilder().path(workspace.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.exit(Response.created(created).entity(workspace.toJson(service, 0, 0)).build());                
             } else {
-                Reference reference = Reference.fromJson(object.getJsonObject("reference"));
+                Reference reference = Document.getReference(object); 
                 JsonObject metadata = object.getJsonObject("metadata");
                 if (metadata != null && !metadata.isEmpty()) {
                     service.updateDocument(reference.id, null, null, metadata);
