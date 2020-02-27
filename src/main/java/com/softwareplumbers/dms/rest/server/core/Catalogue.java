@@ -81,17 +81,23 @@ public class Catalogue {
     	@PathParam("repository") String repository,
     	@QueryParam("workspace") String workspace,
     	@QueryParam("searchHistory") @DefaultValue("false") boolean searchHistory,
-    	@QueryParam("query") String query
+    	@QueryParam("query") String query,
+    	@QueryParam("filter") String filter
     ) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     			if (service == null) 
     				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+                if (query != null)
+                    LOG.warn("Method uses deprecated query paramter. Use filter instead");
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			Stream<? extends RepositoryObject> infos = null;
-    			Query queryQuery = query == null ? Query.UNBOUNDED : Query.urlDecode(query);
+                
+                if (filter == null && query != null) filter = query;
+                
+    			Query queryQuery = filter == null ? Query.UNBOUNDED : Query.urlDecode(filter);
     			
     			if (workspace != null)
     				infos = service.catalogueById(workspace, queryQuery , Options.Search.EMPTY.addOptionIf(Options.SEARCH_OLD_VERSIONS, searchHistory).build());
