@@ -18,6 +18,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.dms.DocumentLink;
@@ -337,7 +338,7 @@ public class TempRepositoryService implements RepositoryService {
 
 		WorkspaceImpl workspace = workspacesById.get(workspaceId);
 		if (workspace == null) throw LOG.throwing(new InvalidWorkspace(workspaceId));
-		return LOG.exit(workspace.catalogue(filter, Options.SEARCH_OLD_VERSIONS.isIn(options)));
+		return LOG.exit(workspace.catalogue(WorkspaceImpl.MATCH_ALL, filter, Options.SEARCH_OLD_VERSIONS.isIn(options)));
 	}
 
 	static String nextSeq(String string) {
@@ -354,8 +355,15 @@ public class TempRepositoryService implements RepositoryService {
 	public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName workspaceName, Query filter, Options.Search... options) throws InvalidWorkspace {
 
 		LOG.entry(rootId, workspaceName, filter, Options.loggable(options));
+        
+		if (workspaceName == null) throw LOG.throwing(new InvalidWorkspace("null"));
 
-		if (workspaceName == null) LOG.throwing(new InvalidWorkspace("null"));
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options)) {
+            Predicate<String> hasWildcards = element -> !Parsers.parseUnixWildcard(element).isSimple();
+            if (workspaceName.isEmpty() || workspaceName.indexFromEnd(hasWildcards) < 0) {
+                workspaceName = workspaceName.add("*");
+            }
+        }
 		
 		return LOG.exit(getRoot(rootId).catalogue(workspaceName, filter, Options.SEARCH_OLD_VERSIONS.isIn(options)));
 	}

@@ -231,7 +231,8 @@ public class PartHandlerService extends RepositoryDecorator {
         Optional<QualifiedName> partName = Options.PART.getValue(options);
         
         if (partName.isPresent()) {
-            return baseRepository.catalogueByName(rootId, objectName, query, options)
+            Options.Search.Builder newOptions = Options.Search.EMPTY.addOptions(options).addOption(Options.NO_IMPLICIT_WILDCARD);
+            return baseRepository.catalogueByName(rootId, objectName, query, newOptions.build())
                 .filter(object -> object.getType() == RepositoryObject.Type.DOCUMENT_LINK)
                 .map(DocumentLink.class::cast)
                 .map(this::getRootPart)

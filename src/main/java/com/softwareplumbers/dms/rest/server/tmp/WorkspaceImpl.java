@@ -25,7 +25,6 @@ import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.Exceptions.*;
 import com.softwareplumbers.dms.RepositoryBrowser;
-import com.softwareplumbers.dms.common.impl.DocumentLinkImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
 import org.slf4j.ext.XLogger;
 import javax.json.JsonString;
@@ -34,7 +33,7 @@ import org.slf4j.ext.XLoggerFactory;
 class WorkspaceImpl implements Workspace {
 	
 	private static XLogger LOG = XLoggerFactory.getXLogger(WorkspaceImpl.class);
-	
+    public static final java.util.regex.Pattern MATCH_ALL = java.util.regex.Pattern.compile(".*");	
 	
 	/**
 	 * 
@@ -277,58 +276,47 @@ class WorkspaceImpl implements Workspace {
         }
 	}
 	
-	public Stream<NamedRepositoryObject> catalogue(Query filter, boolean searchHistory) {
-		
-        // IMPORTANT breaking change in support of #55 and #24.
-        // The query namespace now includes all fields in the document link, including the parent folder, mediaType, etc.
-        // Medatadata fields that used to be in the root of the query namespace must now be prefixed with 'metadata'.
-		final Predicate<NamedRepositoryObject> filterPredicate = filter == null ? info->true : info->filter.containsItem(info.toJson());
+	public Stream<NamedRepositoryObject> catalogue(java.util.regex.Pattern nameTemplate, Query filter, boolean searchHistory) {
 
+        final Predicate<DocumentInfo> filterDocs = doc -> {
+            return !doc.deleted && nameTemplate.matcher(doc.name).matches() && filter.containsItem(doc.toJson(service,1,0));
+        };
+        
+        final Predicate<WorkspaceImpl> filterWorkspace = workspace -> {
+            return nameTemplate.matcher(workspace.name).matches() && filter.containsItem(workspace.toJson());
+        };
+        
 		Stream<DocumentInfo> docInfo = children.values().stream()
-		        .filter(child -> child.getType() == Type.DOCUMENT_LINK)
-		        .map(child -> (DocumentInfo)child);
+		    .filter(child -> child.getType() == Type.DOCUMENT_LINK)
+		    .map(child -> (DocumentInfo)child);
 		
 		if (searchHistory) {
 			// Search all historical info, and return latest matching version
 			// of any document.
 		    Stream<DocumentInfo> history = docInfo
-		            .flatMap(doc -> getHistory(doc, filter));
-
+		            .flatMap(doc -> getHistory(doc, Query.UNBOUNDED))
+                    .filter(filterDocs);
+            
 			docInfo = TempRepositoryService.latestVersionsOf(history);
+
 		} else {
 			docInfo = docInfo
-				.filter(doc -> !doc.deleted)
-				.filter(filterPredicate);
+				.filter(filterDocs);
 		}
 		
-		Stream<NamedRepositoryObject> folderInfo = children.values().stream()
+		Stream<WorkspaceImpl> folderInfo = children.values().stream()
 		    .filter(item -> item.getType()==Type.WORKSPACE)
-	        .filter(filterPredicate);
+            .map(child -> (WorkspaceImpl)child)
+	        .filter(filterWorkspace);
 		
 		return Stream.concat(docInfo, folderInfo);
 	}
 	
 	public Stream<NamedRepositoryObject> catalogue(QualifiedName workspaceName, Query filter, boolean searchHistory) {
 		
-		if (workspaceName == QualifiedName.ROOT) return catalogue(filter, searchHistory);
+		if (workspaceName.isEmpty()) return catalogue(MATCH_ALL, filter, searchHistory);
 
-		Pattern pattern = Parsers.parseUnixWildcard(workspaceName.get(0));
-		QualifiedName remainingName = workspaceName.rightFromStart(1);
-        String lowerBound = pattern.lowerBound();
-
-		if (pattern.isSimple()) {
-			NamedRepositoryObject child = children.get(lowerBound);
-			if (child == null) return Stream.empty();
-            if (child.getType() == Type.WORKSPACE) return ((WorkspaceImpl)child).catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
-            return Stream.of(child);
-		}
-		
-		SortedMap<String,NamedRepositoryObject> submap = children;
-
-		if (lowerBound.length() > 0) {
-            String upperBound = TempRepositoryService.nextSeq(lowerBound);
-			submap = children.subMap(lowerBound, upperBound);
-		}
+        Pattern pattern = Parsers.parseUnixWildcard(workspaceName.get(0));
         
         java.util.regex.Pattern regex;
         
@@ -337,20 +325,32 @@ class WorkspaceImpl implements Workspace {
         } catch (Visitor.PatternSyntaxException ex) {
             throw new RuntimeException(ex);
         }
-			
-		Stream<NamedRepositoryObject> matchingChildren = submap.entrySet()
+
+        if (workspaceName.parent.isEmpty()) return catalogue(regex, filter, searchHistory);      
+		
+		SortedMap<String,NamedRepositoryObject> submap = children;
+        
+		QualifiedName remainingName = workspaceName.rightFromStart(1);
+        String lowerBound = pattern.lowerBound();
+
+		if (pattern.isSimple()) {
+			NamedRepositoryObject child = children.get(lowerBound);
+			if (child == null || child.getType() != Type.WORKSPACE) return Stream.empty();
+            return ((WorkspaceImpl)child).catalogue(workspaceName.rightFromStart(1), filter, searchHistory);
+		}
+
+		if (lowerBound.length() > 0) {
+            String upperBound = TempRepositoryService.nextSeq(lowerBound);
+			submap = children.subMap(lowerBound, upperBound);
+		}
+        			
+		return submap.entrySet()
 			.stream()
 			.filter(e -> regex.matcher(e.getKey()).matches())
-			.map(e -> e.getValue());
-		
-		if (remainingName.isEmpty()) {
-		    return matchingChildren.filter(item->filter.containsItem(item.toJson(service, 1, 0)));
-		} else {
-			return matchingChildren
-			    .filter(child -> child.getType() == Type.WORKSPACE)
-			    .map(child -> (WorkspaceImpl)child)
-			    .flatMap(workspace -> workspace.catalogue(remainingName, filter,  searchHistory));
-		}
+			.map(e -> e.getValue())
+			.filter(child -> child.getType() == Type.WORKSPACE)
+	        .map(child -> (WorkspaceImpl)child)
+		    .flatMap(workspace -> workspace.catalogue(remainingName, filter,  searchHistory));
 	}
 	
 	public WorkspaceImpl getOrCreateWorkspace(QualifiedName name, boolean createWorkspace) throws InvalidWorkspace {
