@@ -90,7 +90,7 @@ public class Catalogue {
     			if (service == null) 
     				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
                 if (query != null)
-                    LOG.warn("Method uses deprecated query paramter. Use filter instead");
+                    LOG.warn("Method uses deprecated query parameter. Use filter instead");
     		
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
     			Stream<? extends RepositoryObject> infos = null;
@@ -134,15 +134,20 @@ public class Catalogue {
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
-    	@QueryParam("query") String query) {
+    	@QueryParam("query") String query,
+    	@QueryParam("filter") String filter) {
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
     			if (service == null) 
     				return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
-    		
+                if (query != null)
+                    LOG.warn("Method uses deprecated query parameter. Use filter instead");
+                
+                if (filter == null && query != null) filter = query;
+
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueHistory(new Reference(id,version), query == null ? Query.UNBOUNDED : Query.urlDecode(query))
+    			service.catalogueHistory(new Reference(id,version), filter == null ? Query.UNBOUNDED : Query.urlDecode(filter))
     				.map(Document::toJson)
     				.forEach(info->result.add(info));
     			
@@ -172,19 +177,25 @@ public class Catalogue {
     	@PathParam("repository") String repository,
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
-    	@QueryParam("query") String query) {
+    	@QueryParam("query") String query,
+    	@QueryParam("filter") String filter) {
         
     	try {
     		RepositoryService service = repositoryServiceFactory.getService(repository);
 
             if (service == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
+            if (query != null)
+                LOG.warn("Method uses deprecated query parameter. Use filter instead");
+            
+            if (filter == null && query != null) filter = query;
 
             JsonArrayBuilder result = Json.createArrayBuilder(); 
-            Query filter = query == null ? Query.UNBOUNDED : Query.urlDecode(query);
+            
+            Query filterQuery = filter == null ? Query.UNBOUNDED : Query.urlDecode(filter);
             service.catalogueParts(new Reference(id,version), QualifiedName.ROOT)
                     .map(DocumentPart::toJson)
-                    .filter(obj->filter.containsItem(obj))
+                    .filter(obj->filterQuery.containsItem(obj))
                     .forEach(obj->result.add(obj));
             //TODO: must be able to do this in a stream somehow.
             return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());    			
