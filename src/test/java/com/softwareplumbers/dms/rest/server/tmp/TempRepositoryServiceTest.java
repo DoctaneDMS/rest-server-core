@@ -8,12 +8,17 @@ import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
+import com.softwareplumbers.dms.common.test.TestModel;
 import com.softwareplumbers.dms.rest.server.model.PartHandlerService;
 import com.softwareplumbers.dms.rest.server.model.ZipFileHandler;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = { TmpConfig.class })
 public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	
 	public RepositoryService service;
@@ -28,34 +33,30 @@ public class TempRepositoryServiceTest extends BaseRepositoryServiceTest {
 	public RepositoryService service() {
 		return service;
 	}
-
-	@Override
-	public Reference randomDocumentReference() {
-		return new Reference(UUID.randomUUID().toString(), null);
-	}
-
-	@Override
-	public String randomWorkspaceId() {
-		return UUID.randomUUID().toString();
-	}
-
+    
+    @Autowired @Qualifier("workspaceMetadataModel")
+    TestModel workspaceMetadataModel;
+    
+    @Autowired @Qualifier("documentMetadataModel")
+    TestModel documentMetadataModel;
+    
     @Override
-    public JsonObject randomDocumentMetadata() {
-        JsonObjectBuilder builder = Json.createObjectBuilder();
-        builder.add("filename", UUID.randomUUID().toString());
-        return builder.build();
+    public Reference randomDocumentReference() {
+        return new Reference(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    }
+    
+    @Override
+    public String randomWorkspaceId() {
+        return UUID.randomUUID().toString();
     }
 
     @Override
-    public JsonObject randomWorkspaceMetadata() {
-        JsonObjectBuilder builder = Json.createObjectBuilder();
-        builder.add("transaction", UUID.randomUUID().toString());
-        return builder.build();
+    public TestModel documentMetadataModel() {
+        return documentMetadataModel;
     }
-
+    
     @Override
-    public String uniqueMetadataField() {
-        return "filename";
+    public TestModel workspaceMetadataModel() {
+        return workspaceMetadataModel;
     }
-
 }

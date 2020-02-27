@@ -52,7 +52,7 @@ class WorkspaceImpl implements Workspace {
 	}
 
     public Optional<RepositoryObject> getParent(RepositoryBrowser service) {
-        return Optional.of(parent);
+        return Optional.ofNullable(parent);
     }
     
     public Stream<NamedRepositoryObject> getChildren(RepositoryBrowser service) {

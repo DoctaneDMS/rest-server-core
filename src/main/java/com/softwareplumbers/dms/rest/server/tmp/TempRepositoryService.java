@@ -423,6 +423,7 @@ public class TempRepositoryService implements RepositoryService {
         WorkspaceImpl root = getRoot(rootId);
 		NamedRepositoryObject result = objectName == null ? root : root.getObject(objectName);
 		if (result == null) throw LOG.throwing(new InvalidWorkspace(rootId, objectName));
+        if (result instanceof DocumentInfo) result = ((DocumentInfo)result).toStatic();
 		return LOG.exit(result);
 	}
 	
