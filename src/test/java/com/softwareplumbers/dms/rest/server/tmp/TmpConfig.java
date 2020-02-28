@@ -9,23 +9,21 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import com.softwareplumbers.dms.common.test.TestModel;
-import com.softwareplumbers.dms.common.test.TestModel.StringField;
-import com.softwareplumbers.dms.common.test.TestModel.BooleanField;
-import com.softwareplumbers.dms.common.test.TestModel.Field;
+
 
 /**
  *
  * @author jonathan
  */
 @Configuration
-public class TmpConfig {
+public class TmpConfig {    
     
     @Bean TestModel documentMetadataModel() {
-        Field uniqueField = new TestModel.IdField("idfield");
+        TestModel.Field uniqueField = new TestModel.IdField("DocFaceRef");
         TestModel model = new TestModel(
-                new StringField("TradeDescription", "BR001", "BR002", "BR003", "BR004"),
-                new StringField("DocFaceRef", "Ref01", "Ref02", "Ref03", "Ref04"),
-                new BooleanField("BankDocument"),
+                new TestModel.StringField("TradeDescription", "BR001", "BR002", "BR003", "BR004"),
+                new TestModel.BooleanField("BankDocument"),
+                new TestModel.SessionIdField("BatchID"),
                 uniqueField
         );
         model.setUniqueField(uniqueField);
@@ -34,8 +32,9 @@ public class TmpConfig {
 
     @Bean TestModel workspaceMetadataModel() {
         return new TestModel(
-                new StringField("EventDescription", "Event01", "Event02", "Event03", "Event04"),
-                new StringField("Branch", "BR001", "BR002", "BR003", "BR004")
+                new TestModel.StringField("EventDescription", "Event01", "Event02", "Event03", "Event04"),
+                new TestModel.StringField("Branch", "BR001", "BR002", "BR003", "BR004"),
+                new TestModel.SessionIdField("TheirReference")
         );
     }
 }
