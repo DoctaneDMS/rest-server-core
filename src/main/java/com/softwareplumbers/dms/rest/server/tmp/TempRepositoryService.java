@@ -20,6 +20,7 @@ import javax.json.JsonObject;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Document;
@@ -330,14 +331,16 @@ public class TempRepositoryService implements RepositoryService {
 	 * 
 	 */
 	@Override
-	public Stream<NamedRepositoryObject> catalogueById(String workspaceId, Query filter, Options.Search... options) throws InvalidWorkspace {
+	public Stream<NamedRepositoryObject> catalogueById(String rootId, QualifiedName path, String objectId, Query filter, Options.Search... options) throws InvalidWorkspace {
 
-		LOG.entry(workspaceId, filter, Options.loggable(options));
+		LOG.entry(rootId, path, objectId, filter, Options.loggable(options));
 		
-		if (workspaceId == null) throw LOG.throwing(new InvalidWorkspace("null"));
-
-		WorkspaceImpl workspace = workspacesById.get(workspaceId);
-		if (workspace == null) throw LOG.throwing(new InvalidWorkspace(workspaceId));
+		WorkspaceImpl workspace = getRoot(rootId).getOrCreateWorkspace(path, false);
+        if (workspace == null) throw new InvalidWorkspace(rootId, path);
+        if (filter == null) filter = Query.UNBOUNDED;
+        
+        filter = filter.intersect(Query.from("id", Range.equals(Json.createValue(objectId))));
+        
 		return LOG.exit(workspace.catalogue(WorkspaceImpl.MATCH_ALL, filter, Options.SEARCH_OLD_VERSIONS.isIn(options)));
 	}
 

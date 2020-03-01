@@ -100,7 +100,7 @@ public class Catalogue {
     			Query queryQuery = filter == null ? Query.UNBOUNDED : Query.urlDecode(filter);
     			
     			if (workspace != null)
-    				infos = service.catalogueById(workspace, queryQuery , Options.Search.EMPTY.addOptionIf(Options.SEARCH_OLD_VERSIONS, searchHistory).build());
+    				infos = service.catalogueByName(workspace, QualifiedName.ROOT, queryQuery , Options.Search.EMPTY.addOptionIf(Options.SEARCH_OLD_VERSIONS, searchHistory).build());
     			else
     				infos = service.catalogue(queryQuery, searchHistory);
     			

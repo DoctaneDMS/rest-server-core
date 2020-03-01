@@ -184,8 +184,8 @@ public class RepositoryDecorator implements RepositoryService {
     }
 
     @Override
-    public Stream<NamedRepositoryObject> catalogueById(String id, Query query, Options.Search... searchs)  throws Exceptions.InvalidWorkspace {
-        return mapResult(baseRepository.catalogueById(id, query, searchs));
+    public Stream<NamedRepositoryObject> catalogueById(String rootId, QualifiedName path, String objectId, Query query, Options.Search... searchs)  throws Exceptions.InvalidWorkspace {
+        return mapResult(baseRepository.catalogueById(rootId, path, objectId, query, searchs));
     }
 
     @Override
