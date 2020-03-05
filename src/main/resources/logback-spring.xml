@@ -12,6 +12,7 @@
         <appender-ref ref="Console" />
     </root>
     <logger name="com.softwareplumbers.dms.rest.server" level="TRACE"/>
+    <logger name="com.softwareplumbers.dms.rest.server.model" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server.filenet" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.keymanager" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.plugin.auth.ti" level="TRACE"/>

@@ -976,31 +976,5 @@ public class TempRepositoryServerTest {
         assertEquals(wsId, doc.getId());
     }
     
-    @Test
-    public void testGetZipFilePart() throws IOException, ParseException {
-        JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
-        StreamableRepositoryObject doc = getDocumentFromWorkspace("/wsname3/testzip/~/test/test1.txt");
-        byte[] original = IOUtils.resourceToByteArray("/test1.txt");
-        byte[] unzipped = IOUtils.toByteArray(doc.getData(null));
-        assertArrayEquals(original, unzipped);   
-    }
-    
-    @Test
-    public void testGetZipFileParts() throws IOException, ParseException {
-        JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
-        JsonArray result = getWorkspaceJson("/wsname3/testzip/~/test/*", JsonArray.class);
-        assertEquals(3, result.size());   
-        JsonArray result2 = getWorkspaceJson("/wsname3/testzip/~/test/subdir/*", JsonArray.class);
-        assertEquals(1, result2.size());   
-    }
-    
-    @Test
-    public void testGetZipFileDirectoryPart() throws IOException, ParseException {
-        JsonObject response1 = putDocument("testzipdir", "/ws/tmp/wsname3/testzip", "zip");
-        JsonObject dir = getWorkspaceJson("/wsname3/testzip/~/test/subdir", JsonObject.class);
-        assertEquals(RepositoryObject.Type.DOCUMENT_PART.toString(), dir.getString("type"));   
-        assertEquals(true, dir.getBoolean("navigable"));   
-    }
-
 }
 
