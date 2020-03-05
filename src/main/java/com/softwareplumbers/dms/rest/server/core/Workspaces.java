@@ -187,7 +187,8 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
 
-            if (!workspacePath.queryPath.isEmpty() || workspacePath.queryPart) {
+            // Might we return multiple results?
+            if (!workspacePath.queryPath.isEmpty() || workspacePath.queryPart || workspacePath.documentId != null) {
                 Stream<NamedRepositoryObject> results;
                 Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, workspacePath.rootId, workspacePath.staticPath);
                 Query combinedConstraint = accessConstraint.intersect(filterConstraint);
@@ -206,21 +207,12 @@ public class Workspaces {
                 JsonArray responseObj = response.build();
                 LOG.debug("response: {}", responseObj);
                 return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
-            } else {
-  
+            } else {  
                 // Path has no wildcards, so we are returning at most one object
                 NamedRepositoryObject result;
                 Options.Get.Builder options = Options.Get.EMPTY;
-                if (workspacePath.partPath.isPresent()) options = options.addOption(Options.PART.of(workspacePath.partPath.get()));
-                if (workspacePath.documentId != null) {
-                    // This is actually kind of messed up; a part option is useless with this method since it is constrained to
-                    // return a DocumentLink. That said, the method is deprecated anyway - we can potentially have the same
-                    // document id filed under different names in the same workspace, so we should be using a 'search' API here
-                    // which can return multiple documents.
-                    result = service.getDocumentLink(workspacePath.rootId, workspacePath.staticPath, workspacePath.documentId, options.build());
-                } else {
-                    result = service.getObjectByName(workspacePath.rootId, workspacePath.staticPath, options.build());
-                }
+                if (workspacePath.partPath.isPresent()) options = options.addOption(Options.PART.of(workspacePath.partPath.get()));                
+                result = service.getObjectByName(workspacePath.rootId, workspacePath.staticPath, options.build());
                 if (result != null) { 
                     Query acl = authorizationService.getObjectACL(result, AuthorizationService.ObjectAccessRole.READ);
                     if (!acl.containsItem(userMetadata)) {
