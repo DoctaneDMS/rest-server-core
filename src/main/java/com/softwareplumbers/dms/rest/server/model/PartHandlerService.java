@@ -86,34 +86,37 @@ public class PartHandlerService extends RepositoryDecorator {
     }
     
     Optional<DocumentPart> getRootPart(Document document) {
+        LOG.entry(document);
         DocumentPart result = cache.get(document.getReference());
         if (result == null) {
             Optional<PartHandler> handler = getHandler(document);
             if (handler.isPresent()) {
                 result = handler.get().build(this, document); 
                 cache.put(document.getReference(), result);
-                return Optional.of(result);
+                return LOG.exit(Optional.of(result));
             } else {
-                return Optional.empty();
+                return LOG.exit(Optional.empty());
             }
         } else {
-            return Optional.of(result);
+            return LOG.exit(Optional.of(result));
         }
     }
     
     DocumentPart getChildPart(Document document, QualifiedName partName) throws Exceptions.InvalidObjectName {
+        LOG.entry(document, partName);
         Optional<DocumentPart> rootPart = getRootPart(document);
         if (rootPart.isPresent()) {
             return LOG.exit((DocumentPart)rootPart.get().getChild(this, partName));                           
         } else {
-            throw new Exceptions.InvalidObjectName(Constants.NO_ID, partName);                    
+            throw LOG.throwing(new Exceptions.InvalidObjectName(Constants.NO_ID, partName));                    
         }        
     }
     
     StreamableDocumentPart getStreamableChildPart(Document document, QualifiedName partName) throws Exceptions.InvalidObjectName {
+        LOG.entry(document, partName);
         DocumentPart part = getChildPart(document, partName);
         if (part.getType() != RepositoryObject.Type.STREAMABLE_DOCUMENT_PART) 
-            throw new Exceptions.InvalidObjectName(Constants.NO_ID, partName);
+            throw LOG.throwing(new Exceptions.InvalidObjectName(Constants.NO_ID, partName));
         else {
             return LOG.exit((StreamableDocumentPart)part);
         } 
@@ -185,15 +188,16 @@ public class PartHandlerService extends RepositoryDecorator {
     }
     
     private Stream<DocumentPart> getMatchingChildren(DocumentPart part, QualifiedName partName) {
+        LOG.entry(part, partName);
         if (partName.parent.isEmpty()) {
             try {
                 Predicate<String> matcher = Parsers.parseUnixWildcard(partName.part).build(Builders.toPattern()).asPredicate();
-                return part.getChildren(this).filter(child->matcher.test(child.getName().part)).map(DocumentPart.class::cast);
+                return LOG.exit(part.getChildren(this).filter(child->matcher.test(child.getName().part)).map(DocumentPart.class::cast));
             } catch (PatternSyntaxException e) {
                 throw LOG.throwing(new RuntimeException(e));
             }
         } else {
-            return getMatchingChildren(part, partName.parent).flatMap(child->getMatchingChildren(child, QualifiedName.of(partName.part)));
+            return LOG.exit(getMatchingChildren(part, partName.parent).flatMap(child->getMatchingChildren(child, QualifiedName.of(partName.part))));
         }
     }
 
@@ -232,13 +236,13 @@ public class PartHandlerService extends RepositoryDecorator {
         
         if (partName.isPresent()) {
             Options.Search.Builder newOptions = Options.Search.EMPTY.addOptions(options).addOption(Options.NO_IMPLICIT_WILDCARD);
-            return baseRepository.catalogueByName(rootId, objectName, query, newOptions.build())
+            return LOG.exit(baseRepository.catalogueByName(rootId, objectName, query, newOptions.build())
                 .filter(object -> object.getType() == RepositoryObject.Type.DOCUMENT_LINK)
                 .map(DocumentLink.class::cast)
                 .map(this::getRootPart)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .flatMap(document -> getMatchingChildren(document, partName.get()));
+                .flatMap(document -> getMatchingChildren(document, partName.get())));
         } else {
             return LOG.exit(baseRepository.catalogueByName(rootId, objectName, query, options));        
         }
