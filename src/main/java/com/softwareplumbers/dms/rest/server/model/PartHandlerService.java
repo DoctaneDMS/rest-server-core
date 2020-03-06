@@ -225,7 +225,7 @@ public class PartHandlerService extends RepositoryDecorator {
                 throw LOG.throwing(new Exceptions.InvalidObjectName(rootId, objectName));
             }           
         } else {
-            return LOG.exit(baseRepository.getObjectByName(rootId, objectName, options));
+            return LOG.exit(mapResult(baseRepository.getObjectByName(rootId, objectName, options)));
         }
     }
 
@@ -244,7 +244,7 @@ public class PartHandlerService extends RepositoryDecorator {
                 .map(Optional::get)
                 .flatMap(document -> getMatchingChildren(document, partName.get())));
         } else {
-            return LOG.exit(baseRepository.catalogueByName(rootId, objectName, query, options));        
+            return LOG.exit(mapResult(baseRepository.catalogueByName(rootId, objectName, query, options)));        
         }
     }
 }
