@@ -60,6 +60,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import javax.ws.rs.POST;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
@@ -125,6 +126,51 @@ public class Workspaces {
     public void setAuthorizationServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
         this.authorizationServiceFactory = authorizationServiceFactory;
     }
+    
+    private Response createResponse(RepositoryService service, WorkspacePath workspacePath, MediaType requestedMediaType, NamedRepositoryObject result) throws UnsupportedEncodingException {
+        switch (result.getType()) {
+            case WORKSPACE:
+            case DOCUMENT_PART:
+                return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,1,0)).build());                    		
+           	case DOCUMENT_LINK:
+            case STREAMABLE_DOCUMENT_PART:
+                String documentName = workspacePath.staticPath.part;
+                if (workspacePath.partPath.isPresent()) {
+                    documentName = workspacePath.partPath.get().part;
+                }
+                if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE)  {
+                    StreamableRepositoryObject document = (StreamableRepositoryObject)result;
+                    FormDataBodyPart metadata = new FormDataBodyPart();
+                    metadata.setName("metadata");
+                    metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
+                    metadata.setEntity(document.toJson(service, 1, 0));
+                    FormDataBodyPart file = new FormDataBodyPart();
+                    file.setName("file");
+                    file.setMediaType(MediaType.valueOf(document.getMediaType()));
+                    file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
+                    file.setEntity(new DocumentOutput(service, document));
+                    MultiPart response = new MultiPart()
+                        .bodyPart(metadata)
+                        .bodyPart(file);                                   
+                    return LOG.exit(Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
+                } else if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
+                    StreamableRepositoryObject document = (StreamableRepositoryObject)result;
+                    return LOG.exit(Response.ok()
+                        .type(MediaType.APPLICATION_XHTML_XML_TYPE)
+                        .entity(new XMLOutput(service, document)).build());                                	
+                } else if (requestedMediaType == MediaType.APPLICATION_JSON_TYPE) {
+                    return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service, 1, 0)).build());
+                } else {
+                    StreamableRepositoryObject document = (StreamableRepositoryObject)result;
+                    return LOG.exit(Response.ok()
+                        .header("content-disposition", "attachment; filename=" + URLEncoder.encode(documentName, StandardCharsets.UTF_8.name()))
+                        .type(document.getMediaType())
+                        .entity(new DocumentOutput(service, document)).build());
+                }
+            default:
+                throw new RuntimeException("Unknown result type:" + result.getType());
+            }
+    }
 
     /** GET information from a workspace path /ws/{repository}/{path}
      * 
@@ -183,6 +229,8 @@ public class Workspaces {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
+            List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
+            MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  
 
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
@@ -202,11 +250,22 @@ public class Workspaces {
                 } else {
                     results = service.catalogueByName(workspacePath.rootId, fullPath, combinedConstraint, options.build());
                 }
-                JsonArrayBuilder response = Json.createArrayBuilder();
-                results.forEach(item -> response.add(item.toJson(service, 1, 0)));
-                JsonArray responseObj = response.build();
-                LOG.debug("response: {}", responseObj);
-                return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
+                if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE || requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
+                    // Ah, BUT the client explicitly requested multipart or XML. This means they really wanted a single result.
+                    // Let's do the best we can and return the first valid response
+                    Optional<NamedRepositoryObject> item = results.findFirst();
+                    if (item.isPresent())
+                        return LOG.exit(createResponse(service, workspacePath, requestedMediaType, item.get()));
+                    else
+                        return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
+                        
+                } else {
+                    JsonArrayBuilder response = Json.createArrayBuilder();
+                    results.forEach(item -> response.add(item.toJson(service, 1, 0)));
+                    JsonArray responseObj = response.build();
+                    LOG.debug("response: {}", responseObj);
+                    return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
+                }
             } else {  
                 // Path has no wildcards, so we are returning at most one object
                 NamedRepositoryObject result;
@@ -218,50 +277,7 @@ public class Workspaces {
                     if (!acl.containsItem(userMetadata)) {
                         return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, result)));
                     }
-                    switch (result.getType()) {
-                        case WORKSPACE:
-                        case DOCUMENT_PART:
-                            return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,1,0)).build());                    		
-                    	case DOCUMENT_LINK:
-                        case STREAMABLE_DOCUMENT_PART:
-                            String documentName = workspacePath.staticPath.part;
-                            if (workspacePath.partPath.isPresent()) {
-                                documentName = workspacePath.partPath.get().part;
-                            }
-                            List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
-                            MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  
-                            if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE)  {
-                                StreamableRepositoryObject document = (StreamableRepositoryObject)result;
-                                FormDataBodyPart metadata = new FormDataBodyPart();
-                                metadata.setName("metadata");
-                                metadata.setMediaType(MediaType.APPLICATION_JSON_TYPE);
-                                metadata.setEntity(document.toJson(service, 1, 0));
-                                FormDataBodyPart file = new FormDataBodyPart();
-                                file.setName("file");
-                                file.setMediaType(MediaType.valueOf(document.getMediaType()));
-                                file.getHeaders().add("Content-Length", Long.toString(document.getLength()));
-                                file.setEntity(new DocumentOutput(service, document));
-                                MultiPart response = new MultiPart()
-                                    .bodyPart(metadata)
-                                    .bodyPart(file);                                   
-                                return LOG.exit(Response.ok(response, MultiPartMediaTypes.MULTIPART_MIXED_TYPE).build());                                	
-                            } else if (requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
-                                StreamableRepositoryObject document = (StreamableRepositoryObject)result;
-                                return LOG.exit(Response.ok()
-                                    .type(MediaType.APPLICATION_XHTML_XML_TYPE)
-                                    .entity(new XMLOutput(service, document)).build());                                	
-                            } else if (requestedMediaType == MediaType.APPLICATION_JSON_TYPE) {
-                                return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service, 1, 0)).build());
-                            } else {
-                                StreamableRepositoryObject document = (StreamableRepositoryObject)result;
-                                return LOG.exit(Response.ok()
-                                    .header("content-disposition", "attachment; filename=" + URLEncoder.encode(documentName, StandardCharsets.UTF_8.name()))
-                                    .type(document.getMediaType())
-                                    .entity(new DocumentOutput(service, document)).build());
-                            }
-                        default:
-                            throw new RuntimeException("Unknown result type:" + result.getType());
-                    	}
+                    return LOG.exit(createResponse(service, workspacePath, requestedMediaType, result));
                 } else {
                     return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
                 }
