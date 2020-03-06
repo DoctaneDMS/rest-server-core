@@ -142,7 +142,7 @@ class WorkspaceImpl implements Workspace {
 	public String getContainmentName(Document doc) {
 		JsonObject docMetadata = doc.getMetadata(); 
 		JsonString docName = docMetadata == null ? null : (JsonString)service.getNameAttribute().apply(docMetadata);
-		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document" : docName.getString() + "_" + children.size();
+		String baseName = (docName == null || docName == JsonValue.NULL) ? "Document_" + children.size() : docName.getString();
 		String ext = "";
 		int separator = baseName.lastIndexOf('.');
 		if (separator >= 0) {
@@ -152,7 +152,7 @@ class WorkspaceImpl implements Workspace {
 		String containmentName = baseName + ext;
 		int count = 1;
 		while (children.containsKey(containmentName)) {
-			containmentName = baseName + "." + count + ext;
+			containmentName = baseName + "_" + count + ext;
             count++;
 		}
 		return containmentName;

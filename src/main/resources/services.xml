@@ -21,7 +21,7 @@
     </bean>
 
     <bean id="base" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
-        <constructor-arg index="0" type="java.lang.String" value="filename"/>
+        <constructor-arg index="0" type="java.lang.String" value="DocumentTitle"/>
     </bean>
     
     <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
