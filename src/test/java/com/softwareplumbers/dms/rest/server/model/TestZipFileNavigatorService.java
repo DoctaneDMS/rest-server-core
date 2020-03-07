@@ -19,6 +19,7 @@ import java.util.Optional;
 import javax.ws.rs.core.MediaType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -45,6 +46,7 @@ public class TestZipFileNavigatorService {
         assertEquals(MediaTypes.MICROSOFT_WORD_XML, MediaType.valueOf(part1.getMediaType()));
         assertEquals(MediaTypes.MICROSOFT_OUTLOOK, MediaType.valueOf(part2.getMediaType()));
         assertEquals("text/plain", part3.getMediaType());
+        assertNotNull(part1.getMetadata().get("LastModifiedTime"));
     }
     
     @Test

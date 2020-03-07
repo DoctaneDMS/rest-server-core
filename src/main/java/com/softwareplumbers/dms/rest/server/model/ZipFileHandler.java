@@ -24,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -31,6 +32,12 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.IOUtils;
 
@@ -105,6 +112,19 @@ public class ZipFileHandler implements PartHandler {
     private ZipFileData getOrCreateEntry(Map<QualifiedName, ZipFileData> localData, Optional<QualifiedName> parentName, Document zipfile, QualifiedName name) {
         return localData.computeIfAbsent(name, entryName->createEntry(entryName, parentName, zipfile));
     }
+    
+    private void addIfNotNull(JsonObjectBuilder builder, String name, Object value) {
+        if (value != null) builder.add(name, value.toString());        
+    }
+        
+    private JsonObject convertMetadata(ZipEntry entry) {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+        addIfNotNull(builder, "Comment", entry.getComment());
+        addIfNotNull(builder, "CreationTime", entry.getCreationTime());
+        addIfNotNull(builder, "LastModifiedTime", entry.getLastModifiedTime());
+        addIfNotNull(builder, "LastAccessTime", entry.getLastAccessTime());
+        return builder.build();
+    }
             
     public DocumentPart build(RepositoryService service, Document zipfile) {
 
@@ -124,12 +144,12 @@ public class ZipFileHandler implements PartHandler {
                 ZipFileData node;
                 if (currentEntry.isDirectory()) {
                     node  = new ZipFileData(LocalData.NONE, parentObject, null);
-                    result = new DocumentPartImpl(zipfile.getReference(), parentName, name, Constants.EMPTY_METADATA, true, node);
+                    result = new DocumentPartImpl(zipfile.getReference(), parentName, name, convertMetadata(currentEntry), true, node);
                     
                 } else  {
                     MediaType type = MediaTypes.getTypeFromFilename(name.part);
                     node  = new ZipFileData(LocalData.NONE, parentObject, IOUtils.toByteArray(zifs));
-                    result = new StreamableDocumentPartImpl(zipfile.getReference(), parentName, name, type.toString(), node.data.length, Constants.NO_DIGEST, Constants.EMPTY_METADATA, false, node);
+                    result = new StreamableDocumentPartImpl(zipfile.getReference(), parentName, name, type.toString(), node.data.length, Constants.NO_DIGEST, convertMetadata(currentEntry), false, node);
                 }
                 node.self = result;
                 parentData.children.add(result);
