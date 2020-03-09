@@ -6,7 +6,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.Constants;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -29,18 +28,6 @@ public class WorkspacePathTest {
         boolean result = QualifiedName.of("xyz","abc","234").equals(path.staticPath);
         assertEquals(QualifiedName.of("xyz","abc","234"), path.staticPath);        
     }
-    
-    @Test
-    public void testSimplePathWithVersion() {
-        WorkspacePath path = WorkspacePath.valueOf("/xyz/abc/234/@/123");
-        assertEquals(QualifiedName.ROOT, path.queryPath);
-        assertNull(path.documentId);
-        assertNull(path.rootId);
-        assertFalse(path.partPath.isPresent());
-        assertTrue(path.versionId.isPresent());
-        assertEquals(QualifiedName.of("xyz","abc","234"), path.staticPath);        
-        assertEquals("123", path.versionId.get());        
-    }
 
     @Test
     public void testSimplePathWithRootId() {
@@ -50,18 +37,6 @@ public class WorkspacePathTest {
         assertNull(path.documentId);
         assertEquals("xyx", path.rootId);
         assertEquals(QualifiedName.of("abc","234"), path.staticPath);        
-    }
-
-        @Test
-    public void testSimplePathWithRootIdAndVersion() {
-        WorkspacePath path = WorkspacePath.valueOf("~xyx/abc/234/@/123");
-        assertFalse(path.partPath.isPresent());
-        assertEquals(QualifiedName.ROOT, path.queryPath);
-        assertNull(path.documentId);
-        assertEquals("xyx", path.rootId);
-        assertEquals(QualifiedName.of("abc","234"), path.staticPath);        
-        assertTrue(path.versionId.isPresent());
-        assertEquals("123", path.versionId.get());        
     }
 
     @Test
@@ -83,19 +58,6 @@ public class WorkspacePathTest {
         assertNull(path.rootId);
         assertEquals(QualifiedName.of("xyx"), path.staticPath);        
     }
-    
-    @Test
-    public void testQueryPath3() {
-        // An empty version id, by convention, equivalent to .../@/*
-        WorkspacePath path = WorkspacePath.valueOf("xyx/ab?c/*/@");
-        assertFalse(path.partPath.isPresent());
-        assertEquals(QualifiedName.of("ab?c","*"), path.queryPath);
-        assertNull(path.documentId);
-        assertNull(path.rootId);
-        assertEquals(QualifiedName.of("xyx"), path.staticPath);        
-        assertTrue(path.versionId.isPresent());
-        assertEquals("*", path.versionId.get());        
-    }
 
     @Test
     public void testQueryPathRootId() {
@@ -116,19 +78,6 @@ public class WorkspacePathTest {
         assertNull(path.documentId);
         assertNull(path.rootId);
         assertEquals(QualifiedName.of("abc","xyz"), path.staticPath);        
-    }
-    
-    @Test
-    public void testSimplePathWithPartsAndVersionId() {
-        WorkspacePath  path = WorkspacePath.valueOf("/abc/xyz/@/123/~/234/ghi");
-        assertEquals(QualifiedName.of("234","ghi"), path.partPath.get());
-        assertFalse(path.queryPart);
-        assertEquals(QualifiedName.ROOT, path.queryPath);
-        assertNull(path.documentId);
-        assertNull(path.rootId);
-        assertEquals(QualifiedName.of("abc","xyz"), path.staticPath);
-        assertTrue(path.versionId.isPresent());
-        assertEquals("123", path.versionId.get());                
     }
 
     @Test
