@@ -43,14 +43,16 @@ public class WorkspacePath {
     public final QualifiedName staticPath;
     public final QualifiedName queryPath;
     public final String documentId;
+    public final Optional<String> versionId;
     public final Optional<QualifiedName> partPath;
     public final boolean queryPart;
 
-    public WorkspacePath(String rootId, QualifiedName staticPath, QualifiedName queryPath, String documentId, Optional<QualifiedName> partPath, boolean queryPart) {
+    public WorkspacePath(String rootId, QualifiedName staticPath, QualifiedName queryPath, String documentId, Optional<String> versionId, Optional<QualifiedName> partPath, boolean queryPart) {
         this.rootId = rootId;
         this.staticPath = staticPath;
         this.queryPath = queryPath;
         this.documentId = documentId;
+        this.versionId = versionId;
         this.partPath = partPath;
         this.queryPart = queryPart;
     }
@@ -81,15 +83,21 @@ public class WorkspacePath {
         if (element == null) return false;
         return element.equals("~");
     }
+    
+    public static boolean isVersionDelimeter(String element) {
+        if (element == null) return false;
+        return element.equals("@");
+    }
 
     public static WorkspacePath valueOf(String path) {
         String rootId = Constants.ROOT_ID;
         QualifiedName staticPath = QualifiedName.ROOT;
         QualifiedName queryPath = QualifiedName.ROOT;
         Optional<QualifiedName> partPath = Optional.empty();
+        Optional<String> versionId = Optional.empty();
         String documentId = null;
         boolean queryPart = false;
-        boolean seenPartDelimeter = false;
+        boolean seenVersionDelimiter = false;
         try {
             for (String pathElement : path.split("/")) {
                 if (pathElement.length() == 0) continue;
@@ -97,6 +105,16 @@ public class WorkspacePath {
                     partPath = Optional.of(QualifiedName.ROOT);
                     continue;
                 } 
+                if (isVersionDelimeter(pathElement)) {
+                    versionId = Optional.of("*");
+                    seenVersionDelimiter = true;
+                    continue;
+                }
+                if (seenVersionDelimiter) {
+                    versionId = Optional.of(pathElement);
+                    seenVersionDelimiter = false;
+                    continue;
+                }
                 if (partPath.isPresent()) {
                     if (isQueryElement(pathElement)) queryPart = true;
                     partPath = Optional.of(partPath.get().add(pathElement));
@@ -121,7 +139,7 @@ public class WorkspacePath {
         } catch (RuntimeException e) {
             LOG.catching(e);    
         }
-        return new WorkspacePath(rootId, staticPath, queryPath, documentId, partPath, queryPart);
+        return new WorkspacePath(rootId, staticPath, queryPath, documentId, versionId, partPath, queryPart);
     }
     
     public String toString() {
@@ -130,6 +148,7 @@ public class WorkspacePath {
         if (staticPath != QualifiedName.ROOT) result.append("/").append(staticPath.join("/"));
         if (queryPath != QualifiedName.ROOT) result.append("/").append(queryPath.join("/"));
         if (documentId != null) result.append("/").append(documentId);
+        if (versionId.isPresent()) result.append("/@/").append(versionId.get());
         if (partPath.isPresent()) result.append("/~/").append(partPath.get().join("/"));
         return result.toString();
     }
@@ -138,6 +157,7 @@ public class WorkspacePath {
         return Constants.ROOT_ID == rootId
             && staticPath == QualifiedName.ROOT
             && (!partPath.isPresent())
-            && queryPath == QualifiedName.ROOT;
+            && queryPath == QualifiedName.ROOT
+            && (!versionId.isPresent());
     }
 }
