@@ -106,7 +106,10 @@ public class PartHandlerService extends RepositoryDecorator {
         LOG.entry(document, partName);
         Optional<DocumentPart> rootPart = getRootPart(document);
         if (rootPart.isPresent()) {
-            return LOG.exit((DocumentPart)rootPart.get().getChild(this, partName));                           
+            if (partName.isEmpty())
+                return LOG.exit(rootPart.get());
+           else
+                return LOG.exit((DocumentPart)rootPart.get().getChild(this, partName));                           
         } else {
             throw LOG.throwing(new Exceptions.InvalidObjectName(Constants.NO_ID, partName));                    
         }        
