@@ -6,12 +6,14 @@
 package com.softwareplumbers.dms.rest.server.sql;
 
 import com.google.common.collect.Streams;
+import com.softwareplumbers.common.QualifiedName;
 import java.io.Reader;
 import java.io.Writer;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -137,4 +139,6 @@ public abstract class FluentStatement {
     public FluentStatement set(int index, boolean value) { return new BooleanParam(this, index, value); }
     public FluentStatement set(int index, byte[] value) { return new BinaryParam(this, index, value); }
     public FluentStatement set(int index, Consumer<Writer> value) { return new ClobParam(this, index, value); }
+    public FluentStatement set(int index, QualifiedName name) { return name.isEmpty() ? this : set(index+1, name.parent).set(index, name.part); }
+    public FluentStatement set(int index, Id id) { return new BinaryParam(this, index, id.getBytes()); }
 }

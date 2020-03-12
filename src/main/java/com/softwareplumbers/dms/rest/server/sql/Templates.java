@@ -17,6 +17,7 @@ public class Templates {
     public String fetchDocumentLinkByPath;
     public String fetchDocumentLinkByPathAndId;
     public String joinParentNode;
+    public String nameWhereClause;
 
     public void setJoinParentNode(String template) {
         joinParentNode = template;
@@ -29,13 +30,17 @@ public class Templates {
     public void setFetchDocumentLinkByPathAndId(String template) {
         fetchDocumentLinkByPathAndId = template;
     }
+    
+    public void setNameWhereClause(String template) {
+        nameWhereClause = template;
+    }
 
     public static String substitute(String template, Object... parameters) {
         StringLookup lookup = (key) -> {
             int ix = Integer.parseInt(key);
             return parameters[ix].toString();
         };
-        StringSubstitutor substitutor = new StringSubstitutor(lookup);
+        StringSubstitutor substitutor = new StringSubstitutor(lookup,"!{","}",'\\');
         return substitutor.replace(template);
     }
     

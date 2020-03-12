@@ -29,7 +29,7 @@ import com.softwareplumbers.dms.rest.client.spring.SignedRequestLoginHandler;
  * @author jonathan
  */
 @Configuration
-public class CientConfig {
+public class ClientConfig {
     
     @Autowired
 	Environment env;

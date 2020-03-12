@@ -66,8 +66,8 @@ public class SQLRepositoryService implements RepositoryService {
     private String getBaseName(JsonObject metadata) {
         return metadata.getString("DocumentTitle", "Document.dat");
     }
-    
-    private Path toPath(String id) {
+        
+    private Path toPath(Id id) {
         Path path = basePath;
         for (String elem : id.toString().split("-")) {
             basePath = basePath.resolve(elem);
@@ -75,23 +75,23 @@ public class SQLRepositoryService implements RepositoryService {
         return path;
     }
     
-    private void fileDocument(String version, InputStreamSupplier iss) throws IOException {
+    private void fileDocument(Id version, InputStreamSupplier iss) throws IOException {
         Path path = toPath(version);
         try (InputStream is = iss.get()) {
             Files.copy(is, path);
         }
     }
     
-    private void linkDocument(String from, String to) throws IOException {
+    private void linkDocument(Id from, Id to) throws IOException {
         Files.createLink(toPath(to), toPath(from));
     }
 
-    private void destroyDocument(String version) throws IOException {
+    private void destroyDocument(Id version) throws IOException {
         Path path = toPath(version);
         Files.delete(path);
     }
     
-    private void maybeDestroyDocument(String version) {
+    private void maybeDestroyDocument(Id version) {
         try {
             destroyDocument(version);
         } catch (Exception e) {
@@ -99,21 +99,15 @@ public class SQLRepositoryService implements RepositoryService {
         }
     }
 
-    private InputStream getDocument(String version) throws IOException {
+    private InputStream getDocument(Id version) throws IOException {
         return Files.newInputStream(toPath(version));
     }
-    
-
-
-
-    
-
         
     @Override
     public Reference createDocument(String mediaType, InputStreamSupplier iss, JsonObject metadata) {
         LOG.entry(mediaType, iss, metadata);
-        String version = UUID.randomUUID().toString();
-        String id = UUID.randomUUID().toString();
+        Id version = new Id();
+        Id id = new Id();
         try (
             SQLAPI db = getConnection(); 
         ) {
@@ -121,7 +115,7 @@ public class SQLRepositoryService implements RepositoryService {
             fileDocument(version, info.supplier);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             db.commit();
-            return new Reference(id, version);
+            return new Reference(id.toString(), version.toString());
         } catch (SQLException e) {
             maybeDestroyDocument(version);
             throw LOG.throwing(new RuntimeException(e));
@@ -133,17 +127,17 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Reference updateDocument(String id, String mediaType, InputStreamSupplier iss, JsonObject metadata) throws Exceptions.InvalidDocumentId {
         LOG.entry(id, mediaType, iss, metadata);
-        String version = UUID.randomUUID().toString();
+        Id version = new Id();
         try (
             SQLAPI db = getConnection(); 
         ) {
-            Optional<Document> existing = db.getDocument(new Reference(id, null), SQLAPI::getDocument);
+            Optional<Document> existing = db.getDocument(new Id(id), null, SQLAPI::getDocument);
             if (existing.isPresent()) {
                 Document existingDoc = existing.get();
                 mediaType = mediaType == Constants.NO_TYPE ? existingDoc.getMediaType() : mediaType;
                 long length = existingDoc.getLength();
                 byte[] digest = existingDoc.getDigest();
-                String replacing = existingDoc.getVersion();
+                Id replacing = new Id(existingDoc.getVersion());
                 metadata = MetadataMerge.merge(existingDoc.getMetadata(), metadata);
                 if (iss != null) {
                     StreamInfo info = StreamInfo.of(iss);
@@ -154,7 +148,7 @@ public class SQLRepositoryService implements RepositoryService {
                     linkDocument(replacing, version);
                 }
 
-                db.createDocument(id, version, mediaType, length, digest, metadata);
+                db.createDocument(new Id(id), version, mediaType, length, digest, metadata);
                 db.commit();
             }
         } catch (SQLException e) {
@@ -163,7 +157,7 @@ public class SQLRepositoryService implements RepositoryService {
         } catch (IOException e) {
             throw LOG.throwing(new RuntimeException(e));           
         }
-        return LOG.exit(new Reference(id, version));
+        return LOG.exit(new Reference(id, version.toString()));
     }
     
 
@@ -173,7 +167,7 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {
-            Optional<DocumentLink> current = db.getDocumentLink(rootId, workspacePath, documentId, SQLAPI::getLink);
+            Optional<DocumentLink> current = db.getDocumentLink(Id.of(rootId), workspacePath, Id.of(documentId), SQLAPI::getLink);
             if (current.isPresent()) {
                 return LOG.exit(current.get());
             } else {
@@ -188,18 +182,18 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink createDocumentLink(String rootId, QualifiedName path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         LOG.entry(rootId, path, mediaType, iss, metadata, Options.loggable(options));
-        String version = UUID.randomUUID().toString();
-        String id = UUID.randomUUID().toString();
-        Reference reference = new Reference(id, version);
+        Id version = new Id();
+        Id id = new Id();
+        Reference reference = new Reference(id.toString(), version.toString());
 
         try (
             SQLAPI db = getConnection(); 
         ) {
             StreamInfo info = StreamInfo.of(iss);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            db.createDocumentLink(rootId, path, reference, Options.CREATE_MISSING_PARENT.isIn(options));
+            db.createDocumentLink(Id.of(rootId), path, id, version, Options.CREATE_MISSING_PARENT.isIn(options));
             db.commit();
-            QualifiedName fullPath = db.getPathTo(rootId).get().addAll(path);
+            QualifiedName fullPath = db.getPathTo(Id.of(rootId)).get().addAll(path);
             return new DocumentLinkImpl(fullPath, reference, mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
         } catch (SQLException e) {
             maybeDestroyDocument(version);
@@ -212,21 +206,21 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName workspaceName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         
-        String version = UUID.randomUUID().toString();
-        String id = UUID.randomUUID().toString();
+        Id version = new Id();
+        Id id = new Id();
         String baseName = getBaseName(metadata);
-        Reference reference = new Reference(id, version);
+        Reference reference = new Reference(id.toString(), version.toString());
 
         try (
             SQLAPI db = getConnection(); 
         ) {    
-            String folderId = db.getOrCreateFolderId(rootId, workspaceName, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
-            String name = db.generateUniqueName(rootId, baseName);
+            Id folderId = db.getOrCreateFolderId(Id.of(rootId), workspaceName, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
+            String name = db.generateUniqueName(folderId, baseName);
             StreamInfo info = StreamInfo.of(iss);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            db.createDocumentLink(folderId, name, reference);
+            db.createDocumentLink(folderId, name, id, version);
             db.commit();               
-            QualifiedName fullPath = db.getPathTo(rootId).get().addAll(workspaceName).add(name);
+            QualifiedName fullPath = db.getPathTo(Id.of(rootId)).get().addAll(workspaceName).add(name);
             return new DocumentLinkImpl(fullPath, reference, mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
         } catch (SQLException e) {
             maybeDestroyDocument(version);
@@ -241,12 +235,15 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {    
-            String folderId = db.getOrCreateFolderId(rootId, workspaceName, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
-            Document document = db.getDocument(reference, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            String name = db.generateUniqueName(rootId, getBaseName(document.getMetadata()));
-            db.createDocumentLink(folderId, name, reference);
+            Id root = Id.of(rootId);
+            Id folderId = db.getOrCreateFolderId(root, workspaceName, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
+            Id docId = Id.ofDocument(reference.id);
+            Id versionId = Id.ofVersion(reference.version);
+            Document document = db.getDocument(docId, versionId, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            String name = db.generateUniqueName(folderId, getBaseName(document.getMetadata()));
+            db.createDocumentLink(folderId, name, docId, versionId);
             db.commit();               
-            QualifiedName fullPath = db.getPathTo(rootId).get().addAll(workspaceName).add(name);
+            QualifiedName fullPath = db.getPathTo(root).get().addAll(workspaceName).add(name);
             return new DocumentLinkImpl(fullPath, reference, document.getMediaType(), document.getLength(), document.getDigest(), document.getMetadata(), false, LocalData.NONE);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -258,11 +255,14 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {    
-            String folderId = db.getOrCreateFolderId(rootId, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
-            Document document = db.getDocument(reference, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            db.createDocumentLink(folderId, path.part, reference);
+            Id root = Id.of(rootId);
+            Id folderId = db.getOrCreateFolderId(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Id docId = Id.ofDocument(reference.id);
+            Id versionId = Id.ofVersion(reference.version);
+            Document document = db.getDocument(docId, versionId, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            db.createDocumentLink(folderId, path.part, docId, versionId);
             db.commit();               
-            QualifiedName fullPath = db.getPathTo(rootId).get().addAll(path);
+            QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
             return new DocumentLinkImpl(fullPath, reference, document.getMediaType(), document.getLength(), document.getDigest(), document.getMetadata(), false, LocalData.NONE);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -273,12 +273,13 @@ public class SQLRepositoryService implements RepositoryService {
     public DocumentLink updateDocumentLink(String rootId, QualifiedName path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         
         boolean createMissing = Options.CREATE_MISSING_ITEM.isIn(options);
-        String version = UUID.randomUUID().toString();
+        Id version = new Id();
 
         try (
             SQLAPI db = getConnection(); 
         ) {    
-            String folderId = db.getOrCreateFolderId(rootId, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Id root = Id.of(rootId);
+            Id folderId = db.getOrCreateFolderId(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
             Optional<DocumentLink> existing = db.getDocumentLink(folderId, path.part, SQLAPI::getLink);
             if (existing.isPresent()) {
                 DocumentLink existingDoc = existing.get();
@@ -293,14 +294,15 @@ public class SQLRepositoryService implements RepositoryService {
                     digest = info.digest;
                     fileDocument(version, info.supplier);
                 } else {
-                    linkDocument(replacing.id, version);
+                    linkDocument(Id.ofDocument(replacing.version), version);
                 }                
                 
-                db.createDocument(replacing.id, version, mediaType, length, digest, metadata);
-                Reference newReference = new Reference(replacing.id, version);
-                db.updateDocumentLink(folderId, path.part, newReference, createMissing);
+                Id replacingId = Id.ofDocument(replacing.id);
+                db.createDocument(replacingId, version, mediaType, length, digest, metadata);
+                Reference newReference = new Reference(replacing.id, version.toString());
+                db.updateDocumentLink(folderId, path.part, replacingId, version, createMissing);
                 db.commit();           
-                QualifiedName fullPath = db.getPathTo(rootId).get().addAll(path);
+                QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
                 return new DocumentLinkImpl(fullPath, newReference, mediaType, length, digest, metadata, false, LocalData.NONE);
             } else {
                 throw new Exceptions.InvalidObjectName(rootId, path);
@@ -317,11 +319,14 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {    
-            String folderId = db.getOrCreateFolderId(rootId, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
-            Document document = db.getDocument(reference, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            db.updateDocumentLink(folderId, path.part, reference, Options.CREATE_MISSING_ITEM.isIn(options));
+            Id root = Id.of(rootId);
+            Id docId = Id.ofDocument(reference.id);
+            Id versionId = Id.ofVersion(reference.version);
+            Id folderId = db.getOrCreateFolderId(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Document document = db.getDocument(docId, versionId, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            db.updateDocumentLink(folderId, path.part, docId, versionId, Options.CREATE_MISSING_ITEM.isIn(options));
             db.commit();               
-            QualifiedName fullPath = db.getPathTo(rootId).get().addAll(path);
+            QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
             return new DocumentLinkImpl(fullPath, reference, document.getMediaType(), document.getLength(), document.getDigest(), document.getMetadata(), false, LocalData.NONE);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));

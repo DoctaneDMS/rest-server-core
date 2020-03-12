@@ -28,22 +28,22 @@
         <property name="CreateScript">
             <value>
                 CREATE TABLE NODES (
-                    ID CHAR(36) PRIMARY KEY,
-                    PARENT_ID CHAR(36),
+                    ID UUID PRIMARY KEY,
+                    PARENT_ID UUID,
                     NAME VARCHAR(255),
                     DELETED BOOLEAN DEFAULT FALSE
                 );
 
                 CREATE TABLE LINKS (
-                    ID CHAR(36) PRIMARY KEY,
-                    DOCUMENT_ID CHAR(36),
-                    DOCUMENT_VERSION CHAR(36),
+                    ID UUID PRIMARY KEY,
+                    DOCUMENT_ID UUID,
+                    DOCUMENT_VERSION UUID,
                     VERSIONED BOOLEAN
                 );
 
                 CREATE TABLE DOCUMENTS (
-                    ID CHAR(36),
-                    VERSION CHAR(36) PRIMARY KEY,
+                    ID UUID,
+                    VERSION UUID PRIMARY KEY,
                     MEDIA_TYPE VARCHAR(255),
                     LENGTH BIGINT,
                     DIGEST BINARY(32),
@@ -52,7 +52,8 @@
                 );
 
                 CREATE TABLE FOLDERS (
-                    ID CHAR(36) PRIMARY KEY,
+                    ID UUID PRIMARY KEY,
+                    STATE VARCHAR(16),
                     METADATA CLOB
                 );
 
@@ -129,6 +130,7 @@
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
+                    FOLDERS.STATE AS STATE,
                     FOLDERS.METADATA AS METADATA
                 FROM
                     NODES 
@@ -212,7 +214,9 @@
                     PARENT_ID,
                     NAME,
                     DELETED, 
-                    METADATA
+                    STATE,
+                    METADATA,
+                    NAME AS PATH
                 FROM
                     VIEW_FOLDERS
                 WHERE
@@ -291,25 +295,26 @@
         <property name="FetchDocumentLinkByPath">
             <value>
             SELECT 
-                ID, 
-                PARENT_ID,
-                NAME,
-                DELETED, 
-                VERSIONED, 
-                DOCUMENT_ID, 
-                DOCUMENT_VERSION,
-                DOCUMENT_CREATED,
-                MEDIA_TYPE,
-                LENGTH,
-                DIGEST,
-                METADATA,
-                ${0}
+                !{1}.ID, 
+                !{1}.PARENT_ID,
+                !{1}.NAME,
+                !{1}.DELETED, 
+                !{1}.VERSIONED, 
+                !{1}.DOCUMENT_ID, 
+                !{1}.DOCUMENT_VERSION,
+                !{1}.DOCUMENT_CREATED,
+                !{1}.MEDIA_TYPE,
+                !{1}.LENGTH,
+                !{1}.DIGEST,
+                !{1}.METADATA,
+                !{0} AS PATH
             FROM
-                VIEW_LINKS
-            INNER JOIN (${1}) ON VIEW_LINKS.ID = N${2}.ID 
-            WHERE ${3}
+                VIEW_LINKS !{1} !{2} 
+            WHERE N0.PARENT_ID = ? !{3}
             </value>
         </property>
+        <property name="JoinParentNode" value="INNER JOIN NODES !{1} ON !{0}.PARENT_ID = !{1}.ID !{2}"/>
+        <property name="NameWhereClause" value="AND !{0}.NAME = ? !{1}"/>
         <property name="FetchDocumentLinkByPathAndId">
             <value>
             SELECT 
@@ -325,14 +330,13 @@
                 LENGTH,
                 DIGEST,
                 METADATA,
-                ${0} || '/' || NAME AS PATH
+                !{0} || '/' || NAME AS PATH
             FROM
                 VIEW_LINKS
-            INNER JOIN (${1}) ON VIEW_LINKS.PARENT_ID = ${2}.ID 
-            WHERE (${3}) AND VIEW_LINKS.DOCUMENT_ID = ?         
+            INNER JOIN (!{1}) ON VIEW_LINKS.PARENT_ID = !{2}.ID 
+            WHERE (!{3}) AND VIEW_LINKS.DOCUMENT_ID = ?         
             </value>   
         </property>
-        <property name="JoinParentNode" value="NODES ${0} INNER JOIN (${2}) ON ${0}.PARENT_ID = ${1}.ID"/>
     </bean>
 
 </beans>
