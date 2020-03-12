@@ -1,0 +1,338 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+ 	http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" xmlns:aop="http://www.springframework.org/schema/aop">
+    
+    <context:annotation-config />
+    
+    <bean class="com.softwareplumbers.dms.rest.server.sql.Schema">
+        
+        <property name="DropScript" >
+            <value>
+                DROP VIEW IF EXISTS VIEW_FOLDERS;
+                DROP VIEW IF EXISTS VIEW_LINKS;
+                DROP VIEW IF EXISTS LATEST_DOCUMENTS;
+                DROP TABLE IF EXISTS FOLDERS;
+                DROP TABLE IF EXISTS DOCUMENTS;
+                DROP TABLE IF EXISTS LINKS;
+                DROP TABLE IF EXISTS NODES;
+            </value>
+        </property>
+        
+        <property name="CreateScript">
+            <value>
+                CREATE TABLE NODES (
+                    ID CHAR(36) PRIMARY KEY,
+                    PARENT_ID CHAR(36),
+                    NAME VARCHAR(255),
+                    DELETED BOOLEAN DEFAULT FALSE
+                );
+
+                CREATE TABLE LINKS (
+                    ID CHAR(36) PRIMARY KEY,
+                    DOCUMENT_ID CHAR(36),
+                    DOCUMENT_VERSION CHAR(36),
+                    VERSIONED BOOLEAN
+                );
+
+                CREATE TABLE DOCUMENTS (
+                    ID CHAR(36),
+                    VERSION CHAR(36) PRIMARY KEY,
+                    MEDIA_TYPE VARCHAR(255),
+                    LENGTH BIGINT,
+                    DIGEST BINARY(32),
+                    CREATED TIMESTAMP,
+                    METADATA CLOB
+                );
+
+                CREATE TABLE FOLDERS (
+                    ID CHAR(36) PRIMARY KEY,
+                    METADATA CLOB
+                );
+
+                CREATE VIEW LATEST_DOCUMENTS AS SELECT
+                    D1.ID AS ID,
+                    D1.VERSION AS VERSION,
+                    D1.MEDIA_TYPE AS MEDIA_TYPE,
+                    D1.LENGTH AS LENGTH,
+                    D1.DIGEST AS DIGEST,
+                    D1.CREATED AS CREATED,
+                    D1.METADATA AS METADATA
+                FROM
+                    DOCUMENTS D1
+                WHERE
+                    D1.CREATED = (
+                        SELECT 
+                            MAX(CREATED) 
+                        FROM 
+                            DOCUMENTS D2
+                        WHERE
+                            D1.ID = D2.ID             
+                    );
+            </value>
+        </property>
+        
+        <property name="UpdateScript">
+            <value>           
+                CREATE OR REPLACE VIEW VIEW_LINKS AS SELECT
+                    NODES.ID AS ID,
+                    NODES.PARENT_ID AS PARENT_ID,
+                    NODES.NAME AS NAME,
+                    NODES.DELETED AS DELETED,
+                    LINKS.VERSIONED AS VERSIONED,
+                    DOCUMENTS.ID AS DOCUMENT_ID,
+                    DOCUMENTS.VERSION AS DOCUMENT_VERSION,
+                    DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
+                    DOCUMENTS.LENGTH AS LENGTH,
+                    DOCUMENTS.DIGEST AS DIGEST,
+                    DOCUMENTS.CREATED AS DOCUMENT_CREATED,
+                    DOCUMENTS.METADATA AS METADATA
+                FROM
+                    NODES 
+                INNER JOIN
+                    LINKS ON (NODES.ID = LINKS.ID)
+                INNER JOIN
+                    DOCUMENTS ON (LINKS.DOCUMENT_VERSION = DOCUMENTS.VERSION)
+                WHERE
+                    LINKS.VERSIONED = TRUE
+                UNION ALL SELECT
+                    NODES.ID AS ID,
+                    NODES.PARENT_ID AS PARENT_ID,
+                    NODES.NAME AS NAME,
+                    NODES.DELETED AS DELETED,
+                    LINKS.VERSIONED AS VERSIONED,
+                    LATEST_DOCUMENTS.ID AS DOCUMENT_ID,
+                    LATEST_DOCUMENTS.VERSION AS DOCUMENT_VERSION,
+                    LATEST_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
+                    LATEST_DOCUMENTS.LENGTH AS LENGTH,
+                    LATEST_DOCUMENTS.DIGEST AS DIGEST,
+                    LATEST_DOCUMENTS.CREATED AS DOCUMENT_CREATED,
+                    LATEST_DOCUMENTS.METADATA AS METADATA
+                FROM
+                    NODES 
+                INNER JOIN
+                    LINKS ON (NODES.ID = LINKS.ID)
+                INNER JOIN
+                    LATEST_DOCUMENTS ON (LINKS.DOCUMENT_ID = LATEST_DOCUMENTS.ID)
+                WHERE
+                    LINKS.VERSIONED = FALSE
+                ;
+
+                CREATE OR REPLACE VIEW VIEW_FOLDERS AS SELECT
+                    NODES.ID AS ID,
+                    NODES.PARENT_ID AS PARENT_ID,
+                    NODES.NAME AS NAME,
+                    NODES.DELETED AS DELETED,
+                    FOLDERS.METADATA AS METADATA
+                FROM
+                    NODES 
+                INNER JOIN
+                    FOLDERS ON (NODES.ID = FOLDERS.ID)         
+                ;   
+            </value>
+        </property>
+
+    </bean>
+    
+    <bean class="com.softwareplumbers.dms.rest.server.sql.Operations" scope="singleton">
+        
+        <property name="FetchPathToId">
+            <value>
+                WITH LINK(ID,NAME) AS (
+                    SELECT ID,NAME 
+                    FROM NODES 
+                    WHERE PARENT_ID IS NULL 
+                    UNION ALL SELECT 
+                        NODES.ID, 
+                        IFNULL(LINK.NAME || '/', '') || NODES.NAME 
+                    FROM LINK 
+                    INNER JOIN NODES ON LINK.ID = NODES.PARENT_ID
+                ) 
+                SELECT NAME FROM LINK WHERE ID = ?
+            </value>
+        </property>
+        
+        <property name="FetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE ID=? AND NAME LIKE ?"/>
+        <property name="FetchChildByName" value="SELECT ID FROM NODES WHERE PARENT_ID=? AND NAME = ?"/>
+
+        <property name="FetchLinkByName">
+            <value>
+                SELECT 
+                    ID, 
+                    PARENT_ID,
+                    NAME,
+                    DELETED, 
+                    VERSIONED, 
+                    DOCUMENT_ID, 
+                    DOCUMENT_VERSION,
+                    DOCUMENT_CREATED,
+                    MEDIA_TYPE,
+                    LENGTH,
+                    DIGEST,
+                    METADATA
+                FROM
+                    VIEW_LINKS
+                WHERE
+                    PARENT_ID = ?
+                AND
+                    NAME = ?
+            </value>
+        </property>
+        <property name="FetchLinkById">
+            <value>
+                SELECT 
+                    ID, 
+                    PARENT_ID,
+                    NAME,
+                    DELETED, 
+                    VERSIONED, 
+                    DOCUMENT_ID, 
+                    DOCUMENT_VERSION,
+                    DOCUMENT_CREATED,
+                    MEDIA_TYPE,
+                    LENGTH,
+                    DIGEST,
+                    METADATA
+                FROM
+                    VIEW_LINKS
+                WHERE
+                    DOCUMENT_ID = ?
+            </value>
+        </property>        
+        <property name="FetchFolderByName">
+            <value>
+                SELECT 
+                    ID, 
+                    PARENT_ID,
+                    NAME,
+                    DELETED, 
+                    METADATA
+                FROM
+                    VIEW_FOLDERS
+                WHERE
+                    PARENT_ID = ?
+                AND
+                    NAME = ?
+            </value>
+        </property>
+        <property name="FetchLatestDocument">
+            <value>
+                SELECT 
+                    ID, 
+                    VERSION,
+                    CREATED,
+                    MEDIA_TYPE,
+                    LENGTH,
+                    DIGEST,
+                    METADATA
+                FROM
+                    LATEST_DOCUMENTS
+                WHERE
+                    ID = ?
+            </value>
+        </property>
+        <property name="FetchDocument">
+            <value>
+                SELECT 
+                    ID, 
+                    VERSION,
+                    CREATED,
+                    MEDIA_TYPE,
+                    LENGTH,
+                    DIGEST,
+                    METADATA
+                FROM
+                    DOCUMENTS
+                WHERE
+                    ID = ?
+                AND VERSION = ?
+            </value>
+        </property>
+        <property name="CreateDocument">
+            <value>
+                INSERT INTO DOCUMENTS 
+                    (ID, VERSION, MEDIA_TYPE, LENGTH, DIGEST, METADATA, CREATED) 
+                VALUES (?,?,?,?,?,?, CURRENT_TIMESTAMP)
+            </value>
+        </property>
+        
+        <property name="CreateNode">
+            <value>
+                INSERT INTO NODES (ID, PARENT_ID, NAME, DELETED) VALUES (?,?,?,FALSE) 
+            </value>
+        </property>
+        
+        <property name="CreateFolder">
+            <value>
+                INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES (?,?,?)
+            </value>
+        </property>
+        
+        <property name="CreateLink">
+            <value>
+                INSERT INTO LINKS (ID, DOCUMENT_ID, DOCUMENT_VERSION, DYNAMIC) VALUES (?,?,?,?)
+            </value>
+        </property>
+        
+        <property name="UpdateLink">
+            <value>
+                UPDATE LINKS SET DOCUMENT_ID=?, DOCUMENT_VERSION=?, DYNAMIC=? WHERE LINKS.ID=?
+            </value>
+        </property>
+    </bean>
+    
+    <bean class="com.softwareplumbers.dms.rest.server.sql.Templates" scope="singleton">
+        <property name="FetchDocumentLinkByPath">
+            <value>
+            SELECT 
+                ID, 
+                PARENT_ID,
+                NAME,
+                DELETED, 
+                VERSIONED, 
+                DOCUMENT_ID, 
+                DOCUMENT_VERSION,
+                DOCUMENT_CREATED,
+                MEDIA_TYPE,
+                LENGTH,
+                DIGEST,
+                METADATA,
+                ${0}
+            FROM
+                VIEW_LINKS
+            INNER JOIN (${1}) ON VIEW_LINKS.ID = N${2}.ID 
+            WHERE ${3}
+            </value>
+        </property>
+        <property name="FetchDocumentLinkByPathAndId">
+            <value>
+            SELECT 
+                ID, 
+                PARENT_ID,
+                NAME,
+                DELETED, 
+                VERSIONED, 
+                DOCUMENT_ID, 
+                DOCUMENT_VERSION,
+                DOCUMENT_CREATED,
+                MEDIA_TYPE,
+                LENGTH,
+                DIGEST,
+                METADATA,
+                ${0} || '/' || NAME AS PATH
+            FROM
+                VIEW_LINKS
+            INNER JOIN (${1}) ON VIEW_LINKS.PARENT_ID = ${2}.ID 
+            WHERE (${3}) AND VIEW_LINKS.DOCUMENT_ID = ?         
+            </value>   
+        </property>
+        <property name="JoinParentNode" value="NODES ${0} INNER JOIN (${2}) ON ${0}.PARENT_ID = ${1}.ID"/>
+    </bean>
+
+</beans>
