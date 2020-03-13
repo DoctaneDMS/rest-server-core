@@ -15,6 +15,8 @@ import org.apache.commons.text.lookup.StringLookup;
 public class Templates {
     
     public String fetchDocumentLinkByPath;
+    public String fetchFolderByPath;
+    public String fetchInfoByPath;
     public String fetchDocumentLinkByPathAndId;
     public String joinParentNode;
     public String nameWhereClause;
@@ -27,12 +29,20 @@ public class Templates {
         fetchDocumentLinkByPath = template;
     }
 
+    public void setFetchFolderByPath(String template) {
+        fetchFolderByPath = template;
+    }
+
     public void setFetchDocumentLinkByPathAndId(String template) {
         fetchDocumentLinkByPathAndId = template;
     }
     
     public void setNameWhereClause(String template) {
         nameWhereClause = template;
+    }
+    
+    public void setFetchInfoByPath(String template) {
+        fetchInfoByPath = template;
     }
 
     public static String substitute(String template, Object... parameters) {

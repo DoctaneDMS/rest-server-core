@@ -5,7 +5,6 @@
  */
 package com.softwareplumbers.dms.rest.server.sql;
 
-import com.google.common.collect.Streams;
 import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
@@ -19,12 +18,13 @@ import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Workspace;
-import com.softwareplumbers.dms.common.impl.DocumentImpl;
 import com.softwareplumbers.dms.common.impl.DocumentLinkImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import com.softwareplumbers.dms.common.impl.StreamInfo;
+import com.softwareplumbers.dms.common.impl.WorkspaceImpl;
 import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -40,6 +40,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -131,7 +132,7 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {
-            Optional<Document> existing = db.getDocument(new Id(id), null, SQLAPI::getDocument);
+            Optional<Document> existing = db.getDocument(new Id(id), null, SQLAPI.GET_DOCUMENT);
             if (existing.isPresent()) {
                 Document existingDoc = existing.get();
                 mediaType = mediaType == Constants.NO_TYPE ? existingDoc.getMediaType() : mediaType;
@@ -167,7 +168,9 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {
-            Optional<DocumentLink> current = db.getDocumentLink(Id.of(rootId), workspacePath, Id.of(documentId), SQLAPI::getLink);
+            Id root = Id.of(rootId);
+            QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
+            Optional<DocumentLink> current = db.getDocumentLink(root, workspacePath, Id.of(documentId), rs->SQLAPI.getLink(rs, rootPath));
             if (current.isPresent()) {
                 return LOG.exit(current.get());
             } else {
@@ -191,10 +194,13 @@ public class SQLRepositoryService implements RepositoryService {
         ) {
             StreamInfo info = StreamInfo.of(iss);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            db.createDocumentLink(Id.of(rootId), path, id, version, Options.CREATE_MISSING_PARENT.isIn(options));
+            Id idRoot = Id.of(rootId);
+            QualifiedName baseName = db.getPathTo(idRoot)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
+                .addAll(path.parent);            
+            DocumentLink result = db.createDocumentLink(idRoot, path, id, version, Options.CREATE_MISSING_PARENT.isIn(options), rs->SQLAPI.getLink(rs, baseName));
             db.commit();
-            QualifiedName fullPath = db.getPathTo(Id.of(rootId)).get().addAll(path);
-            return new DocumentLinkImpl(fullPath, reference, mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            return result;
         } catch (SQLException e) {
             maybeDestroyDocument(version);
             throw LOG.throwing(new RuntimeException(e));
@@ -214,14 +220,18 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = getConnection(); 
         ) {    
-            Id folderId = db.getOrCreateFolderId(Id.of(rootId), workspaceName, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
+            Id folderId = db.getOrCreateFolder(Id.of(rootId), workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
             String name = db.generateUniqueName(folderId, baseName);
             StreamInfo info = StreamInfo.of(iss);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            db.createDocumentLink(folderId, name, id, version);
-            db.commit();               
-            QualifiedName fullPath = db.getPathTo(Id.of(rootId)).get().addAll(workspaceName).add(name);
-            return new DocumentLinkImpl(fullPath, reference, mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            Id idRoot = Id.of(rootId);
+            QualifiedName fullWorkspaceName = db.getPathTo(idRoot)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
+                .addAll(workspaceName);            
+            DocumentLink result = db.createDocumentLink(folderId, name, id, version, rs->SQLAPI.getLink(rs, fullWorkspaceName));
+            db.commit();
+            return result;        
+        
         } catch (SQLException e) {
             maybeDestroyDocument(version);
             throw LOG.throwing(new RuntimeException(e));
@@ -236,15 +246,18 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = getConnection(); 
         ) {    
             Id root = Id.of(rootId);
-            Id folderId = db.getOrCreateFolderId(root, workspaceName, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
+            Id folderId = db.getOrCreateFolder(root, workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
             Id docId = Id.ofDocument(reference.id);
             Id versionId = Id.ofVersion(reference.version);
-            Document document = db.getDocument(docId, versionId, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
             String name = db.generateUniqueName(folderId, getBaseName(document.getMetadata()));
-            db.createDocumentLink(folderId, name, docId, versionId);
+            Id idRoot = Id.of(rootId);
+            QualifiedName fullWorkspaceName = db.getPathTo(idRoot)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
+                .addAll(workspaceName);            
+            DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, rs->SQLAPI.getLink(rs, fullWorkspaceName));
             db.commit();               
-            QualifiedName fullPath = db.getPathTo(root).get().addAll(workspaceName).add(name);
-            return new DocumentLinkImpl(fullPath, reference, document.getMediaType(), document.getLength(), document.getDigest(), document.getMetadata(), false, LocalData.NONE);
+            return result;
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
@@ -256,14 +269,17 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = getConnection(); 
         ) {    
             Id root = Id.of(rootId);
-            Id folderId = db.getOrCreateFolderId(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
             Id docId = Id.ofDocument(reference.id);
             Id versionId = Id.ofVersion(reference.version);
-            Document document = db.getDocument(docId, versionId, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            db.createDocumentLink(folderId, path.part, docId, versionId);
-            db.commit();               
-            QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
-            return new DocumentLinkImpl(fullPath, reference, document.getMediaType(), document.getLength(), document.getDigest(), document.getMetadata(), false, LocalData.NONE);
+            Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            Id idRoot = Id.of(rootId);
+            QualifiedName baseName = db.getPathTo(idRoot)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
+                .addAll(path.parent);            
+            DocumentLink result = db.createDocumentLink(folderId, path.part, docId, versionId,rs->SQLAPI.getLink(rs, baseName));
+            db.commit();
+            return result;
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
@@ -279,8 +295,9 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = getConnection(); 
         ) {    
             Id root = Id.of(rootId);
-            Id folderId = db.getOrCreateFolderId(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
-            Optional<DocumentLink> existing = db.getDocumentLink(folderId, path.part, SQLAPI::getLink);
+            Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
+            Optional<DocumentLink> existing = db.getDocumentLink(folderId, path.part, rs->SQLAPI.getLink(rs, rootPath));
             if (existing.isPresent()) {
                 DocumentLink existingDoc = existing.get();
                 mediaType = mediaType == Constants.NO_TYPE ? existingDoc.getMediaType() : mediaType;
@@ -300,10 +317,10 @@ public class SQLRepositoryService implements RepositoryService {
                 Id replacingId = Id.ofDocument(replacing.id);
                 db.createDocument(replacingId, version, mediaType, length, digest, metadata);
                 Reference newReference = new Reference(replacing.id, version.toString());
-                db.updateDocumentLink(folderId, path.part, replacingId, version, createMissing);
-                db.commit();           
                 QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
-                return new DocumentLinkImpl(fullPath, newReference, mediaType, length, digest, metadata, false, LocalData.NONE);
+                DocumentLink result = db.updateDocumentLink(folderId, path.part, replacingId, version, createMissing, rs->SQLAPI.getLink(rs, fullPath));
+                db.commit();           
+                return result;
             } else {
                 throw new Exceptions.InvalidObjectName(rootId, path);
             }
@@ -322,65 +339,184 @@ public class SQLRepositoryService implements RepositoryService {
             Id root = Id.of(rootId);
             Id docId = Id.ofDocument(reference.id);
             Id versionId = Id.ofVersion(reference.version);
-            Id folderId = db.getOrCreateFolderId(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options)).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
-            Document document = db.getDocument(docId, versionId, SQLAPI::getDocument).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            db.updateDocumentLink(folderId, path.part, docId, versionId, Options.CREATE_MISSING_ITEM.isIn(options));
-            db.commit();               
+            Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
             QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
+            DocumentLink result = db.updateDocumentLink(folderId, path.part, docId, versionId, Options.CREATE_MISSING_ITEM.isIn(options), rs->SQLAPI.getLink(rs, fullPath));
+            db.commit();               
             return new DocumentLinkImpl(fullPath, reference, document.getMediaType(), document.getLength(), document.getDigest(), document.getMetadata(), false, LocalData.NONE);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
 
+    
+    
     @Override
-    public NamedRepositoryObject copyObject(String string, QualifiedName qn, String string1, QualifiedName qn1, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public NamedRepositoryObject copyObject(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(rootId, path, path, targetPath, createParent);
+        try (
+            SQLAPI db = getConnection(); 
+        ) { 
+            Info info = db.getInfo(Id.of(rootId), path, SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
+            switch (info.type) {
+                case DOCUMENT_LINK: copyDocumentLink(rootId, path, targetId, targetPath, createParent);
+                case WORKSPACE: copyWorkspace(rootId, path, targetId, targetPath, createParent);
+                default:
+                    throw LOG.throwing(new RuntimeException("Don't know how to copy " + info.type.toString()));
+            }
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
+    }
+    
+    @Override
+    public DocumentLink copyDocumentLink(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(rootId, path, targetId, targetPath, createParent);
+        try (
+            SQLAPI db = getConnection(); 
+        ) { 
+            Id idTarget = Id.of(targetId);
+            QualifiedName baseName = db.getPathTo(idTarget)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(targetId))
+                .addAll(targetPath.parent);
+            DocumentLink result = db.copyDocumentLink(Id.of(rootId), path, idTarget, targetPath, createParent, rs->SQLAPI.getLink(rs, baseName));
+            db.commit();
+            return LOG.exit(result);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
     }
 
     @Override
-    public DocumentLink copyDocumentLink(String string, QualifiedName qn, String string1, QualifiedName qn1, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public Workspace copyWorkspace(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(rootId, path, targetId, targetPath, createParent);
+        try (
+            SQLAPI db = getConnection(); 
+        ) { 
+            Id idTarget = Id.of(targetId);
+            QualifiedName baseName = db.getPathTo(idTarget)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(targetId))
+                .addAll(targetPath.parent);
+            Workspace result = db.copyFolder(Id.of(rootId), path, idTarget, targetPath, createParent, rs->SQLAPI.getWorkspace(rs, baseName));
+            db.commit();
+            return LOG.exit(result);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }  
     }
 
     @Override
-    public Workspace copyWorkspace(String string, QualifiedName qn, String string1, QualifiedName qn1, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public Workspace createWorkspaceByName(String rootId, QualifiedName path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+        LOG.entry(rootId, path, state, metadata, Options.loggable(options));
+        try (
+            SQLAPI db = getConnection(); 
+        ) {
+            
+            Id parent_id = path.parent.isEmpty() 
+                ? Id.of(rootId)
+                : db.getOrCreateFolder(Id.of(rootId), path, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Workspace result = db.createFolder(parent_id, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent));
+            db.commit();
+            return result;
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }    
     }
 
     @Override
-    public Workspace createWorkspaceByName(String string, QualifiedName qn, Workspace.State state, JsonObject jo, Options.Create... creates) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public Workspace createWorkspaceAndName(String rootId, QualifiedName workspacePath, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+        LOG.entry(rootId, workspacePath, state, metadata, Options.loggable(options));
+        try (
+            SQLAPI db = getConnection(); 
+        ) {    
+            Id root = Id.of(rootId);
+            Id folderId = db.getOrCreateFolder(root, workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspacePath));
+            String name = db.generateUniqueName(folderId, getBaseName(metadata));
+            Id idRoot = Id.of(rootId);
+            QualifiedName fullWorkspaceName = db.getPathTo(idRoot)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
+                .addAll(workspacePath);            
+            Workspace result = db.createFolder(folderId, name, state, metadata, rs->SQLAPI.getWorkspace(rs, fullWorkspaceName));
+            db.commit();               
+            return LOG.exit(result);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
     }
 
     @Override
-    public Workspace createWorkspaceAndName(String string, QualifiedName qn, Workspace.State state, JsonObject jo, Options.Create... creates) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public Workspace updateWorkspaceByName(String rootId, QualifiedName path, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace {
+        LOG.entry(rootId, path, state, metadata, Options.loggable(options));
+        boolean createMissing = Options.CREATE_MISSING_ITEM.isIn(options);
+
+        try (
+            SQLAPI db = getConnection(); 
+        ) {    
+            Id root = Id.of(rootId);
+            Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
+            Optional<Workspace> existing = db.getFolder(folderId, path.part, rs->SQLAPI.getWorkspace(rs, rootPath));
+            if (existing.isPresent()) {
+                Workspace existingWorkspace = existing.get();
+                state = state == null ? existingWorkspace.getState() : state;
+                metadata = MetadataMerge.merge(existingWorkspace.getMetadata(), metadata);
+                QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
+                Workspace result = db.updateFolder(folderId, path.part, state, metadata, createMissing, rs->SQLAPI.getWorkspace(rs, fullPath));
+                db.commit();           
+                return result;
+            } else {
+                throw new Exceptions.InvalidWorkspace(rootId, path);
+            }
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        } 
     }
 
     @Override
-    public Workspace updateWorkspaceByName(String string, QualifiedName qn, Workspace.State state, JsonObject jo, Options.Update... updates) throws Exceptions.InvalidWorkspace {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public void deleteDocument(String rootId, QualifiedName workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+        LOG.entry(rootId, workspacePath, documentId);
+        try (
+            SQLAPI db = getConnection(); 
+        ) {
+            db.deleteDocumentById(Id.of(rootId), workspacePath, Id.ofDocument(documentId));
+            db.commit();
+            LOG.exit();
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
     }
 
     @Override
-    public void deleteDocument(String string, QualifiedName qn, String string1) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public void deleteObjectByName(String string, QualifiedName qn) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public void deleteObjectByName(String rootId, QualifiedName path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        LOG.entry(rootId, path);
+        try (
+            SQLAPI db = getConnection(); 
+        ) {
+            db.deleteObject(Id.of(rootId), path);
+            db.commit();
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
     }
 
     @Override
     public <T> Optional<T> getImplementation(Class<T> type) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        if (type.isAssignableFrom(this.getClass())) return Optional.of((T)this);
+        return Optional.empty();
     }
 
     @Override
-    public Document getDocument(Reference rfrnc) throws Exceptions.InvalidReference {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public Document getDocument(Reference reference) throws Exceptions.InvalidReference {
+        LOG.entry(reference);
+        try (
+            SQLAPI db = getConnection(); 
+        ) {
+            return db.getDocument(Id.ofDocument(reference.id), Id.ofVersion(reference.version), SQLAPI.GET_DOCUMENT)
+                .orElseThrow(()->new Exceptions.InvalidReference(reference));
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
     }
 
     @Override
@@ -389,13 +525,13 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public InputStream getData(Reference rfrnc, Optional<QualifiedName> optnl) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public InputStream getData(Reference reference, Optional<QualifiedName> part) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        return Files.newInputStream(toPath(Id.ofVersion(reference.version)));
     }
 
     @Override
-    public void writeData(Reference rfrnc, Optional<QualifiedName> optnl, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public void writeData(Reference reference, Optional<QualifiedName> part, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        Files.copy(toPath(Id.ofVersion(reference.version)), out);
     }
 
     @Override

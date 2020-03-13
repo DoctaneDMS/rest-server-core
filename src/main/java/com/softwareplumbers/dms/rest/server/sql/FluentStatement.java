@@ -16,6 +16,9 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonWriter;
 import javax.sql.DataSource;
 
 /**
@@ -99,10 +102,10 @@ public abstract class FluentStatement {
         } 
     }
 
-    public void execute(Connection con) throws SQLException {
+    public int execute(Connection con) throws SQLException {
         try (PreparedStatement statement = con.prepareStatement(buildSQL())) {
             buildStatement(statement);
-            statement.execute();
+            return statement.executeUpdate();
         }
     }
     
@@ -141,4 +144,5 @@ public abstract class FluentStatement {
     public FluentStatement set(int index, Consumer<Writer> value) { return new ClobParam(this, index, value); }
     public FluentStatement set(int index, QualifiedName name) { return name.isEmpty() ? this : set(index+1, name.parent).set(index, name.part); }
     public FluentStatement set(int index, Id id) { return new BinaryParam(this, index, id.getBytes()); }
+    public FluentStatement set(int index, JsonObject value) { return new ClobParam(this, index, out-> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(value);} }); }
 }

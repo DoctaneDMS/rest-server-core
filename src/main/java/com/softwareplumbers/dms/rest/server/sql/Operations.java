@@ -13,17 +13,24 @@ public class Operations {
     
     public String fetchLinkByName;
     public String fetchLinkById;
+    public String fetchInfoByName;
     public String fetchFolderByName;
     public String fetchLatestDocument;
     public String fetchDocument;
+    public String fetchChildren;
     public String createDocument;
     public String createNode;
     public String createFolder;
     public String createLink;
+    public String deleteObject;
+    public String deleteDocumentById;
     public String fetchPathToId;
     public String fetchLastNameLike;
     public String fetchChildByName;
     public String updateLink;
+    public String updateFolder;
+    public String copyFolder;
+    public String copyLink;
 
     public void setFetchLinkByName(String sql) {
         fetchLinkByName = sql;
@@ -65,6 +72,10 @@ public class Operations {
         updateLink = sql;
     }
 
+    public void setUpdateFolder(String sql) {
+        updateFolder = sql;
+    }
+
     public void setFetchPathToId(String sql) {
         fetchPathToId = sql;
     }
@@ -73,8 +84,28 @@ public class Operations {
         fetchLastNameLike = sql;
     }
 
-    public void setFetchChildByName(String sql) {
-        fetchChildByName = sql;
+    public void setFetchInfoByName(String sql) {
+        fetchInfoByName = sql;
     }
+    
+    public void setFetchChildren(String sql) {
+        fetchChildren = sql;
+    }
+    
+    public void setCopyFolder(String sql) {
+        copyFolder = sql;
+    }
+
+    public void setCopyLink(String sql) {
+        copyLink = sql;
+    }
+    
+    public void setDeleteObject(String sql) {
+        deleteObject = sql;
+    }
+
+    public void setDeleteDocumentById(String sql) {
+        deleteDocumentById = sql;
+    }    
     
 }

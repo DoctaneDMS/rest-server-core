@@ -31,6 +31,7 @@
                     ID UUID PRIMARY KEY,
                     PARENT_ID UUID,
                     NAME VARCHAR(255),
+                    TYPE VARCHAR(16),
                     DELETED BOOLEAN DEFAULT FALSE
                 );
 
@@ -161,7 +162,7 @@
         </property>
         
         <property name="FetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE ID=? AND NAME LIKE ?"/>
-        <property name="FetchChildByName" value="SELECT ID FROM NODES WHERE PARENT_ID=? AND NAME = ?"/>
+        <property name="FetchInfoByName" value="SELECT ID, PARENT_ID, NAME, TYPE, DELETED FROM NODES WHERE PARENT_ID=? AND NAME = ?"/>
 
         <property name="FetchLinkByName">
             <value>
@@ -177,7 +178,8 @@
                     MEDIA_TYPE,
                     LENGTH,
                     DIGEST,
-                    METADATA
+                    METADATA,
+                    NAME AS PATH,
                 FROM
                     VIEW_LINKS
                 WHERE
@@ -268,7 +270,7 @@
         
         <property name="CreateNode">
             <value>
-                INSERT INTO NODES (ID, PARENT_ID, NAME, DELETED) VALUES (?,?,?,FALSE) 
+                INSERT INTO NODES (ID, PARENT_ID, NAME, TYPE, DELETED) VALUES (?,?,?,?,FALSE) 
             </value>
         </property>
         
@@ -278,17 +280,74 @@
             </value>
         </property>
         
+        <property name="CopyFolder">
+            <value>
+                INSERT INTO FOLDERS (ID, STATE, METADATA) 
+                SELECT ?, STATE, METADATA
+                FROM FOLDERS
+                WHERE ID = ?
+            </value>
+        </property>
+        
         <property name="CreateLink">
             <value>
-                INSERT INTO LINKS (ID, DOCUMENT_ID, DOCUMENT_VERSION, DYNAMIC) VALUES (?,?,?,?)
+                INSERT INTO LINKS (ID, DOCUMENT_ID, DOCUMENT_VERSION, VERSIONED) VALUES (?,?,?,?)
+            </value>
+        </property>
+        
+        <property name="CopyLink">
+            <value>
+                INSERT INTO LINKS (ID, DOCUMENT_ID, DOCUMENT_VERSION, VERSIONED) 
+                SELECT ?, DOCUMENT_ID, DOCUMENT_VERSION, VERSIONED
+                FROM LINKS
+                WHERE ID = ?                
             </value>
         </property>
         
         <property name="UpdateLink">
             <value>
-                UPDATE LINKS SET DOCUMENT_ID=?, DOCUMENT_VERSION=?, DYNAMIC=? WHERE LINKS.ID=?
+                UPDATE LINKS SET DOCUMENT_ID=?, DOCUMENT_VERSION=?, VERSIONED=? WHERE LINKS.ID=?
             </value>
         </property>
+        
+        <property name="UpdateFolder">
+            <value>
+                UPDATE FOLDERS SET STATE=?, METADATA=? WHERE FOLDERS.ID=?
+            </value>
+        </property>
+        
+        <property name="FetchChildren">
+            <value>
+                SELECT 
+                    ID, 
+                    PARENT_ID,
+                    NAME,
+                    DELETED, 
+                    TYPE,
+                    NAME AS PATH
+                FROM
+                    NODES
+                WHERE PARENT_ID = ?
+            </value>
+        </property>
+        
+        <property name="DeleteObject">
+            <value>
+                UPDATE NODES SET DELETED=TRUE WHERE PARENT_ID=? AND NAME=?
+            </value>
+        </property>
+        
+        <property name="DeleteDocumentById">
+            <value>
+                UPDATE NODES SET DELETED=TRUE 
+                WHERE PARENT_ID=? 
+                AND EXISTS (
+                    SELECT ID FROM LINKS 
+                    WHERE LINKS.ID = NODES.ID AND LINKS.DOCUMENT_ID = ?
+                )
+            </value>
+        </property>
+
     </bean>
     
     <bean class="com.softwareplumbers.dms.rest.server.sql.Templates" scope="singleton">
@@ -310,7 +369,36 @@
                 !{0} AS PATH
             FROM
                 VIEW_LINKS !{1} !{2} 
-            WHERE N0.PARENT_ID = ? !{3}
+            WHERE N1.PARENT_ID = ? !{3}
+            </value>
+        </property>
+        <property name="FetchFolderByPath">
+            <value>
+            SELECT 
+                !{1}.ID, 
+                !{1}.PARENT_ID,
+                !{1}.NAME,
+                !{1}.DELETED, 
+                !{1}.STATE,
+                !{1}.METADATA,
+                !{0} AS PATH
+            FROM
+                VIEW_FOLDERS !{1} !{2} 
+            WHERE N1.PARENT_ID = ? !{3}
+            </value>
+        </property>
+        <property name="FetchInfoByPath">
+            <value>
+                SELECT 
+                    !{1}.ID, 
+                    !{1}.PARENT_ID,
+                    !{1}.NAME,
+                    !{1}.DELETED, 
+                    !{1}.TYPE,
+                    !{0} AS PATH
+                FROM
+                    NODES !{1} !{2} 
+                WHERE N1.PARENT_ID = ? !{3}
             </value>
         </property>
         <property name="JoinParentNode" value="INNER JOIN NODES !{1} ON !{0}.PARENT_ID = !{1}.ID !{2}"/>
