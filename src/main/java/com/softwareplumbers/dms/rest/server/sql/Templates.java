@@ -14,35 +14,25 @@ import org.apache.commons.text.lookup.StringLookup;
  */
 public class Templates {
     
-    public String fetchDocumentLinkByPath;
-    public String fetchFolderByPath;
-    public String fetchInfoByPath;
-    public String fetchDocumentLinkByPathAndId;
-    public String joinParentNode;
-    public String nameWhereClause;
+    public String fetchDocumentLink;
+    public String fetchFolder;
+    public String fetchInfo;
+    public String fetchDocument;
 
-    public void setJoinParentNode(String template) {
-        joinParentNode = template;
+    public void setFetchDocumentLink(String template) {
+        fetchDocumentLink = template;
     }
 
-    public void setFetchDocumentLinkByPath(String template) {
-        fetchDocumentLinkByPath = template;
+    public void setFetchFolder(String template) {
+        fetchFolder = template;
     }
 
-    public void setFetchFolderByPath(String template) {
-        fetchFolderByPath = template;
-    }
-
-    public void setFetchDocumentLinkByPathAndId(String template) {
-        fetchDocumentLinkByPathAndId = template;
+    public void setFetchInfo(String template) {
+        fetchInfo = template;
     }
     
-    public void setNameWhereClause(String template) {
-        nameWhereClause = template;
-    }
-    
-    public void setFetchInfoByPath(String template) {
-        fetchInfoByPath = template;
+    public void setFetchDocument(String template) {
+        fetchDocument = template;
     }
 
     public static String substitute(String template, Object... parameters) {

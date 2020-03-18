@@ -7,25 +7,27 @@ package com.softwareplumbers.dms.rest.server.sql;
 
 import com.google.common.collect.Streams;
 import com.softwareplumbers.common.QualifiedName;
-import java.io.Reader;
 import java.io.Writer;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonWriter;
 import javax.sql.DataSource;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /**
  *
  * @author jonathan
  */
 public abstract class FluentStatement {
+    
+    private static final XLogger LOG = XLoggerFactory.getXLogger(FluentStatement.class);
     
     protected abstract String buildSQL() throws SQLException;
     protected abstract void buildStatement(PreparedStatement statement) throws SQLException;
@@ -60,6 +62,7 @@ public abstract class FluentStatement {
         @Override
         protected void buildStatement(PreparedStatement statement) throws SQLException {
             base.buildStatement(statement);
+            LOG.debug("setting param {} to {}", index, value);
             statement.setString(index, value);
         } 
     }
@@ -69,6 +72,7 @@ public abstract class FluentStatement {
         @Override
         protected void buildStatement(PreparedStatement statement) throws SQLException {
             base.buildStatement(statement);
+            LOG.debug("setting param {} to {}", index, value);
             statement.setLong(index, value);
         } 
     }
@@ -78,6 +82,7 @@ public abstract class FluentStatement {
         @Override
         protected void buildStatement(PreparedStatement statement) throws SQLException {
             base.buildStatement(statement);
+            LOG.debug("setting param {} to {}", index, value);
             statement.setBoolean(index, value);
         } 
     }
@@ -87,6 +92,7 @@ public abstract class FluentStatement {
         @Override
         protected void buildStatement(PreparedStatement statement) throws SQLException {
             base.buildStatement(statement);
+            LOG.debug("setting param {} to {}", index, value);
             statement.setBytes(index, value);
         } 
     }
@@ -96,6 +102,7 @@ public abstract class FluentStatement {
         @Override
         protected void buildStatement(PreparedStatement statement) throws SQLException {
             base.buildStatement(statement);
+            LOG.debug("setting param {} to <character stream>", index);
             Clob clob = statement.getConnection().createClob();
             value.accept(clob.setCharacterStream(1));
             statement.setClob(index, clob);
@@ -103,14 +110,18 @@ public abstract class FluentStatement {
     }
 
     public int execute(Connection con) throws SQLException {
-        try (PreparedStatement statement = con.prepareStatement(buildSQL())) {
+        String sql = buildSQL();
+        LOG.debug(sql);
+        try (PreparedStatement statement = con.prepareStatement(sql)) {
             buildStatement(statement);
             return statement.executeUpdate();
         }
     }
     
     public <T> Stream<T> execute(Connection con, Mapper<T> mapper) throws SQLException {
-        PreparedStatement statement = con.prepareStatement(buildSQL()); 
+        String sql = buildSQL();
+        LOG.debug(sql);
+        PreparedStatement statement = con.prepareStatement(sql); 
         buildStatement(statement);
         final ResultSetIterator<T> iterator = new ResultSetIterator(statement.executeQuery(), mapper);
         Stream<T> result = Streams.stream(iterator).onClose(()->{ 
@@ -122,8 +133,9 @@ public abstract class FluentStatement {
     
     public <T> Stream<T> execute(DataSource ds, Mapper<T> mapper) throws SQLException {
         Connection con = ds.getConnection();
-        PreparedStatement statement = con.prepareStatement(buildSQL()); 
-        buildStatement(statement);
+        String sql = buildSQL();
+        LOG.debug(sql);
+        PreparedStatement statement = con.prepareStatement(sql);
         final ResultSetIterator<T> iterator = new ResultSetIterator(statement.executeQuery(), mapper);
         Stream<T> result = Streams.stream(iterator).onClose(()->{ 
             iterator.close();

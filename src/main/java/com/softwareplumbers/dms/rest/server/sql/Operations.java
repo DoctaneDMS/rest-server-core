@@ -5,20 +5,19 @@
  */
 package com.softwareplumbers.dms.rest.server.sql;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 /**
  *
  * @author jonathan
  */
 public class Operations {
     
-    public String fetchLinkByName;
-    public String fetchLinkById;
-    public String fetchInfoByName;
-    public String fetchFolderByName;
     public String fetchLatestDocument;
     public String fetchDocument;
     public String fetchChildren;
     public String createDocument;
+    public String createVersion;
     public String createNode;
     public String createFolder;
     public String createLink;
@@ -29,31 +28,16 @@ public class Operations {
     public String fetchChildByName;
     public String updateLink;
     public String updateFolder;
+    public String updateDocument;
     public String copyFolder;
     public String copyLink;
 
-    public void setFetchLinkByName(String sql) {
-        fetchLinkByName = sql;
-    }
-
-    public void setFetchLinkById(String sql) {
-        fetchLinkById = sql;
-    }
-
-    public void setFetchFolderByName(String sql) {
-        fetchFolderByName = sql;
-    }
-
-    public void setFetchLatestDocument(String sql) {
-        fetchLatestDocument = sql;
-    }
-
-    public void setFetchDocument(String sql) {
-        fetchDocument = sql;
-    }
-
     public void setCreateDocument(String sql) {
         createDocument = sql;
+    }
+
+    public void setCreateVersion(String sql) {
+        createVersion = sql;
     }
 
     public void setCreateFolder(String sql) {
@@ -72,6 +56,10 @@ public class Operations {
         updateLink = sql;
     }
 
+    public void setUpdateDocument(String sql) {
+        updateDocument = sql;
+    }
+
     public void setUpdateFolder(String sql) {
         updateFolder = sql;
     }
@@ -84,10 +72,6 @@ public class Operations {
         fetchLastNameLike = sql;
     }
 
-    public void setFetchInfoByName(String sql) {
-        fetchInfoByName = sql;
-    }
-    
     public void setFetchChildren(String sql) {
         fetchChildren = sql;
     }
@@ -107,5 +91,10 @@ public class Operations {
     public void setDeleteDocumentById(String sql) {
         deleteDocumentById = sql;
     }    
-    
+
+    @Autowired
+    public Operations(Templates templates) {
+        fetchLatestDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE ID=? AND LATEST=TRUE");
+        fetchDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE ID=? AND VERSION_ID=?");
+    }
 }

@@ -7,14 +7,15 @@ package com.softwareplumbers.dms.rest.server.sql;
 
 import com.google.common.collect.Streams;
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.Constants;
+import com.softwareplumbers.common.abstractquery.Param;
+import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Exceptions;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
-import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Workspace;
@@ -24,25 +25,19 @@ import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.WorkspaceImpl;
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.MessageFormat;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonValue;
 import javax.json.JsonWriter;
 import javax.sql.DataSource;
-import org.apache.commons.text.StringSubstitutor;
-import org.apache.commons.text.lookup.StringLookup;
-import org.bouncycastle.util.Arrays;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +71,7 @@ public class SQLAPI implements AutoCloseable {
     public static final Mapper<Document> GET_DOCUMENT = results -> {
         String mediaType = results.getString("MEDIA_TYPE");
         Id id = new Id(results.getBytes("ID"));
-        Id version = new Id(results.getBytes("VERSION"));
+        Id version = new Id(results.getBytes("VERSION_ID"));
         long length = results.getLong("LENGTH");
         byte[] hash = results.getBytes("DIGEST");
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
@@ -85,14 +80,14 @@ public class SQLAPI implements AutoCloseable {
     
     public static final Mapper<Reference> GET_REFERENCE = results -> {
         Id id = new Id(results.getBytes("ID"));
-        Id version = new Id(results.getBytes("VERSION"));
+        Id version = new Id(results.getBytes("VERSION_ID"));
         return new Reference(id.toString(),version.toString());        
     };
     
     public static DocumentLink getLink(ResultSet results, QualifiedName basePath) throws SQLException {
         String mediaType = results.getString("MEDIA_TYPE");
         Id id = new Id(results.getBytes("DOCUMENT_ID"));
-        String version = results.getString("DOCUMENT_VERSION");
+        String version = results.getString("VERSION_ID");
         long length = results.getLong("LENGTH");
         byte[] hash = results.getBytes("DIGEST");
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
@@ -100,6 +95,24 @@ public class SQLAPI implements AutoCloseable {
         return new DocumentLinkImpl(name, new Reference(id.toString(),version), mediaType, length, hash, metadata, false, LocalData.NONE);
     }
     
+    public DocumentLink getLink(ResultSet results) throws SQLException {
+        String mediaType = results.getString("MEDIA_TYPE");
+        Id id = new Id(results.getBytes("DOCUMENT_ID"));
+        String version = results.getString("VERSION_ID");
+        long length = results.getLong("LENGTH");
+        byte[] hash = results.getBytes("DIGEST");
+        JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
+        
+        QualifiedName name = FluentStatement
+                .of(operations.fetchPathToId)
+                .set(1, id)
+                .execute(results.getStatement().getConnection(), rs->QualifiedName.parse(rs.getString(1),"/"))
+                .findFirst()
+                .orElseThrow(()->new RuntimeException("can't find id"));
+        
+        return new DocumentLinkImpl(name, new Reference(id.toString(),version), mediaType, length, hash, metadata, false, LocalData.NONE);
+    }
+
     public static Workspace getWorkspace(ResultSet results, QualifiedName basePath) throws SQLException {
         Id id = new Id(results.getBytes("ID"));
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
@@ -107,6 +120,7 @@ public class SQLAPI implements AutoCloseable {
         QualifiedName path = basePath.addParsed(results.getString("PATH"),"/");
         return new WorkspaceImpl(path, id.toString(), state, metadata, false, LocalData.NONE);
     }
+    
     
     public static Mapper<Info> GET_INFO = results -> {
         Id id = new Id(results.getBytes("ID"));
@@ -128,54 +142,101 @@ public class SQLAPI implements AutoCloseable {
     }
     
     @Autowired
-    public SQLAPI(Operations operations, Templates templates, DataSource datasource) throws SQLException {
+    public SQLAPI(Operations operations, Templates templates, Schema schema) throws SQLException {
         this.operations = operations;
         this.templates = templates;
-        this.datasource = datasource;
-        this.con = datasource.getConnection();
+        this.schema = schema;
+        this.con = schema.datasource.getConnection();
     }
     
     Operations operations;
     Templates templates;
-    DataSource datasource;
+    Schema schema;
     Connection con;
     
-    String getSearchJoin(int depth) {
-        if (depth <= 1 )
-            return "";
-        else 
-            return Templates.substitute(templates.joinParentNode, "N" + depth, "N" + (depth-1), getSearchJoin(depth-1));
+    Query getParameterizedNameQuery(int depth) {
+        if (depth == 0) return Query.from("id", Range.equals(Param.from("0")));
+        if (depth == 1) return Query.from("parentId", Range.equals(Param.from("0"))).intersect(Query.from("name", Range.equals(Param.from("1"))));
+        Query result = Query.from("parent",getParameterizedNameQuery(depth-1)).intersect(Query.from("name", Range.equals(Param.from(Integer.toString(depth)))));
+        return result;
     }
     
-    String getSearchWhere(int depth) {
-        if (depth < 1)
-            return "";
-        else
-            return Templates.substitute(templates.nameWhereClause, "N" + depth, getSearchWhere(depth-1));
-    }
+    Query getNameQuery(QualifiedName name) {
+        if (name.isEmpty()) return Query.UNBOUNDED;
+        Query result = Query.from("parent", getNameQuery(name.parent)).intersect(Query.from("name", Range.like(name.part)));
+        return result;
+    }    
     
     String getNameExpression(int depth) {
         StringBuilder builder = new StringBuilder();
-        builder.append("N1.NAME");
-        for (int i = 2; i <= depth; i++)
-            builder.append(" || '/' || N").append(i).append(".NAME");
+        depth--;
+        builder.append("T").append(depth).append(".NAME");      
+        depth--;
+        for (int i = depth; i >= 0 ; i--)
+            builder.append(" || '/' || T").append(i).append(".NAME");
         return builder.toString();
     }
     
+    Query getDBFilterExpression(Iterable<QualifiedName> validFields, Query filter) {
+        return Streams.stream(validFields).reduce(Query.UNBOUNDED, (query, name) -> query.intersect(filter.getConstraint(name)), (query1, query2)->query1.intersect(query2));
+    }
+    
     String getInfoSQL(int depth) {
-        return Templates.substitute(templates.fetchInfoByPath, getNameExpression(depth), "N"+ depth, getSearchJoin(depth), getSearchWhere(depth));
+        return Templates.substitute(templates.fetchInfo, getNameExpression(depth), getParameterizedNameQuery(depth).toExpression(schema.getNodeFormatter()));
     }
     
     String getDocumentLinkSQL(int depth) {
-        return Templates.substitute(templates.fetchDocumentLinkByPath, getNameExpression(depth), "N"+ depth, getSearchJoin(depth), getSearchWhere(depth));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth), getParameterizedNameQuery(depth).toExpression(schema.getLinkFormatter()));
+    }
+    
+    String getDocumentSearchSQL(Query query, boolean searchHistory) {
+        query = getDBFilterExpression(schema.getDocumentFields(), query);
+        if (!searchHistory) query = query.intersect(Query.from("latest", Range.equals(JsonValue.TRUE)));
+        return Templates.substitute(templates.fetchDocument, query.toExpression(schema.getDocumentFormatter()));
+    }
+    
+    String getDocumentSearchHistorySQL(Query query) {
+        query = getDBFilterExpression(schema.getDocumentFields(), query);
+        query = query.intersect(Query.from("Id", Range.equals(Param.from("0"))));
+        return Templates.substitute(templates.fetchDocument, query.toExpression(schema.getDocumentFormatter()));
+    }
+    
+    Query getNameQuery(Id rootId, QualifiedName nameWithPatterns) {
+        if (nameWithPatterns.isEmpty()) return Query.from("id", Range.equals(Json.createValue(rootId.toString())));
+        return Query.from("parent", getNameQuery(rootId, nameWithPatterns.parent)).intersect(Query.from("name", Range.like(nameWithPatterns.part)));
+    }
+    
+    String searchDocumentLinkSQL(Id rootId, QualifiedName nameWithPatterns, Query filter) {
+        filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(getNameQuery(rootId, nameWithPatterns));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter()));
+    }
+    
+    String searchDocumentLinkSQL(Id rootId, QualifiedName nameWithPatterns, Id docId, Query filter) {
+        Query nameQuery = Query.from("parent", getNameQuery(rootId, nameWithPatterns))
+            .intersect(Query.from("id", Range.equals(Json.createValue(docId.toString()))));
+        filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(nameQuery);
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter()));
+    }
+    
+    String searchDocumentLinkSQL(QualifiedName nameWithPatterns, Id docId, Query filter) {
+        Query nameQuery = Query.from("parent", getNameQuery(nameWithPatterns))
+            .intersect(Query.from("id", Range.equals(Json.createValue(docId.toString()))));
+        filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(nameQuery);
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter()));
     }
 
     String getFolderSQL(int depth) {
-        return Templates.substitute(templates.fetchFolderByPath, getNameExpression(depth), "N"+ depth, getSearchJoin(depth), getSearchWhere(depth));
+        return Templates.substitute(templates.fetchFolder, getNameExpression(depth), getParameterizedNameQuery(depth).toExpression(schema.getFolderFormatter()));
+    }
+
+    String searchFolderSQL(Id rootId, QualifiedName nameWithPatterns, Query filter) {
+        filter = getDBFilterExpression(schema.getFolderFields(), filter).intersect(getNameQuery(rootId, nameWithPatterns));
+        return Templates.substitute(templates.fetchFolder, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getFolderFormatter()));
     }
 
     String getDocumentLinkByIdSQL(int depth) {
-        return Templates.substitute(templates.fetchDocumentLinkByPathAndId, getNameExpression(depth), getSearchJoin(depth-1), "N"+ depth, getSearchWhere(depth-1));
+        Query query = Query.from("parent", getParameterizedNameQuery(depth-1)).intersect(Query.from("id", Range.equals(Param.from(Integer.toString(depth)))));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth), query.toExpression(schema.getLinkFormatter()));
     }
 
     public Optional<QualifiedName> getPathTo(Id id) throws SQLException {
@@ -227,7 +288,7 @@ public class SQLAPI implements AutoCloseable {
     
     public void createDocument(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException, IOException {
         LOG.entry(mediaType, length, digest, metadata);
-        FluentStatement.of(operations.createDocument)
+        FluentStatement.of(operations.createVersion)
             .set(1, id)
             .set(2, version)
             .set(3, mediaType)
@@ -235,16 +296,34 @@ public class SQLAPI implements AutoCloseable {
             .set(5, digest)
             .set(6, out -> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(metadata); } })
             .execute(con);             
+        FluentStatement.of(operations.createDocument)
+            .set(1, id)
+            .set(2, version)
+            .execute(con);  
         LOG.exit();        
     }
 
     public <T> Optional<T> getDocument(Id id, Id version, Mapper<T> mapper) throws SQLException {
         LOG.entry(id, version , mapper);
+        Optional<T> result;
         if (version == null) {
-            return FluentStatement.of(operations.fetchLatestDocument).set(1, id).execute(con, mapper).findFirst();
+            result = FluentStatement.of(operations.fetchLatestDocument).set(1, id).execute(con, mapper).findFirst();
         } else {
-            return FluentStatement.of(operations.fetchDocument).set(1, id).set(2, version).execute(con, mapper).findFirst();
+            result = FluentStatement.of(operations.fetchDocument).set(1, id).set(2, version).execute(con, mapper).findFirst();
         }
+        return LOG.exit(result);
+    }
+    
+    public <T> Stream<T> getDocuments(Id id, Query query, Mapper<T> mapper) throws SQLException {
+        LOG.entry(id, query, mapper);
+        Stream<T> result = FluentStatement.of(getDocumentSearchHistorySQL(query)).set(1, id).execute(schema.datasource, mapper);
+        return LOG.exit(result);
+    }
+    
+    public <T> Stream<T> getDocuments(Query query, boolean searchHistory, Mapper<T> mapper) throws SQLException {
+        LOG.entry(query, searchHistory, mapper);
+        Stream<T> result = FluentStatement.of(getDocumentSearchSQL(query, searchHistory)).execute(schema.datasource, mapper);
+        return LOG.exit(result);
     }
     
     public <T> T createFolder(Id parentId, String name, Workspace.State state, JsonObject metadata, Mapper<T> mapper) throws SQLException {
@@ -261,50 +340,39 @@ public class SQLAPI implements AutoCloseable {
             .set(2, state.toString())
             .set(3, out -> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(metadata); } })
             .execute(con);
-        return LOG.exit(FluentStatement.of(operations.fetchFolderByName)
-            .set(1, parentId)
-            .set(2, name)
+        return LOG.exit(FluentStatement.of(this.getFolderSQL(1))
+            .set(1, name)
+            .set(2, parentId)
             .execute(con, mapper)
             .findFirst()
             .orElseThrow(()->new RuntimeException("returned no results"))
         );
     }
-        
-    public <T> Optional<T> getFolder(Id parentId, String name, Mapper<T> mapper) throws SQLException {
-        LOG.entry(parentId, name);
-        return LOG.exit(FluentStatement.of(operations.fetchFolderByName)
-            .set(1,parentId)
-            .set(2,name)
-            .execute(con, mapper)
-            .findFirst()
-        );
-    }
-    
+
     public <T> Optional<T> getFolder(Id parentId, QualifiedName name, Mapper<T> mapper) throws SQLException {
         LOG.entry(parentId, name);
         return LOG.exit(FluentStatement.of(getFolderSQL(name.size()))
-            .set(1,parentId)
-            .set(2,name)
+            .set(1,name)
+            .set(name.size()+1,parentId)
             .execute(con, mapper)
             .findFirst()
         );
     }
     
-    public <T> Optional<T> getInfo(Id parentId, String name, Mapper<T> mapper) throws SQLException {
-        LOG.entry(parentId, name);
-        return LOG.exit(FluentStatement.of(operations.fetchInfoByName)
-            .set(1, parentId)
-            .set(2, name)
-            .execute(con, mapper)
-            .findFirst()
+    public <T> Stream<T> getFolders(Id rootId, QualifiedName path, Query filter, Mapper<T> mapper) throws SQLException {
+        LOG.entry(rootId, path, mapper);
+        return LOG.exit(FluentStatement
+            .of(searchFolderSQL(rootId, path, filter))
+            .set(1, rootId)
+            .execute(schema.datasource, mapper)
         );
     }
-    
+        
     public <T> Optional<T> getInfo(Id rootId, QualifiedName name, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, name);
         return LOG.exit(FluentStatement.of(getInfoSQL(name.size()))
-            .set(1, rootId)
-            .set(2, name)
+            .set(1, name)
+            .set(name.size()+1, rootId)
             .execute(con, mapper)
             .findFirst()
         );
@@ -319,7 +387,7 @@ public class SQLAPI implements AutoCloseable {
     }
     
     public <T> Optional<T> getOrCreateFolder(Id parentId, String name, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidWorkspace {
-        Optional<T> folder = getFolder(parentId, name, mapper);
+        Optional<T> folder = getFolder(parentId, QualifiedName.of(name), mapper);
         if (!folder.isPresent() && optCreate)
             folder = Optional.of(createFolder(parentId, name, Workspace.State.Open, JsonObject.EMPTY_JSON_OBJECT, mapper));
         return folder;
@@ -328,6 +396,7 @@ public class SQLAPI implements AutoCloseable {
 
     
     public <T> Optional<T> getOrCreateFolder(Id rootId, QualifiedName path, boolean optCreate, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
+        LOG.entry(rootId, path, optCreate, mapper);
         Optional<Id> parentId = path.parent.isEmpty() 
             ? getFolder(rootId, QualifiedName.ROOT, GET_ID) 
             : getOrCreateFolder(rootId, path.parent, optCreate, GET_ID);
@@ -337,6 +406,7 @@ public class SQLAPI implements AutoCloseable {
     }
     
     public <T> T copyFolder(Id sourceId, QualifiedName sourcePath, Id targetId, QualifiedName targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidObjectName, InvalidWorkspace {
+        LOG.entry(sourceId, sourcePath, targetId, targetPath, optCreate, mapper);
         Id idSrc = getFolder(sourceId, sourcePath, GET_ID).orElseThrow(()->new InvalidObjectName(sourceId.toString(), sourcePath));
         Id folderId = targetPath.parent.isEmpty() 
             ? targetId
@@ -372,15 +442,16 @@ public class SQLAPI implements AutoCloseable {
             }
         }
         
-        return LOG.exit(FluentStatement.of(operations.fetchFolderByName)
-            .set(1, folderId)
-            .set(2, targetPath.part)
+        return LOG.exit(FluentStatement.of(getFolderSQL(1))
+            .set(1, targetPath.part)
+            .set(2, folderId)
             .execute(con, mapper)
             .findFirst()
             .orElseThrow(()->new RuntimeException("returned no results")));
     }
     
     public <T> T copyDocumentLink(Id sourceId, QualifiedName sourcePath, Id targetId, QualifiedName targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidObjectName, InvalidWorkspace {
+        LOG.entry(sourceId, sourcePath, targetId, targetPath, optCreate, mapper);
         Id idSrc = getDocumentLink(sourceId, sourcePath, GET_ID).orElseThrow(()->new InvalidObjectName(sourceId.toString(), sourcePath));
         Id folderId = targetPath.parent.isEmpty() 
             ? targetId
@@ -397,9 +468,9 @@ public class SQLAPI implements AutoCloseable {
             .set(1, id)
             .set(2, idSrc)
             .execute(con);
-        return LOG.exit(FluentStatement.of(operations.fetchLinkByName)
-            .set(1, folderId)
-            .set(2, targetPath.part)
+        return LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+            .set(1, targetPath.part)
+            .set(2, folderId)
             .execute(con, mapper)
             .findFirst()
             .orElseThrow(()->new RuntimeException("returned no results")));
@@ -421,9 +492,9 @@ public class SQLAPI implements AutoCloseable {
             .set(3, version)
             .set(4, true)
             .execute(con);
-        return LOG.exit(FluentStatement.of(operations.fetchLinkByName)
-            .set(1, folderId)
-            .set(2, name)
+        return LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+            .set(1, name)
+            .set(2, folderId)
             .execute(con, mapper)
             .findFirst()
             .orElseThrow(()->new RuntimeException("returned no results")));
@@ -437,16 +508,16 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> T updateDocumentLink(Id folderId, String name, Id docId, Id version, boolean optCreate, Mapper<T> mapper) throws InvalidObjectName, SQLException {
         LOG.entry(folderId, name, docId, version);
-        Optional<Info> info = getInfo(folderId, name, GET_INFO);
+        Optional<Info> info = getInfo(folderId, QualifiedName.of(name), GET_INFO);
         if (info.isPresent()) {
             FluentStatement.of(operations.updateLink)
                 .set(1, docId)
                 .set(2, version)
                 .set(3, info.get().id)
                 .execute(con);
-            return LOG.exit(FluentStatement.of(operations.fetchLinkByName)
-                .set(1, folderId)
-                .set(2, name)
+            return LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+                .set(1, name)
+                .set(2, folderId)
                 .execute(con, mapper)
                 .findFirst()
                 .orElseThrow(()->new RuntimeException("returned no results"))
@@ -462,16 +533,16 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> T updateFolder(Id folderId, String name, Workspace.State state, JsonObject metadata, boolean optCreate, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
         LOG.entry(folderId, name, state, metadata, optCreate);
-        Optional<Info> info = getInfo(folderId, name, GET_INFO);
+        Optional<Info> info = getInfo(folderId, QualifiedName.of(name), GET_INFO);
         if (info.isPresent()) {
             FluentStatement.of(operations.updateFolder)
                 .set(1, state.toString())
                 .set(2, metadata)
                 .set(3, info.get().id)
                 .execute(con);
-            return LOG.exit(FluentStatement.of(operations.fetchFolderByName)
-                .set(1, folderId)
-                .set(2, name)
+            return LOG.exit(FluentStatement.of(getFolderSQL(1))
+                .set(1, name)
+                .set(2, folderId)
                 .execute(con, mapper)
                 .findFirst()
                 .orElseThrow(()->new RuntimeException("returned no results"))
@@ -490,19 +561,8 @@ public class SQLAPI implements AutoCloseable {
         return LOG.exit(FluentStatement
             .of(getDocumentLinkByIdSQL(workspacePath.size()))
             .set(1, documentId)
-            .set(2, rootId)
-            .set(3, workspacePath)
-            .execute(con, mapper)
-            .findFirst()
-        );
-    }
-        
-    public <T> Optional<T> getDocumentLink(Id rootId, String name, Mapper<T> mapper) throws SQLException {
-        LOG.entry(rootId, name, mapper);
-        return LOG.exit(FluentStatement
-            .of(operations.fetchLinkByName)
-            .set(1, rootId)
-            .set(2,name)
+            .set(2, workspacePath)
+            .set(3, rootId)
             .execute(con, mapper)
             .findFirst()
         );
@@ -512,23 +572,38 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(rootId, path, mapper);
         return LOG.exit(FluentStatement
             .of(getDocumentLinkSQL(path.size()))
-            .set(1, rootId)
-            .set(2, path)
+            .set(1, path)
+            .set(path.size()+1, rootId)
             .execute(con, mapper)
             .findFirst()
         );
     }
-
-    public <T> Stream<T> getDocumentLinkById(Id rootId, String id, Mapper<T> mapper) throws SQLException {
-        LOG.entry(rootId, id, mapper);
+    
+    public <T> Stream<T> getDocumentLinks(Id rootId, QualifiedName path, Query filter, Mapper<T> mapper) throws SQLException {
+        LOG.entry(rootId, path, filter, mapper);
         return LOG.exit(FluentStatement
-            .of(operations.fetchLinkById)
+            .of(searchDocumentLinkSQL(rootId, path, filter))
             .set(1, rootId)
-            .set(2, id)
-            .execute(con, mapper)
+            .execute(schema.datasource, mapper)
         );
     }
     
+    public <T> Stream<T> getDocumentLinks(Id rootId, QualifiedName workspacePath, Id docId, Query filter, Mapper<T> mapper) throws SQLException {
+        LOG.entry(rootId, workspacePath, filter, mapper);
+        return LOG.exit(FluentStatement
+            .of(searchDocumentLinkSQL(rootId, workspacePath, docId, filter))
+            .set(1, rootId)
+            .execute(schema.datasource, mapper)
+        );
+    }
+
+    public <T> Stream<T> getDocumentLinks(QualifiedName workspacePath, Id docId, Query filter, Mapper<T> mapper) throws SQLException {
+        LOG.entry(workspacePath, filter, mapper);
+        return LOG.exit(FluentStatement
+            .of(searchDocumentLinkSQL(workspacePath, docId, filter))
+            .execute(schema.datasource, mapper)
+        );
+    }
     public void deleteObject(Id rootId, QualifiedName path) throws SQLException, InvalidObjectName {
         LOG.entry(rootId, path);
         Id objectId = getInfo(rootId, path, GET_ID).orElseThrow(()->new InvalidObjectName(rootId.toString(), path));

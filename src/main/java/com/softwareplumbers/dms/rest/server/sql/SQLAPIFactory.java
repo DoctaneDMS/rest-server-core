@@ -19,16 +19,16 @@ public class SQLAPIFactory {
     
     private final Operations operations;
     private final Templates templates;
-    private final DataSource datasource;
+    private final Schema schema;
     
-    public SQLAPIFactory(Operations operations, Templates templates, DataSource datasource) {
+    public SQLAPIFactory(Operations operations, Templates templates, Schema schema) {
         this.operations = operations;
         this.templates = templates;
-        this.datasource = datasource;
+        this.schema = schema;
     }
     
     public SQLAPI getSQLAPI() throws SQLException {
-        return new SQLAPI(operations, templates, datasource);
+        return new SQLAPI(operations, templates, schema);
     }
     
 }

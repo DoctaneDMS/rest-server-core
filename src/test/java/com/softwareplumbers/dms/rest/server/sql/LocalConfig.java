@@ -28,12 +28,11 @@ public class LocalConfig {
     @Autowired private ApplicationContext applicationContext;
     
     @Bean
-    @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
     public SQLAPIFactory apiFactory() {
         return new SQLAPIFactory(
             applicationContext.getBean(Operations.class),
             applicationContext.getBean(Templates.class),
-            datasource()
+            applicationContext.getBean(Schema.class)
         );
     }
     

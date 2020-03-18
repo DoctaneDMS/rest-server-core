@@ -11,15 +11,16 @@
     
     <context:annotation-config />
     
-    <bean class="com.softwareplumbers.dms.rest.server.sql.Schema">
+    <bean class="com.softwareplumbers.dms.rest.server.sql.Schema" scope="singleton">
         
         <property name="DropScript" >
             <value>
                 DROP VIEW IF EXISTS VIEW_FOLDERS;
                 DROP VIEW IF EXISTS VIEW_LINKS;
-                DROP VIEW IF EXISTS LATEST_DOCUMENTS;
+                DROP VIEW IF EXISTS VIEW_DOCUMENTS;
                 DROP TABLE IF EXISTS FOLDERS;
                 DROP TABLE IF EXISTS DOCUMENTS;
+                DROP TABLE IF EXISTS VERSIONS;
                 DROP TABLE IF EXISTS LINKS;
                 DROP TABLE IF EXISTS NODES;
             </value>
@@ -38,13 +39,18 @@
                 CREATE TABLE LINKS (
                     ID UUID PRIMARY KEY,
                     DOCUMENT_ID UUID,
-                    DOCUMENT_VERSION UUID,
+                    VERSION_ID UUID,
                     VERSIONED BOOLEAN
                 );
+                
+                CREATE TABLE DOCUMENTS(
+                    ID UUID PRIMARY KEY,
+                    LATEST_VERSION UUID
+                );
 
-                CREATE TABLE DOCUMENTS (
-                    ID UUID,
-                    VERSION UUID PRIMARY KEY,
+                CREATE TABLE VERSIONS (
+                    DOCUMENT_ID UUID,
+                    ID UUID PRIMARY KEY,
                     MEDIA_TYPE VARCHAR(255),
                     LENGTH BIGINT,
                     DIGEST BINARY(32),
@@ -58,49 +64,47 @@
                     METADATA CLOB
                 );
 
-                CREATE VIEW LATEST_DOCUMENTS AS SELECT
-                    D1.ID AS ID,
-                    D1.VERSION AS VERSION,
-                    D1.MEDIA_TYPE AS MEDIA_TYPE,
-                    D1.LENGTH AS LENGTH,
-                    D1.DIGEST AS DIGEST,
-                    D1.CREATED AS CREATED,
-                    D1.METADATA AS METADATA
-                FROM
-                    DOCUMENTS D1
-                WHERE
-                    D1.CREATED = (
-                        SELECT 
-                            MAX(CREATED) 
-                        FROM 
-                            DOCUMENTS D2
-                        WHERE
-                            D1.ID = D2.ID             
-                    );
+
             </value>
         </property>
         
         <property name="UpdateScript">
-            <value>           
+            <value>
+                
+                CREATE OR REPLACE VIEW VIEW_DOCUMENTS AS SELECT
+                    VERSIONS.DOCUMENT_ID AS ID,
+                    VERSIONS.ID AS VERSION_ID,
+                    VERSIONS.MEDIA_TYPE AS MEDIA_TYPE,
+                    VERSIONS.LENGTH AS LENGTH,
+                    VERSIONS.DIGEST AS DIGEST,
+                    VERSIONS.CREATED AS CREATED,
+                    VERSIONS.METADATA AS METADATA,                    
+                    NVL2(DOCUMENTS.ID,FALSE,TRUE) AS LATEST
+                FROM
+                    VERSIONS
+                LEFT JOIN
+                    DOCUMENTS ON (VERSIONS.ID = DOCUMENTS.LATEST_VERSION)
+                ;
+                           
                 CREATE OR REPLACE VIEW VIEW_LINKS AS SELECT
                     NODES.ID AS ID,
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
                     LINKS.VERSIONED AS VERSIONED,
-                    DOCUMENTS.ID AS DOCUMENT_ID,
-                    DOCUMENTS.VERSION AS DOCUMENT_VERSION,
-                    DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
-                    DOCUMENTS.LENGTH AS LENGTH,
-                    DOCUMENTS.DIGEST AS DIGEST,
-                    DOCUMENTS.CREATED AS DOCUMENT_CREATED,
-                    DOCUMENTS.METADATA AS METADATA
+                    VERSIONS.DOCUMENT_ID AS DOCUMENT_ID,
+                    VERSIONS.ID AS VERSION_ID,
+                    VERSIONS.MEDIA_TYPE AS MEDIA_TYPE,
+                    VERSIONS.LENGTH AS LENGTH,
+                    VERSIONS.DIGEST AS DIGEST,
+                    VERSIONS.CREATED AS DOCUMENT_CREATED,
+                    VERSIONS.METADATA AS METADATA
                 FROM
                     NODES 
                 INNER JOIN
                     LINKS ON (NODES.ID = LINKS.ID)
                 INNER JOIN
-                    DOCUMENTS ON (LINKS.DOCUMENT_VERSION = DOCUMENTS.VERSION)
+                    VERSIONS ON (LINKS.VERSION_ID = VERSIONS.ID)
                 WHERE
                     LINKS.VERSIONED = TRUE
                 UNION ALL SELECT
@@ -109,21 +113,21 @@
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
                     LINKS.VERSIONED AS VERSIONED,
-                    LATEST_DOCUMENTS.ID AS DOCUMENT_ID,
-                    LATEST_DOCUMENTS.VERSION AS DOCUMENT_VERSION,
-                    LATEST_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
-                    LATEST_DOCUMENTS.LENGTH AS LENGTH,
-                    LATEST_DOCUMENTS.DIGEST AS DIGEST,
-                    LATEST_DOCUMENTS.CREATED AS DOCUMENT_CREATED,
-                    LATEST_DOCUMENTS.METADATA AS METADATA
+                    VIEW_DOCUMENTS.ID AS DOCUMENT_ID,
+                    VIEW_DOCUMENTS.VERSION_ID AS VERSION_ID,
+                    VIEW_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
+                    VIEW_DOCUMENTS.LENGTH AS LENGTH,
+                    VIEW_DOCUMENTS.DIGEST AS DIGEST,
+                    VIEW_DOCUMENTS.CREATED AS DOCUMENT_CREATED,
+                    VIEW_DOCUMENTS.METADATA AS METADATA
                 FROM
                     NODES 
                 INNER JOIN
                     LINKS ON (NODES.ID = LINKS.ID)
                 INNER JOIN
-                    LATEST_DOCUMENTS ON (LINKS.DOCUMENT_ID = LATEST_DOCUMENTS.ID)
+                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.ID)
                 WHERE
-                    LINKS.VERSIONED = FALSE
+                    LINKS.VERSIONED = FALSE AND VIEW_DOCUMENTS.LATEST = TRUE
                 ;
 
                 CREATE OR REPLACE VIEW VIEW_FOLDERS AS SELECT
@@ -162,108 +166,16 @@
         </property>
         
         <property name="FetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE ID=? AND NAME LIKE ?"/>
-        <property name="FetchInfoByName" value="SELECT ID, PARENT_ID, NAME, TYPE, DELETED FROM NODES WHERE PARENT_ID=? AND NAME = ?"/>
 
-        <property name="FetchLinkByName">
-            <value>
-                SELECT 
-                    ID, 
-                    PARENT_ID,
-                    NAME,
-                    DELETED, 
-                    VERSIONED, 
-                    DOCUMENT_ID, 
-                    DOCUMENT_VERSION,
-                    DOCUMENT_CREATED,
-                    MEDIA_TYPE,
-                    LENGTH,
-                    DIGEST,
-                    METADATA,
-                    NAME AS PATH,
-                FROM
-                    VIEW_LINKS
-                WHERE
-                    PARENT_ID = ?
-                AND
-                    NAME = ?
-            </value>
-        </property>
-        <property name="FetchLinkById">
-            <value>
-                SELECT 
-                    ID, 
-                    PARENT_ID,
-                    NAME,
-                    DELETED, 
-                    VERSIONED, 
-                    DOCUMENT_ID, 
-                    DOCUMENT_VERSION,
-                    DOCUMENT_CREATED,
-                    MEDIA_TYPE,
-                    LENGTH,
-                    DIGEST,
-                    METADATA
-                FROM
-                    VIEW_LINKS
-                WHERE
-                    DOCUMENT_ID = ?
-            </value>
-        </property>        
-        <property name="FetchFolderByName">
-            <value>
-                SELECT 
-                    ID, 
-                    PARENT_ID,
-                    NAME,
-                    DELETED, 
-                    STATE,
-                    METADATA,
-                    NAME AS PATH
-                FROM
-                    VIEW_FOLDERS
-                WHERE
-                    PARENT_ID = ?
-                AND
-                    NAME = ?
-            </value>
-        </property>
-        <property name="FetchLatestDocument">
-            <value>
-                SELECT 
-                    ID, 
-                    VERSION,
-                    CREATED,
-                    MEDIA_TYPE,
-                    LENGTH,
-                    DIGEST,
-                    METADATA
-                FROM
-                    LATEST_DOCUMENTS
-                WHERE
-                    ID = ?
-            </value>
-        </property>
-        <property name="FetchDocument">
-            <value>
-                SELECT 
-                    ID, 
-                    VERSION,
-                    CREATED,
-                    MEDIA_TYPE,
-                    LENGTH,
-                    DIGEST,
-                    METADATA
-                FROM
-                    DOCUMENTS
-                WHERE
-                    ID = ?
-                AND VERSION = ?
-            </value>
-        </property>
         <property name="CreateDocument">
             <value>
-                INSERT INTO DOCUMENTS 
-                    (ID, VERSION, MEDIA_TYPE, LENGTH, DIGEST, METADATA, CREATED) 
+                INSERT INTO DOCUMENTS (ID, LATEST_VERSION) VALUES (?,?)
+            </value>
+        </property>
+        <property name="CreateVersion">
+            <value>
+                INSERT INTO VERSIONS 
+                    (DOCUMENT_ID, ID, MEDIA_TYPE, LENGTH, DIGEST, METADATA, CREATED) 
                 VALUES (?,?,?,?,?,?, CURRENT_TIMESTAMP)
             </value>
         </property>
@@ -291,22 +203,26 @@
         
         <property name="CreateLink">
             <value>
-                INSERT INTO LINKS (ID, DOCUMENT_ID, DOCUMENT_VERSION, VERSIONED) VALUES (?,?,?,?)
+                INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) VALUES (?,?,?,?)
             </value>
         </property>
         
         <property name="CopyLink">
             <value>
-                INSERT INTO LINKS (ID, DOCUMENT_ID, DOCUMENT_VERSION, VERSIONED) 
-                SELECT ?, DOCUMENT_ID, DOCUMENT_VERSION, VERSIONED
+                INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
+                SELECT ?, DOCUMENT_ID, VERSION_ID, VERSIONED
                 FROM LINKS
                 WHERE ID = ?                
             </value>
         </property>
-        
+        <property name="UpdateDocument">
+            <value>
+                UPDATE DOCUMENTS SET VERSION_ID = ? WHERE ID = ?
+            </value>
+        </property>        
         <property name="UpdateLink">
             <value>
-                UPDATE LINKS SET DOCUMENT_ID=?, DOCUMENT_VERSION=?, VERSIONED=? WHERE LINKS.ID=?
+                UPDATE LINKS SET DOCUMENT_ID=?, VERSION_ID=?, VERSIONED=? WHERE LINKS.ID=?
             </value>
         </property>
         
@@ -350,80 +266,63 @@
 
     </bean>
     
-    <bean class="com.softwareplumbers.dms.rest.server.sql.Templates" scope="singleton">
-        <property name="FetchDocumentLinkByPath">
+    <bean class="com.softwareplumbers.dms.rest.server.sql.Templates" scope="singleton"> 
+        <property name="FetchDocumentLink">
             <value>
             SELECT 
-                !{1}.ID, 
-                !{1}.PARENT_ID,
-                !{1}.NAME,
-                !{1}.DELETED, 
-                !{1}.VERSIONED, 
-                !{1}.DOCUMENT_ID, 
-                !{1}.DOCUMENT_VERSION,
-                !{1}.DOCUMENT_CREATED,
-                !{1}.MEDIA_TYPE,
-                !{1}.LENGTH,
-                !{1}.DIGEST,
-                !{1}.METADATA,
+                T0.ID, 
+                T0.PARENT_ID,
+                T0.NAME,
+                T0.DELETED, 
+                T0.VERSIONED, 
+                T0.DOCUMENT_ID, 
+                T0.VERSION_ID,
+                T0.DOCUMENT_CREATED,
+                T0.MEDIA_TYPE,
+                T0.LENGTH,
+                T0.DIGEST,
+                T0.METADATA,
                 !{0} AS PATH
-            FROM
-                VIEW_LINKS !{1} !{2} 
-            WHERE N1.PARENT_ID = ? !{3}
+            !{1}
             </value>
         </property>
-        <property name="FetchFolderByPath">
-            <value>
-            SELECT 
-                !{1}.ID, 
-                !{1}.PARENT_ID,
-                !{1}.NAME,
-                !{1}.DELETED, 
-                !{1}.STATE,
-                !{1}.METADATA,
-                !{0} AS PATH
-            FROM
-                VIEW_FOLDERS !{1} !{2} 
-            WHERE N1.PARENT_ID = ? !{3}
-            </value>
-        </property>
-        <property name="FetchInfoByPath">
+        <property name="FetchFolder">
             <value>
                 SELECT 
-                    !{1}.ID, 
-                    !{1}.PARENT_ID,
-                    !{1}.NAME,
-                    !{1}.DELETED, 
-                    !{1}.TYPE,
+                    T0.ID, 
+                    T0.PARENT_ID,
+                    T0.NAME,
+                    T0.DELETED, 
+                    T0.STATE,
+                    T0.METADATA,
                     !{0} AS PATH
-                FROM
-                    NODES !{1} !{2} 
-                WHERE N1.PARENT_ID = ? !{3}
+                !{1}
             </value>
         </property>
-        <property name="JoinParentNode" value="INNER JOIN NODES !{1} ON !{0}.PARENT_ID = !{1}.ID !{2}"/>
-        <property name="NameWhereClause" value="AND !{0}.NAME = ? !{1}"/>
-        <property name="FetchDocumentLinkByPathAndId">
+        <property name="FetchInfo">
             <value>
-            SELECT 
-                ID, 
-                PARENT_ID,
-                NAME,
-                DELETED, 
-                VERSIONED, 
-                DOCUMENT_ID, 
-                DOCUMENT_VERSION,
-                DOCUMENT_CREATED,
-                MEDIA_TYPE,
-                LENGTH,
-                DIGEST,
-                METADATA,
-                !{0} || '/' || NAME AS PATH
-            FROM
-                VIEW_LINKS
-            INNER JOIN (!{1}) ON VIEW_LINKS.PARENT_ID = !{2}.ID 
-            WHERE (!{3}) AND VIEW_LINKS.DOCUMENT_ID = ?         
-            </value>   
+                SELECT 
+                    T0.ID, 
+                    T0.PARENT_ID,
+                    T0.NAME,
+                    T0.DELETED, 
+                    T0.TYPE,
+                    !{0} AS PATH
+                !{1}
+            </value>
+        </property>
+        <property name="FetchDocument">
+            <value>
+                SELECT 
+                    ID, 
+                    VERSION_ID,
+                    CREATED,
+                    MEDIA_TYPE,
+                    LENGTH,
+                    DIGEST,
+                    METADATA
+                !{0}
+            </value>
         </property>
     </bean>
 

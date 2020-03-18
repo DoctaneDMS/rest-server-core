@@ -932,7 +932,7 @@ public class TempRepositoryServerTest {
     public void testListWorkspaces() throws IOException, ParseException {
         JsonObject response1 = putDocument("test2", "/ws/tmp/wsname2/doc2", "txt");
         String docId = response1.getString("id");
-        putDocumentLink("/ws/tmp/anotherws2/myDoc", docId, UpdateType.CREATE);
+        putDocumentLink("/ws/tmp/anotherws8/myDoc", docId, UpdateType.CREATE);
         JsonArray result = getDocumentJson(docId, "workspaces", JsonArray.class);
         assertEquals(2, result.size());
     }
