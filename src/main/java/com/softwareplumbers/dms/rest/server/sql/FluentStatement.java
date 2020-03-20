@@ -12,6 +12,7 @@ import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.json.Json;
@@ -97,6 +98,16 @@ public abstract class FluentStatement {
             statement.setBytes(index, value);
         } 
     }
+    
+    private static class IdParam extends Param<Id> {
+        public IdParam(FluentStatement base, int index, Id value) { super(base, index, value); }
+        @Override
+        protected void buildStatement(PreparedStatement statement) throws SQLException {
+            base.buildStatement(statement);
+            LOG.debug("setting param {} to {}", index, value);
+            statement.setBytes(index, value.getBytes());
+        } 
+    }
 
     private static class ClobParam extends Param<Consumer<Writer>> {
         public ClobParam(FluentStatement base, int index, Consumer<Writer> value) { super(base, index, value); }
@@ -163,6 +174,6 @@ public abstract class FluentStatement {
     public FluentStatement set(int index, byte[] value) { return new BinaryParam(this, index, value); }
     public FluentStatement set(int index, Consumer<Writer> value) { return new ClobParam(this, index, value); }
     public FluentStatement set(int index, QualifiedName name) { return name.isEmpty() ? this : set(index+1, name.parent).set(index, name.part); }
-    public FluentStatement set(int index, Id id) { return new BinaryParam(this, index, id.getBytes()); }
+    public FluentStatement set(int index, Id id) { return new IdParam(this, index, id); }
     public FluentStatement set(int index, JsonObject value) { return new ClobParam(this, index, out-> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(value);} }); }
 }

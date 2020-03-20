@@ -96,7 +96,7 @@ public class TestSQLAPI {
         try (SQLAPI api = factory.getSQLAPI()) {
             String l0 = api.getInfoSQL(0);
             System.out.println(l0);
-            assertTrue(l0.contains("T0.NAME AS PATH"));
+            assertTrue(l0.contains("'/' AS PATH"));
             assertTrue(l0.contains("NODES T0"));
             assertTrue(l0.contains("WHERE T0.ID=?"));
             String l1 = api.getInfoSQL(1);

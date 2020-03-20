@@ -24,6 +24,7 @@ import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import com.softwareplumbers.dms.common.impl.StreamInfo;
 import com.softwareplumbers.dms.rest.server.model.MetadataMerge;
+import com.softwareplumbers.dms.rest.server.sql.SQLAPI.Timestamped;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,9 +32,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Timestamp;
+import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -148,9 +154,11 @@ public class SQLRepositoryService implements RepositoryService {
                 } else {
                     linkDocument(replacing, version);
                 }
-
-                db.createDocument(new Id(id), version, mediaType, length, digest, metadata);
+                Id docId = new Id(id);
+                db.createVersion(docId, version, mediaType, length, digest, metadata);
                 db.commit();
+            } else {
+                throw LOG.throwing(new Exceptions.InvalidDocumentId(id));
             }
         } catch (SQLException e) {
             maybeDestroyDocument(version);
@@ -464,9 +472,16 @@ public class SQLRepositoryService implements RepositoryService {
              
             if (existing.isPresent()) {
                 Workspace existingWorkspace = existing.get();
+                Id folderId = Id.of(existingWorkspace.getId());
                 state = state == null ? existingWorkspace.getState() : state;
+                if (!state.equals(existingWorkspace.getState())) {
+                    switch (state) {
+                        case Open: db.unlockVersions(folderId);
+                        default: db.lockVersions(folderId);
+                    }
+                }
                 metadata = MetadataMerge.merge(existingWorkspace.getMetadata(), metadata);
-                Workspace result = db.updateFolder(Id.of(existingWorkspace.getId()), state, metadata, rs->SQLAPI.getWorkspace(rs, existingWorkspace.getName().parent))
+                Workspace result = db.updateFolder(folderId, state, metadata, rs->SQLAPI.getWorkspace(rs, existingWorkspace.getName().parent))
                     .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path)));
                 db.commit();           
                 return LOG.exit(result);
@@ -607,8 +622,27 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {            
-            Stream<Document> docs = db.getDocuments(query, searchHistory, SQLAPI.GET_DOCUMENT)
-                .filter(link->query.containsItem(link.toJson(this,0,1)));
+            Stream<Document> docs;
+            if (searchHistory) {
+                // Unfortunately this is supposed to return the most recent matching doc,
+                // and since we don't plan to convert all metadata into database columns,
+                // we can't do this until AFTER the filter operation is applied to the stream.
+                final Comparator<Timestamped<Document>> SORT = (ta,tb)->ta.timestamp.compareTo(tb.timestamp);
+                final Function<Timestamped<Document>,String> GROUP = t->t.value.getId();
+                try (Stream<Timestamped<Document>> versions = db.getDocuments(query, true, SQLAPI.getTimestamped(SQLAPI.GET_DOCUMENT))) {
+                    docs = versions
+                        .filter(ts->query.containsItem(ts.value.toJson(this,0,1)))
+                        .collect(Collectors.groupingBy(GROUP, Collectors.maxBy(SORT)))
+                        .values()
+                        .stream()
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .map(ts->ts.value);
+                }
+            } else {
+                docs = db.getDocuments(query, searchHistory, SQLAPI.GET_DOCUMENT)
+                    .filter(link->query.containsItem(link.toJson(this,0,1)));
+            }
             return LOG.exit(docs);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -624,7 +658,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, workspacePath, Id.of(documentId), query, rs->SQLAPI.getLink(rs, baseName.addAll(workspacePath)))
+            Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, workspacePath, Id.of(documentId), query, rs->SQLAPI.getLink(rs, baseName))
                 .filter(link->query.containsItem(link.toJson(this,0,1)))
                 .map(NamedRepositoryObject.class::cast);
             return LOG.exit(links);
@@ -669,7 +703,7 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {            
             Stream<Document> docs = db.getDocuments(Id.ofDocument(reference.id), query, SQLAPI.GET_DOCUMENT)
-                .filter(link->query.containsItem(link.toJson(this,0,1)));
+                .filter(link->query.containsItem(link.toJson(this,1,0)));
             return LOG.exit(docs);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -712,7 +746,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Workspace workspace = db.getFolder(Id.of(rootId), path, rs->SQLAPI.getWorkspace(rs, baseName.addAll(path.parent)))
+            Workspace workspace = db.getFolder(Id.of(rootId), path, rs->SQLAPI.getWorkspace(rs, baseName))
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path));
             return LOG.exit(workspace);
         } catch (SQLException e) {
@@ -726,8 +760,11 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Stream<DocumentLink> links = db.getDocumentLinks(pathFilter, Id.of(documentId), filter, db::getLink)
-                .filter(link->filter.containsItem(link.toJson(this,0,1)));
+            Id id = Id.ofDocument(documentId);
+            Document document = db.getDocument(id, Id.ROOT_ID, SQLAPI.GET_DOCUMENT)
+                .orElseThrow(()->LOG.throwing(new Exceptions.InvalidDocumentId(documentId)));
+            Stream<DocumentLink> links = db.getDocumentLinks(pathFilter, id, filter, db::getLink)
+                .filter(link->filter.containsItem(link.toJson(this,1,0)));
             return LOG.exit(links);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));

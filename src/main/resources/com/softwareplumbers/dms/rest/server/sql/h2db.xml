@@ -79,7 +79,7 @@
                     VERSIONS.DIGEST AS DIGEST,
                     VERSIONS.CREATED AS CREATED,
                     VERSIONS.METADATA AS METADATA,                    
-                    NVL2(DOCUMENTS.ID,FALSE,TRUE) AS LATEST
+                    NVL2(DOCUMENTS.ID,TRUE,FALSE) AS LATEST
                 FROM
                     VERSIONS
                 LEFT JOIN
@@ -97,7 +97,7 @@
                     VERSIONS.MEDIA_TYPE AS MEDIA_TYPE,
                     VERSIONS.LENGTH AS LENGTH,
                     VERSIONS.DIGEST AS DIGEST,
-                    VERSIONS.CREATED AS DOCUMENT_CREATED,
+                    VERSIONS.CREATED AS CREATED,
                     VERSIONS.METADATA AS METADATA
                 FROM
                     NODES 
@@ -118,7 +118,7 @@
                     VIEW_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
                     VIEW_DOCUMENTS.LENGTH AS LENGTH,
                     VIEW_DOCUMENTS.DIGEST AS DIGEST,
-                    VIEW_DOCUMENTS.CREATED AS DOCUMENT_CREATED,
+                    VIEW_DOCUMENTS.CREATED AS CREATED,
                     VIEW_DOCUMENTS.METADATA AS METADATA
                 FROM
                     NODES 
@@ -221,7 +221,7 @@
         </property>
         <property name="UpdateDocument">
             <value>
-                UPDATE DOCUMENTS SET VERSION_ID = ? WHERE ID = ?
+                UPDATE DOCUMENTS SET LATEST_VERSION = ? WHERE ID = ?
             </value>
         </property>        
         <property name="UpdateLink">
@@ -233,6 +233,35 @@
         <property name="UpdateFolder">
             <value>
                 UPDATE FOLDERS SET STATE=?, METADATA=? WHERE FOLDERS.ID=?
+            </value>
+        </property>
+        
+        <property name="LockVersions">
+            <value>
+                UPDATE LINKS 
+                SET VERSIONED=TRUE, 
+                    VERSION_ID=(
+                        SELECT LATEST_VERSION 
+                        FROM DOCUMENTS 
+                        WHERE DOCUMENTS.ID=LINKS.DOCUMENT_ID
+                    ) 
+                WHERE LINKS.ID IN (
+                    SELECT NODES.ID 
+                    FROM NODES 
+                    WHERE NODES.PARENT_ID=?
+                )
+            </value>
+        </property>
+        
+        <property name="UnlockVersions">
+            <value>
+                UPDATE LINKS 
+                SET VERSIONED=FALSE 
+                WHERE LINKS.ID IN (
+                    SELECT NODES.ID 
+                    FROM NODES 
+                    WHERE NODES.PARENT_ID=?
+                )
             </value>
         </property>
         
@@ -281,7 +310,7 @@
                 T0.VERSIONED, 
                 T0.DOCUMENT_ID, 
                 T0.VERSION_ID,
-                T0.DOCUMENT_CREATED,
+                T0.CREATED,
                 T0.MEDIA_TYPE,
                 T0.LENGTH,
                 T0.DIGEST,

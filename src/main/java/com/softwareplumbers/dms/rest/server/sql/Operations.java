@@ -31,6 +31,8 @@ public class Operations {
     public String updateDocument;
     public String copyFolder;
     public String copyLink;
+    public String lockVersions;
+    public String unlockVersions;
 
     public void setCreateDocument(String sql) {
         createDocument = sql;
@@ -92,6 +94,14 @@ public class Operations {
         deleteDocumentById = sql;
     }    
 
+    public void setUnlockVersions(String sql) {
+        unlockVersions = sql;
+    }
+    
+    public void setLockVersions(String sql) {
+        lockVersions = sql;
+    }
+    
     @Autowired
     public Operations(Templates templates) {
         fetchLatestDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE ID=? AND LATEST=TRUE");
