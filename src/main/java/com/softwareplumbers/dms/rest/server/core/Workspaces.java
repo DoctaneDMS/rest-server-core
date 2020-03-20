@@ -237,34 +237,40 @@ public class Workspaces {
 
             // Might we return multiple results?
             if (!workspacePath.queryPath.isEmpty() || workspacePath.queryPart || workspacePath.documentId != null) {
-                Stream<NamedRepositoryObject> results;
                 Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, workspacePath.rootId, workspacePath.staticPath);
                 Query combinedConstraint = accessConstraint.intersect(filterConstraint);
                 QualifiedName fullPath = workspacePath.staticPath.addAll(workspacePath.queryPath);
                 Options.Search.Builder options = Options.Search.EMPTY
                     .addOptionIf(Options.SEARCH_OLD_VERSIONS, false)
                     .addOption(Options.PART, workspacePath.partPath);
+                
+                Stream<NamedRepositoryObject> results;
                 if (workspacePath.documentId != null) {
-                    results = service.listWorkspaces(workspacePath.documentId, fullPath, combinedConstraint, options.build())
-                        .map(item->(NamedRepositoryObject)item);
+                    Stream<DocumentLink> links = service.listWorkspaces(workspacePath.documentId, fullPath, combinedConstraint, options.build());
+                    results = links.map(item->(NamedRepositoryObject)item); // .onClose(()->links.close()) NO DOCUMENTATION as to whether this is necessary or not.
                 } else {
                     results = service.catalogueByName(workspacePath.rootId, fullPath, combinedConstraint, options.build());
                 }
-                if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE || requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
-                    // Ah, BUT the client explicitly requested multipart or XML. This means they really wanted a single result.
-                    // Let's do the best we can and return the first valid response
-                    Optional<NamedRepositoryObject> item = results.findFirst();
-                    if (item.isPresent())
-                        return LOG.exit(createResponse(service, workspacePath, requestedMediaType, item.get()));
-                    else
-                        return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
-                        
-                } else {
-                    JsonArrayBuilder response = Json.createArrayBuilder();
-                    results.forEach(item -> response.add(item.toJson(service, 1, 0)));
-                    JsonArray responseObj = response.build();
-                    LOG.debug("response: {}", responseObj);
-                    return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
+                
+                try {
+                    if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE || requestedMediaType == MediaType.APPLICATION_XHTML_XML_TYPE) {
+                        // Ah, BUT the client explicitly requested multipart or XML. This means they really wanted a single result.
+                        // Let's do the best we can and return the first valid response
+                        Optional<NamedRepositoryObject> item = results.findFirst();
+                        if (item.isPresent())
+                            return LOG.exit(createResponse(service, workspacePath, requestedMediaType, item.get()));
+                        else
+                            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.objectNotFound(repository, workspacePath)));
+
+                    } else {
+                        JsonArrayBuilder response = Json.createArrayBuilder();
+                        results.forEach(item -> response.add(item.toJson(service, 1, 0)));
+                        JsonArray responseObj = response.build();
+                        LOG.debug("response: {}", responseObj);
+                        return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(responseObj).build());
+                    }
+                } finally {
+                    results.close();
                 }
             } else {  
                 // Path has no wildcards, so we are returning at most one object
@@ -331,9 +337,11 @@ public class Workspaces {
             Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, null, QualifiedName.ROOT);
 
             JsonArrayBuilder result = Json.createArrayBuilder();
-            service.listWorkspaces(documentId, null, accessConstraint)
-                .map(DocumentLink::toJson)
+            
+            try (Stream<DocumentLink> rs = service.listWorkspaces(documentId, null, accessConstraint)) {
+                rs.map(DocumentLink::toJson)
                 .forEach(value -> result.add(value));
+            }
             
             //TODO: must be able to do this in a stream somehow.
             return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());

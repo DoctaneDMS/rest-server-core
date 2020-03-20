@@ -37,6 +37,7 @@ test {
 	systemProperties = System.properties
     systemProperty "doctane.keystore.password", propValue("keystorePassword", "changeme")
     systemProperty "spring.profiles.active", "test"
+    systemProperty "spring.datasource.hikari.maximum-pool-size", 20
 	testLogging {
         events "passed", "skipped", "failed"
     }
@@ -138,7 +139,7 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-logging")
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
-    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.23'
+    compile group: 'com.softwareplumbers.oss', name:'abstract-query-java', version:'0.2.25'
     compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.11'
     compile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'

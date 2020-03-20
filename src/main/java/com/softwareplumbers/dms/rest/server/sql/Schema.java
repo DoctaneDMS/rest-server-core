@@ -73,7 +73,8 @@ public class Schema {
     
     private static final List<QualifiedName> NODE_FIELDS = fieldList(
         QualifiedName.of("parentId"),
-        QualifiedName.of("name")
+        QualifiedName.of("name"),
+        QualifiedName.of("deleted")
     );
 
     private static final List<QualifiedName> FOLDER_FIELDS = fieldList(NODE_FIELDS,
@@ -85,7 +86,8 @@ public class Schema {
     
     private static final Map<QualifiedName, String> NODE_NAME_MAP = nameMap(
         mapEntry("PARENT_ID", "parentId"),
-        mapEntry("NAME", "name")
+        mapEntry("NAME", "name"),
+        mapEntry("DELETED", "deleted")
     );
     
     private static final Map<QualifiedName, String> FOLDER_NAME_MAP = nameMap(NODE_NAME_MAP,
@@ -104,7 +106,7 @@ public class Schema {
 
     private static final Map<QualifiedName, String> LINK_NAME_MAP = nameMap(NODE_NAME_MAP,
         mapEntry("DOCUMENT_ID", "id"),
-        mapEntry("DOCUMENT_VERSION", "version"),
+        mapEntry("VERSION_ID", "version"),
         mapEntry("MEDIA_TYPE", "mediaType"),
         mapEntry("DIGEST", "digest"),
         mapEntry("LENGTH", "length")
@@ -124,6 +126,7 @@ public class Schema {
     
     private static final String mapNodeName(QualifiedName qname) {
         if (qname.isEmpty()) return "NODES";
+        if (qname.equals(QualifiedName.of("id"))) return "ID";
         if (qname.get(0).equals("parent")) return mapFolderName(qname.rightFromStart(1));
         return NODE_NAME_MAP.get(qname);        
     }

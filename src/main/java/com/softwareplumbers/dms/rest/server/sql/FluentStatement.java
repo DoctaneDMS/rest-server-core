@@ -28,6 +28,7 @@ import org.slf4j.ext.XLoggerFactory;
 public abstract class FluentStatement {
     
     private static final XLogger LOG = XLoggerFactory.getXLogger(FluentStatement.class);
+    private String objectId(Object obj) { return Integer.toHexString(System.identityHashCode(obj)); }
     
     protected abstract String buildSQL() throws SQLException;
     protected abstract void buildStatement(PreparedStatement statement) throws SQLException;
@@ -123,9 +124,11 @@ public abstract class FluentStatement {
         LOG.debug(sql);
         PreparedStatement statement = con.prepareStatement(sql); 
         buildStatement(statement);
+        LOG.debug("built statement: {}", objectId(statement));
         final ResultSetIterator<T> iterator = new ResultSetIterator(statement.executeQuery(), mapper);
         Stream<T> result = Streams.stream(iterator).onClose(()->{ 
             iterator.close();
+            LOG.debug("closing statement: {}", objectId(statement));
             try { statement.close(); } catch (SQLException e) { }
         });
         return result;
@@ -133,13 +136,18 @@ public abstract class FluentStatement {
     
     public <T> Stream<T> execute(DataSource ds, Mapper<T> mapper) throws SQLException {
         Connection con = ds.getConnection();
+        LOG.debug("opened connection: {}", objectId(con));
         String sql = buildSQL();
         LOG.debug(sql);
         PreparedStatement statement = con.prepareStatement(sql);
+        buildStatement(statement);
+        LOG.debug("built statement: {}", objectId(statement));
         final ResultSetIterator<T> iterator = new ResultSetIterator(statement.executeQuery(), mapper);
         Stream<T> result = Streams.stream(iterator).onClose(()->{ 
             iterator.close();
+            LOG.debug("closing statement: {}", objectId(statement));
             try { statement.close(); } catch (SQLException e) { }
+            LOG.debug("closing connection: {}", objectId(con));
             try { con.close(); } catch (SQLException e) { }
         });
         return result;

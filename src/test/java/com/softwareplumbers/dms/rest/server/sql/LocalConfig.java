@@ -1,6 +1,8 @@
 package com.softwareplumbers.dms.rest.server.sql;
 
+import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.common.test.TestModel;
+import java.nio.file.Paths;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -27,15 +29,18 @@ public class LocalConfig {
     
     @Autowired private ApplicationContext applicationContext;
     
-    @Bean
-    public SQLAPIFactory apiFactory() {
+    @Bean public SQLRepositoryService service() {
+        return new SQLRepositoryService(api(), Paths.get("/tmp/doctane/filestore"));
+    }
+    
+    @Bean public SQLAPIFactory api() {
         return new SQLAPIFactory(
-            applicationContext.getBean(Operations.class),
-            applicationContext.getBean(Templates.class),
+            applicationContext.getBean(Operations.class), 
+            applicationContext.getBean(Templates.class), 
             applicationContext.getBean(Schema.class)
         );
     }
-    
+     
     @Bean public DataSource datasource() {
         DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
         dataSourceBuilder.driverClassName("org.h2.Driver");

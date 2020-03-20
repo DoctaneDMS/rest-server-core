@@ -104,10 +104,14 @@ public class Catalogue {
     			else
     				infos = service.catalogue(queryQuery, searchHistory);
     			
-    			infos
-    				.map(RepositoryObject::toJson)
-    				.forEach(info->result.add(info));
-    			
+                try {
+                    infos
+                        .map(RepositoryObject::toJson)
+                        .forEach(info->result.add(info));
+                } finally {
+                    infos.close();
+                }
+                
     			//TODO: must be able to do this in a stream somehow.
     			return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
     	} catch (InvalidWorkspace e) {
@@ -147,9 +151,11 @@ public class Catalogue {
                 if (filter == null && query != null) filter = query;
 
     			JsonArrayBuilder result = Json.createArrayBuilder(); 
-    			service.catalogueHistory(new Reference(id,version), filter == null ? Query.UNBOUNDED : Query.urlDecode(filter))
-    				.map(Document::toJson)
-    				.forEach(info->result.add(info));
+                
+                try (Stream<Document> rs = service.catalogueHistory(new Reference(id,version), filter == null ? Query.UNBOUNDED : Query.urlDecode(filter))) {
+    				rs.map(Document::toJson)
+    				.forEach(info->result.add(info));                    
+                }
     			
     			//TODO: must be able to do this in a stream somehow.
     			return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());
@@ -193,10 +199,12 @@ public class Catalogue {
             JsonArrayBuilder result = Json.createArrayBuilder(); 
             
             Query filterQuery = filter == null ? Query.UNBOUNDED : Query.urlDecode(filter);
-            service.catalogueParts(new Reference(id,version), QualifiedName.ROOT)
-                    .map(DocumentPart::toJson)
+            
+            try (Stream<DocumentPart> rs=service.catalogueParts(new Reference(id,version), QualifiedName.ROOT)) {
+                rs.map(DocumentPart::toJson)
                     .filter(obj->filterQuery.containsItem(obj))
                     .forEach(obj->result.add(obj));
+            }
             //TODO: must be able to do this in a stream somehow.
             return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.build()).build());    			
     	} catch (InvalidReference err) {

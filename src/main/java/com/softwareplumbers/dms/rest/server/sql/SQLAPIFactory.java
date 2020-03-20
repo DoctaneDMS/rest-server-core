@@ -21,6 +21,7 @@ public class SQLAPIFactory {
     private final Templates templates;
     private final Schema schema;
     
+    @Autowired
     public SQLAPIFactory(Operations operations, Templates templates, Schema schema) {
         this.operations = operations;
         this.templates = templates;

@@ -6,6 +6,7 @@
 package com.softwareplumbers.dms.rest.server.sql;
 
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.dms.Constants;
@@ -29,8 +30,10 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -38,6 +41,7 @@ import javax.json.JsonReader;
 import javax.json.JsonWriter;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  *
@@ -47,13 +51,10 @@ public class SQLRepositoryService implements RepositoryService {
     
     private static XLogger LOG = XLoggerFactory.getXLogger(SQLRepositoryService.class);
     
-    private Path basePath;
-    private RepositoryObjectFactory factory;
-    
-    private SQLAPI getConnection() {
-        return null;
-    }
-    
+    private final Path basePath;
+    private final RepositoryObjectFactory factory = new RepositoryObjectFactory();
+    private final SQLAPIFactory dbFactory;
+      
     private String getBaseName(JsonObject metadata) {
         return metadata.getString("DocumentTitle", "Document.dat");
     }
@@ -61,7 +62,7 @@ public class SQLRepositoryService implements RepositoryService {
     private Path toPath(Id id) {
         Path path = basePath;
         for (String elem : id.toString().split("-")) {
-            basePath = basePath.resolve(elem);
+            path = path.resolve(elem);
         }
         return path;
     }
@@ -69,12 +70,15 @@ public class SQLRepositoryService implements RepositoryService {
     private void fileDocument(Id version, InputStreamSupplier iss) throws IOException {
         Path path = toPath(version);
         try (InputStream is = iss.get()) {
+            Files.createDirectories(path.getParent());
             Files.copy(is, path);
         }
     }
     
     private void linkDocument(Id from, Id to) throws IOException {
-        Files.createLink(toPath(to), toPath(from));
+        Path toPath = toPath(to);
+        Files.createDirectories(toPath.getParent());
+        Files.createLink(toPath, toPath(from));
     }
 
     private void destroyDocument(Id version) throws IOException {
@@ -93,14 +97,20 @@ public class SQLRepositoryService implements RepositoryService {
     private InputStream getDocument(Id version) throws IOException {
         return Files.newInputStream(toPath(version));
     }
-        
+       
+    @Autowired
+    public SQLRepositoryService(SQLAPIFactory dbFactory, Path basePath) {
+        this.dbFactory = dbFactory;
+        this.basePath = basePath;
+    }
+    
     @Override
     public Reference createDocument(String mediaType, InputStreamSupplier iss, JsonObject metadata) {
         LOG.entry(mediaType, iss, metadata);
         Id version = new Id();
         Id id = new Id();
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI();
         ) {
             StreamInfo info = StreamInfo.of(iss);
             fileDocument(version, info.supplier);
@@ -120,7 +130,7 @@ public class SQLRepositoryService implements RepositoryService {
         LOG.entry(id, mediaType, iss, metadata);
         Id version = new Id();
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Optional<Document> existing = db.getDocument(new Id(id), null, SQLAPI.GET_DOCUMENT);
             if (existing.isPresent()) {
@@ -156,7 +166,7 @@ public class SQLRepositoryService implements RepositoryService {
     public DocumentLink getDocumentLink(String rootId, QualifiedName workspacePath, String documentId, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidDocumentId {
         LOG.entry(rootId, workspacePath, documentId, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id root = Id.of(rootId);
             QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
@@ -178,9 +188,10 @@ public class SQLRepositoryService implements RepositoryService {
         Id version = new Id();
         Id id = new Id();
         Reference reference = new Reference(id.toString(), version.toString());
+        if (metadata == null) metadata = JsonObject.EMPTY_JSON_OBJECT;
 
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             StreamInfo info = StreamInfo.of(iss);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
@@ -208,7 +219,7 @@ public class SQLRepositoryService implements RepositoryService {
         Reference reference = new Reference(id.toString(), version.toString());
 
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id folderId = db.getOrCreateFolder(Id.of(rootId), workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
             String name = db.generateUniqueName(folderId, baseName);
@@ -233,7 +244,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName workspaceName, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
             Id folderId = db.getOrCreateFolder(root, workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
@@ -256,7 +267,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink createDocumentLink(String rootId, QualifiedName path, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidReference, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
             Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
@@ -282,7 +293,7 @@ public class SQLRepositoryService implements RepositoryService {
         Id version = new Id();
 
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
             Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
@@ -324,7 +335,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink updateDocumentLink(String rootId, QualifiedName path, Reference reference, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
             Id docId = Id.ofDocument(reference.id);
@@ -346,7 +357,7 @@ public class SQLRepositoryService implements RepositoryService {
     public NamedRepositoryObject copyObject(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(rootId, path, path, targetPath, createParent);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) { 
             Info info = db.getInfo(Id.of(rootId), path, SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
             switch (info.type) {
@@ -364,7 +375,7 @@ public class SQLRepositoryService implements RepositoryService {
     public DocumentLink copyDocumentLink(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(rootId, path, targetId, targetPath, createParent);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) { 
             Id idTarget = Id.of(targetId);
             QualifiedName baseName = db.getPathTo(idTarget)
@@ -382,7 +393,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Workspace copyWorkspace(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(rootId, path, targetId, targetPath, createParent);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) { 
             Id idTarget = Id.of(targetId);
             QualifiedName baseName = db.getPathTo(idTarget)
@@ -391,6 +402,8 @@ public class SQLRepositoryService implements RepositoryService {
             Workspace result = db.copyFolder(Id.of(rootId), path, idTarget, targetPath, createParent, rs->SQLAPI.getWorkspace(rs, baseName));
             db.commit();
             return LOG.exit(result);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            throw new Exceptions.InvalidWorkspace(targetId, targetPath);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }  
@@ -400,12 +413,12 @@ public class SQLRepositoryService implements RepositoryService {
     public Workspace createWorkspaceByName(String rootId, QualifiedName path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
         LOG.entry(rootId, path, state, metadata, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             
             Id parent_id = path.parent.isEmpty() 
                 ? Id.of(rootId)
-                : db.getOrCreateFolder(Id.of(rootId), path, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+                : db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
             Workspace result = db.createFolder(parent_id, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent));
             db.commit();
             return result;
@@ -418,13 +431,15 @@ public class SQLRepositoryService implements RepositoryService {
     public Workspace createWorkspaceAndName(String rootId, QualifiedName workspacePath, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
         LOG.entry(rootId, workspacePath, state, metadata, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
-            Id folderId = db.getOrCreateFolder(root, workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspacePath));
+            Id folderId = workspacePath.isEmpty() 
+                ? root 
+                : db.getOrCreateFolder(root, workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
+                    .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspacePath));
             String name = db.generateUniqueName(folderId, getBaseName(metadata));
-            Id idRoot = Id.of(rootId);
-            QualifiedName fullWorkspaceName = db.getPathTo(idRoot)
+            QualifiedName fullWorkspaceName = db.getPathTo(root)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
                 .addAll(workspacePath);            
             Workspace result = db.createFolder(folderId, name, state, metadata, rs->SQLAPI.getWorkspace(rs, fullWorkspaceName));
@@ -441,7 +456,7 @@ public class SQLRepositoryService implements RepositoryService {
         boolean createMissing = Options.CREATE_MISSING_ITEM.isIn(options);
 
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
             Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
@@ -467,7 +482,7 @@ public class SQLRepositoryService implements RepositoryService {
     public void deleteDocument(String rootId, QualifiedName workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
         LOG.entry(rootId, workspacePath, documentId);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             db.deleteDocumentById(Id.of(rootId), workspacePath, Id.ofDocument(documentId));
             db.commit();
@@ -481,7 +496,7 @@ public class SQLRepositoryService implements RepositoryService {
     public void deleteObjectByName(String rootId, QualifiedName path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         LOG.entry(rootId, path);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             db.deleteObject(Id.of(rootId), path);
             db.commit();
@@ -501,7 +516,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Document getDocument(Reference reference) throws Exceptions.InvalidReference {
         LOG.entry(reference);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             return LOG.exit(db.getDocument(Id.ofDocument(reference.id), Id.ofVersion(reference.version), SQLAPI.GET_DOCUMENT)
                 .orElseThrow(()->new Exceptions.InvalidReference(reference))
@@ -533,7 +548,7 @@ public class SQLRepositoryService implements RepositoryService {
     public InputStream getData(String rootId, QualifiedName path, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
         LOG.entry(rootId, path, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             DocumentLink link = db.getDocumentLink(Id.of(rootId), path, rs->SQLAPI.getLink(rs, path.parent))
                 .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
@@ -547,7 +562,7 @@ public class SQLRepositoryService implements RepositoryService {
     public void writeData(String rootId, QualifiedName path, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
         LOG.entry(rootId, path, out, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             DocumentLink link = db.getDocumentLink(Id.of(rootId), path, rs->SQLAPI.getLink(rs, path.parent))
                 .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
@@ -567,7 +582,7 @@ public class SQLRepositoryService implements RepositoryService {
     public DocumentLink getDocumentLink(String rootId, QualifiedName path, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(rootId, path, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
@@ -584,7 +599,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Stream<Document> catalogue(Query query, boolean searchHistory) {
         LOG.entry(query, searchHistory);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {            
             Stream<Document> docs = db.getDocuments(query, searchHistory, SQLAPI.GET_DOCUMENT)
                 .filter(link->query.containsItem(link.toJson(this,0,1)));
@@ -598,7 +613,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Stream<NamedRepositoryObject> catalogueById(String rootId, QualifiedName workspacePath, String documentId, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
          LOG.entry(rootId, workspacePath, documentId, query, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
@@ -615,16 +630,24 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(rootId, path, Options.loggable(options));
+        
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options)) {
+            Predicate<String> hasWildcards = element -> !Parsers.parseUnixWildcard(element).isSimple();
+            if (path.isEmpty() || path.indexFromEnd(hasWildcards) < 0) {
+                path = path.add("*");
+            }
+        }
+		
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, path, query, rs->SQLAPI.getLink(rs, baseName.addAll(path.parent)))
+            Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, path, query, rs->SQLAPI.getLink(rs, baseName))
                 .filter(link->query.containsItem(link.toJson(this,0,1)))
                 .map(NamedRepositoryObject.class::cast);
-            Stream<NamedRepositoryObject> workspaces = db.getFolders(id, path, query, rs->SQLAPI.getWorkspace(rs, baseName.addAll(path.parent)))
+            Stream<NamedRepositoryObject> workspaces = db.getFolders(id, path, query, rs->SQLAPI.getWorkspace(rs, baseName))
                 .filter(link->query.containsItem(link.toJson(this,0,1)))
                 .map(NamedRepositoryObject.class::cast);
             return LOG.exit(Stream.concat(links, workspaces));
@@ -637,7 +660,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Stream<Document> catalogueHistory(Reference reference, Query query) throws Exceptions.InvalidReference {
         LOG.entry(reference, query);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {            
             Stream<Document> docs = db.getDocuments(Id.ofDocument(reference.id), query, SQLAPI.GET_DOCUMENT)
                 .filter(link->query.containsItem(link.toJson(this,0,1)));
@@ -651,18 +674,19 @@ public class SQLRepositoryService implements RepositoryService {
     public NamedRepositoryObject getObjectByName(String rootId, QualifiedName path, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(rootId, path);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
+                .addAll(path.isEmpty() ? path : path.parent);
             Info info = db.getInfo(id,path,SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
             switch(info.type) {
                 case WORKSPACE:
-                    return LOG.exit(db.getFolder(info.parent_id, QualifiedName.of(info.name), rs->SQLAPI.getWorkspace(rs, baseName.addAll(path.parent)))
+                    return LOG.exit(db.getFolder(info.parent_id, QualifiedName.of(info.name), rs->SQLAPI.getWorkspace(rs, baseName))
                         .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path)));
                 case DOCUMENT_LINK:
-                    return LOG.exit(db.getDocumentLink(info.parent_id, QualifiedName.of(info.name), rs->SQLAPI.getLink(rs, baseName.addAll(path.parent)))
+                    return LOG.exit(db.getDocumentLink(info.parent_id, QualifiedName.of(info.name), rs->SQLAPI.getLink(rs, baseName))
                         .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path)));
                 default:
                     throw LOG.throwing(new RuntimeException("Don't know how to get " + info.type));
@@ -677,7 +701,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Workspace getWorkspaceByName(String rootId, QualifiedName path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(rootId, path);
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
@@ -694,7 +718,7 @@ public class SQLRepositoryService implements RepositoryService {
     public Stream<DocumentLink> listWorkspaces(String documentId, QualifiedName pathFilter, Query filter, Options.Search... options) throws Exceptions.InvalidDocumentId {
         LOG.entry(pathFilter, documentId, filter, Options.loggable(options));
         try (
-            SQLAPI db = getConnection(); 
+            SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Stream<DocumentLink> links = db.getDocumentLinks(pathFilter, Id.of(documentId), filter, db::getLink)
                 .filter(link->filter.containsItem(link.toJson(this,0,1)));

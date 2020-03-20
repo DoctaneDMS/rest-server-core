@@ -7,6 +7,9 @@ package com.softwareplumbers.dms.rest.server.sql;
 
 import com.google.common.collect.Streams;
 import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
+import com.softwareplumbers.common.abstractpattern.visitor.Builders;
+import com.softwareplumbers.common.abstractpattern.visitor.Visitor.PatternSyntaxException;
 import com.softwareplumbers.common.abstractquery.Param;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
@@ -103,14 +106,17 @@ public class SQLAPI implements AutoCloseable {
         byte[] hash = results.getBytes("DIGEST");
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
         
-        QualifiedName name = FluentStatement
+        try (Stream<QualifiedName> names = FluentStatement
                 .of(operations.fetchPathToId)
                 .set(1, id)
-                .execute(results.getStatement().getConnection(), rs->QualifiedName.parse(rs.getString(1),"/"))
-                .findFirst()
-                .orElseThrow(()->new RuntimeException("can't find id"));
+                .execute(results.getStatement().getConnection(), rs->QualifiedName.parse(rs.getString(1),"/"))) {
+
+            QualifiedName name = 
+                    names.findFirst()
+                    .orElseThrow(()->new RuntimeException("can't find id"));
         
-        return new DocumentLinkImpl(name, new Reference(id.toString(),version), mediaType, length, hash, metadata, false, LocalData.NONE);
+            return new DocumentLinkImpl(name, new Reference(id.toString(),version), mediaType, length, hash, metadata, false, LocalData.NONE);
+        }
     }
 
     public static Workspace getWorkspace(ResultSet results, QualifiedName basePath) throws SQLException {
@@ -169,7 +175,7 @@ public class SQLAPI implements AutoCloseable {
     
     String getNameExpression(int depth) {
         StringBuilder builder = new StringBuilder();
-        depth--;
+        if (depth > 0) depth--;
         builder.append("T").append(depth).append(".NAME");      
         depth--;
         for (int i = depth; i >= 0 ; i--)
@@ -202,8 +208,13 @@ public class SQLAPI implements AutoCloseable {
     }
     
     Query getNameQuery(Id rootId, QualifiedName nameWithPatterns) {
-        if (nameWithPatterns.isEmpty()) return Query.from("id", Range.equals(Json.createValue(rootId.toString())));
-        return Query.from("parent", getNameQuery(rootId, nameWithPatterns.parent)).intersect(Query.from("name", Range.like(nameWithPatterns.part)));
+        Query query;
+        if (nameWithPatterns.isEmpty()) 
+            query = Query.from("id", Range.equals(Json.createValue(rootId.toString())));
+        else if (nameWithPatterns.parent.isEmpty()) 
+            query = Query.from("parentId", Range.equals(Json.createValue(rootId.toString()))).intersect(Query.from("name", Range.like(nameWithPatterns.part)));
+        else query = Query.from("parent", getNameQuery(rootId, nameWithPatterns.parent)).intersect(Query.from("name", Range.like(nameWithPatterns.part)));
+        return query.intersect(Query.from("deleted", Range.equals(JsonValue.FALSE)));
     }
     
     String searchDocumentLinkSQL(Id rootId, QualifiedName nameWithPatterns, Query filter) {
@@ -243,46 +254,58 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(id);
         if (id.equals(Id.ROOT_ID)) 
             return LOG.exit(Optional.of(QualifiedName.ROOT));
-        else
-            return LOG.exit(FluentStatement
+        else try (Stream<QualifiedName> results = FluentStatement
                 .of(operations.fetchPathToId)
                 .set(1, id)
-                .execute(con, rs->QualifiedName.parse(rs.getString(1),"/"))
-                .findFirst()
+                .execute(con, rs->QualifiedName.parse(rs.getString(1),"/"))) {
+            return LOG.exit(
+                results.findFirst()
             );
+        }
     }
     
-    public String generateUniqueName(Id id, String baseName) throws SQLException {
-		int separator = baseName.lastIndexOf('.');
+    public String generateUniqueName(Id id, final String nameTemplate) throws SQLException {
+		int separator = nameTemplate.lastIndexOf('.');
         String ext = "";
+        String baseName = nameTemplate;
 		if (separator >= 0) {
 			ext = baseName.substring(separator, baseName.length());
 			baseName = baseName.substring(0, separator);
 		} 
-          
-        Optional<String> maybePrev = FluentStatement
+
+        Optional<String> match = Optional.empty();
+        try (Stream<String> matches = FluentStatement
             .of(operations.fetchLastNameLike)
             .set(1, id)
             .set(2, baseName+"%"+ext)
-            .execute(con, rs->rs.getString(1))
-            .findFirst();
+            .execute(con, rs->{ 
+                String name = rs.getString(1); 
+                return name == null ? "" : name;
+            })
+        ) {
+            match = matches.findFirst();
+        }
        
-        if (maybePrev.isPresent()) {
-            String prev = maybePrev.get();
+        if (match.isPresent() && match.get().length() > 0) {
+            String prev = match.get();
             int extIndex = prev.lastIndexOf(ext);
             if (extIndex < 0) extIndex = prev.length();
             String postfix = prev.substring(baseName.length(), extIndex);
-            int lastChar = postfix.charAt(postfix.length()-1);
-            int charIndex = SAFE_CHARACTERS.indexOf(lastChar);
-            if (charIndex < 0 || lastChar == MAX_SAFE_CHAR) {
-                postfix = postfix + SAFE_CHARACTERS.charAt(0);
+            if (postfix.length() > 0) {
+                int lastChar = postfix.charAt(postfix.length()-1);
+                int charIndex = SAFE_CHARACTERS.indexOf(lastChar);
+                if (charIndex < 0 || lastChar == MAX_SAFE_CHAR) {
+                    postfix = postfix + SAFE_CHARACTERS.charAt(0);
+                } else {
+                    postfix = postfix.substring(0, postfix.length() - 1) + SAFE_CHARACTERS.charAt(charIndex + 1);
+                }
             } else {
-                postfix = postfix.substring(0, postfix.length() - 1) + SAFE_CHARACTERS.charAt(charIndex + 1);
+                postfix = "_1";
             }
             return baseName + postfix + ext;
 
         } else {
-            return baseName + ext;
+            return nameTemplate;
         }
     }
     
@@ -305,13 +328,15 @@ public class SQLAPI implements AutoCloseable {
 
     public <T> Optional<T> getDocument(Id id, Id version, Mapper<T> mapper) throws SQLException {
         LOG.entry(id, version , mapper);
-        Optional<T> result;
         if (version == null) {
-            result = FluentStatement.of(operations.fetchLatestDocument).set(1, id).execute(con, mapper).findFirst();
+            try (Stream<T> result = FluentStatement.of(operations.fetchLatestDocument).set(1, id).execute(con, mapper)) {
+                return LOG.exit(result.findFirst());
+            }
         } else {
-            result = FluentStatement.of(operations.fetchDocument).set(1, id).set(2, version).execute(con, mapper).findFirst();
+            try (Stream<T> result = FluentStatement.of(operations.fetchDocument).set(1, id).set(2, version).execute(con, mapper)) {
+                return LOG.exit(result.findFirst());
+            }
         }
-        return LOG.exit(result);
     }
     
     public <T> Stream<T> getDocuments(Id id, Query query, Mapper<T> mapper) throws SQLException {
@@ -340,42 +365,47 @@ public class SQLAPI implements AutoCloseable {
             .set(2, state.toString())
             .set(3, out -> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(metadata); } })
             .execute(con);
-        return LOG.exit(FluentStatement.of(this.getFolderSQL(1))
+        
+        
+        try (Stream<T> result = FluentStatement.of(this.getFolderSQL(1))
             .set(1, name)
             .set(2, parentId)
             .execute(con, mapper)
-            .findFirst()
-            .orElseThrow(()->new RuntimeException("returned no results"))
-        );
+        ) {
+            return LOG.exit(
+                result.findFirst()
+                .orElseThrow(()->new RuntimeException("returned no results"))
+            );
+        }
     }
 
     public <T> Optional<T> getFolder(Id parentId, QualifiedName name, Mapper<T> mapper) throws SQLException {
         LOG.entry(parentId, name);
-        return LOG.exit(FluentStatement.of(getFolderSQL(name.size()))
+        try (Stream<T> result = FluentStatement.of(getFolderSQL(name.size()))
             .set(1,name)
             .set(name.size()+1,parentId)
             .execute(con, mapper)
-            .findFirst()
-        );
+        ) { 
+            return LOG.exit(result.findFirst());
+        }
     }
     
     public <T> Stream<T> getFolders(Id rootId, QualifiedName path, Query filter, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, path, mapper);
         return LOG.exit(FluentStatement
             .of(searchFolderSQL(rootId, path, filter))
-            .set(1, rootId)
             .execute(schema.datasource, mapper)
         );
     }
         
     public <T> Optional<T> getInfo(Id rootId, QualifiedName name, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, name);
-        return LOG.exit(FluentStatement.of(getInfoSQL(name.size()))
+        try (Stream<T> results = FluentStatement.of(getInfoSQL(name.size()))
             .set(1, name)
             .set(name.size()+1, rootId)
-            .execute(con, mapper)
-            .findFirst()
-        );
+            .execute(con, mapper)) {
+            return LOG.exit(results.findFirst());
+        }
     }
     
     public Stream<Info> getChildren(Id parentId) throws SQLException {
@@ -398,7 +428,7 @@ public class SQLAPI implements AutoCloseable {
     public <T> Optional<T> getOrCreateFolder(Id rootId, QualifiedName path, boolean optCreate, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
         LOG.entry(rootId, path, optCreate, mapper);
         Optional<Id> parentId = path.parent.isEmpty() 
-            ? getFolder(rootId, QualifiedName.ROOT, GET_ID) 
+            ? Optional.of(rootId) 
             : getOrCreateFolder(rootId, path.parent, optCreate, GET_ID);
         return parentId.isPresent() 
             ? getOrCreateFolder(parentId.get(), path.part, optCreate, mapper)
@@ -407,7 +437,7 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> T copyFolder(Id sourceId, QualifiedName sourcePath, Id targetId, QualifiedName targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidObjectName, InvalidWorkspace {
         LOG.entry(sourceId, sourcePath, targetId, targetPath, optCreate, mapper);
-        Id idSrc = getFolder(sourceId, sourcePath, GET_ID).orElseThrow(()->new InvalidObjectName(sourceId.toString(), sourcePath));
+        Id idSrc = getFolder(sourceId, sourcePath, GET_ID).orElseThrow(()->new InvalidWorkspace(sourceId.toString(), sourcePath));
         Id folderId = targetPath.parent.isEmpty() 
             ? targetId
             : getOrCreateFolder(targetId, targetPath.parent, optCreate, GET_ID)
@@ -442,12 +472,15 @@ public class SQLAPI implements AutoCloseable {
             }
         }
         
-        return LOG.exit(FluentStatement.of(getFolderSQL(1))
+        try (Stream<T> results = FluentStatement.of(getFolderSQL(1))
             .set(1, targetPath.part)
             .set(2, folderId)
-            .execute(con, mapper)
-            .findFirst()
-            .orElseThrow(()->new RuntimeException("returned no results")));
+            .execute(con, mapper)) {
+        
+            return LOG.exit(
+                results.findFirst()
+                .orElseThrow(()->new RuntimeException("returned no results")));
+        }
     }
     
     public <T> T copyDocumentLink(Id sourceId, QualifiedName sourcePath, Id targetId, QualifiedName targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidObjectName, InvalidWorkspace {
@@ -468,12 +501,15 @@ public class SQLAPI implements AutoCloseable {
             .set(1, id)
             .set(2, idSrc)
             .execute(con);
-        return LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+        
+        try (Stream<T> results = LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
             .set(1, targetPath.part)
             .set(2, folderId)
-            .execute(con, mapper)
-            .findFirst()
-            .orElseThrow(()->new RuntimeException("returned no results")));
+            .execute(con, mapper))) {       
+        
+            return results.findFirst()
+                .orElseThrow(()->new RuntimeException("returned no results"));
+        }
     }
     
     
@@ -492,12 +528,15 @@ public class SQLAPI implements AutoCloseable {
             .set(3, version)
             .set(4, true)
             .execute(con);
-        return LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+        
+        try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(1))
             .set(1, name)
             .set(2, folderId)
-            .execute(con, mapper)
-            .findFirst()
-            .orElseThrow(()->new RuntimeException("returned no results")));
+            .execute(con, mapper)) { 
+        return LOG.exit(
+            results.findFirst()
+                .orElseThrow(()->new RuntimeException("returned no results")));
+        }
     }
     
     public <T> T createDocumentLink(Id rootId, QualifiedName path, Id docId, Id version, boolean optCreate, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
@@ -515,13 +554,16 @@ public class SQLAPI implements AutoCloseable {
                 .set(2, version)
                 .set(3, info.get().id)
                 .execute(con);
-            return LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+            try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(1))
                 .set(1, name)
                 .set(2, folderId)
                 .execute(con, mapper)
-                .findFirst()
-                .orElseThrow(()->new RuntimeException("returned no results"))
-            );
+            ) {
+                return LOG.exit(
+                    results.findFirst()
+                        .orElseThrow(()->new RuntimeException("returned no results"))
+                );
+            }
         } else {
             if (optCreate) {
                 return LOG.exit(createDocumentLink(folderId, name, docId, version, mapper));
@@ -540,13 +582,16 @@ public class SQLAPI implements AutoCloseable {
                 .set(2, metadata)
                 .set(3, info.get().id)
                 .execute(con);
-            return LOG.exit(FluentStatement.of(getFolderSQL(1))
+            try (Stream<T> result = FluentStatement.of(getFolderSQL(1))
                 .set(1, name)
                 .set(2, folderId)
                 .execute(con, mapper)
-                .findFirst()
-                .orElseThrow(()->new RuntimeException("returned no results"))
-            );
+            ) {
+                return LOG.exit(
+                    result.findFirst()
+                    .orElseThrow(()->new RuntimeException("returned no results"))
+                );
+            }
         } else {
             if (optCreate) {
                 return LOG.exit(createFolder(folderId, name, state, metadata, mapper));
@@ -558,32 +603,33 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> Optional<T> getDocumentLink(Id rootId, QualifiedName workspacePath, Id documentId, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, workspacePath, documentId, mapper);
-        return LOG.exit(FluentStatement
+        try (Stream<T> result = FluentStatement
             .of(getDocumentLinkByIdSQL(workspacePath.size()))
             .set(1, documentId)
             .set(2, workspacePath)
             .set(3, rootId)
             .execute(con, mapper)
-            .findFirst()
-        );
+        ) { 
+            return LOG.exit(result.findFirst());
+        }
     }
     
     public <T> Optional<T> getDocumentLink(Id rootId, QualifiedName path, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, path, mapper);
-        return LOG.exit(FluentStatement
+        try (Stream<T> result = FluentStatement
             .of(getDocumentLinkSQL(path.size()))
             .set(1, path)
             .set(path.size()+1, rootId)
             .execute(con, mapper)
-            .findFirst()
-        );
+        ) {
+            return LOG.exit(result.findFirst());
+        }
     }
     
     public <T> Stream<T> getDocumentLinks(Id rootId, QualifiedName path, Query filter, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, path, filter, mapper);
         return LOG.exit(FluentStatement
             .of(searchDocumentLinkSQL(rootId, path, filter))
-            .set(1, rootId)
             .execute(schema.datasource, mapper)
         );
     }

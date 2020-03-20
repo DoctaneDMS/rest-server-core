@@ -142,6 +142,10 @@
                 INNER JOIN
                     FOLDERS ON (NODES.ID = FOLDERS.ID)         
                 ;   
+                
+                CREATE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME);
+                CREATE INDEX VERSION_BY_DOCUMENT ON VERSIONS(DOCUMENT_ID);
+             
             </value>
         </property>
 
@@ -154,7 +158,7 @@
                 WITH LINK(ID,NAME) AS (
                     SELECT ID,NAME 
                     FROM NODES 
-                    WHERE PARENT_ID IS NULL 
+                    WHERE PARENT_ID = '00000000-0000-0000-0000-000000000000' 
                     UNION ALL SELECT 
                         NODES.ID, 
                         IFNULL(LINK.NAME || '/', '') || NODES.NAME 
@@ -249,7 +253,7 @@
         
         <property name="DeleteObject">
             <value>
-                UPDATE NODES SET DELETED=TRUE WHERE PARENT_ID=? AND NAME=?
+                UPDATE NODES SET DELETED=TRUE WHERE ID=?
             </value>
         </property>
         
