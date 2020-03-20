@@ -107,9 +107,10 @@ public class SQLAPI implements AutoCloseable {
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
         
         try (Stream<QualifiedName> names = FluentStatement
-                .of(operations.fetchPathToId)
-                .set(1, id)
-                .execute(results.getStatement().getConnection(), rs->QualifiedName.parse(rs.getString(1),"/"))) {
+            .of(operations.fetchPathToId)
+            .set(1, id)
+            .execute(results.getStatement().getConnection(), rs->QualifiedName.parse(rs.getString(1),"/"))
+        ) {
 
             QualifiedName name = 
                     names.findFirst()
@@ -126,6 +127,26 @@ public class SQLAPI implements AutoCloseable {
         QualifiedName path = basePath.addParsed(results.getString("PATH"),"/");
         return new WorkspaceImpl(path, id.toString(), state, metadata, false, LocalData.NONE);
     }
+    
+    public Workspace getWorkspace(ResultSet results) throws SQLException {
+        Id id = new Id(results.getBytes("ID"));
+        JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
+        Workspace.State state = Workspace.State.valueOf(results.getString("STATE"));
+       
+        try (Stream<QualifiedName> names = FluentStatement
+            .of(operations.fetchPathToId)
+            .set(1, id)
+            .execute(results.getStatement().getConnection(), rs->QualifiedName.parse(rs.getString(1),"/"))
+        ) {
+            QualifiedName name = 
+                    names.findFirst()
+                    .orElseThrow(()->new RuntimeException("can't find id"));
+        
+            return new WorkspaceImpl(name, id.toString(), state, metadata, false, LocalData.NONE);
+        }
+
+    }
+    
     
     
     public static Mapper<Info> GET_INFO = results -> {
@@ -573,31 +594,21 @@ public class SQLAPI implements AutoCloseable {
         }
     }
     
-    public <T> T updateFolder(Id folderId, String name, Workspace.State state, JsonObject metadata, boolean optCreate, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
-        LOG.entry(folderId, name, state, metadata, optCreate);
-        Optional<Info> info = getInfo(folderId, QualifiedName.of(name), GET_INFO);
-        if (info.isPresent()) {
-            FluentStatement.of(operations.updateFolder)
-                .set(1, state.toString())
-                .set(2, metadata)
-                .set(3, info.get().id)
-                .execute(con);
-            try (Stream<T> result = FluentStatement.of(getFolderSQL(1))
-                .set(1, name)
-                .set(2, folderId)
-                .execute(con, mapper)
-            ) {
-                return LOG.exit(
-                    result.findFirst()
-                    .orElseThrow(()->new RuntimeException("returned no results"))
-                );
-            }
-        } else {
-            if (optCreate) {
-                return LOG.exit(createFolder(folderId, name, state, metadata, mapper));
-            } else {
-                throw new InvalidWorkspace(folderId.toString(), QualifiedName.of(name));                    
-            }
+    public <T> Optional<T> updateFolder(Id folderId, Workspace.State state, JsonObject metadata, Mapper<T> mapper) throws SQLException {
+        LOG.entry(folderId, state, metadata);
+        int count = FluentStatement.of(operations.updateFolder)
+            .set(1, state.toString())
+            .set(2, metadata)
+            .set(3, folderId)
+            .execute(con);
+        if (count == 0) return Optional.empty();
+        try (Stream<T> result = FluentStatement.of(getFolderSQL(0))
+            .set(1, folderId)
+            .execute(con, mapper)
+        ) {
+            return LOG.exit(
+                result.findFirst()
+            );
         }
     }
     

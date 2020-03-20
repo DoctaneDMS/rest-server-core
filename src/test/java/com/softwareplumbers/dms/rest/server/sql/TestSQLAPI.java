@@ -14,8 +14,10 @@ import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.Workspace;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Optional;
+import javax.json.Json;
 import javax.json.JsonValue;
 import org.junit.After;
 import static org.junit.Assert.assertArrayEquals;
@@ -92,11 +94,16 @@ public class TestSQLAPI {
     @Test
     public void testGetInfoSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            String l0 = api.getInfoSQL(1);
+            String l0 = api.getInfoSQL(0);
             System.out.println(l0);
             assertTrue(l0.contains("T0.NAME AS PATH"));
             assertTrue(l0.contains("NODES T0"));
-            assertTrue(l0.contains("WHERE T0.NAME=? AND T0.PARENT_ID=?"));
+            assertTrue(l0.contains("WHERE T0.ID=?"));
+            String l1 = api.getInfoSQL(1);
+            System.out.println(l1);
+            assertTrue(l1.contains("T0.NAME AS PATH"));
+            assertTrue(l1.contains("NODES T0"));
+            assertTrue(l1.contains("WHERE T0.NAME=? AND T0.PARENT_ID=?"));
         }
     }
 
@@ -127,6 +134,24 @@ public class TestSQLAPI {
             assertEquals(id.toString(), result.get().getId());
             assertEquals(Workspace.State.Open, result.get().getState());
             assertEquals(JsonValue.EMPTY_JSON_OBJECT, result.get().getMetadata());
+            // Test we can also get folder via Id
+            Optional<Workspace> result2 = api.getFolder(id, QualifiedName.ROOT, rs->SQLAPI.getWorkspace(rs, QualifiedName.ROOT));
+            assertTrue(result2.isPresent());
+            assertEquals(id.toString(), result2.get().getId());
+            assertEquals(Workspace.State.Open, result2.get().getState());
+            assertEquals(JsonValue.EMPTY_JSON_OBJECT, result2.get().getMetadata());
+        }
+    }
+    
+    @Test
+    public void testUpdateFolder() throws SQLException, IOException, InvalidWorkspace {
+        try (SQLAPI api = factory.getSQLAPI()) {
+            Id id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, SQLAPI.GET_ID);
+            api.commit();
+            Workspace result = api.updateFolder(id, Workspace.State.Closed, Json.createObjectBuilder().add("test", "hello").build(), api::getWorkspace).get();
+            assertEquals(id.toString(), result.getId());
+            assertEquals(Workspace.State.Closed, result.getState());
+            assertEquals("hello", result.getMetadata().getString("test"));
         }
     }
     

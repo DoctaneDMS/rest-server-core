@@ -459,19 +459,25 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
-            Id folderId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
-            QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Optional<Workspace> existing = db.getFolder(folderId, QualifiedName.of(path.part), rs->SQLAPI.getWorkspace(rs, rootPath));
+ 
+            Optional<Workspace> existing = db.getFolder(root, path, db::getWorkspace);
+             
             if (existing.isPresent()) {
                 Workspace existingWorkspace = existing.get();
                 state = state == null ? existingWorkspace.getState() : state;
                 metadata = MetadataMerge.merge(existingWorkspace.getMetadata(), metadata);
-                QualifiedName fullPath = db.getPathTo(root).get().addAll(path);
-                Workspace result = db.updateFolder(folderId, path.part, state, metadata, createMissing, rs->SQLAPI.getWorkspace(rs, fullPath));
+                Workspace result = db.updateFolder(Id.of(existingWorkspace.getId()), state, metadata, rs->SQLAPI.getWorkspace(rs, existingWorkspace.getName().parent))
+                    .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path)));
                 db.commit();           
                 return LOG.exit(result);
             } else {
-                throw LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path));
+                if (createMissing && !path.isEmpty()) { // can't create a folder without a path
+                    Id parentId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
+                        .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path)));
+                    return db.createFolder(parentId, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent));
+                } else {
+                    throw LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path));
+                }
             }
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -645,10 +651,10 @@ public class SQLRepositoryService implements RepositoryService {
             QualifiedName baseName = db.getPathTo(id)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
             Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, path, query, rs->SQLAPI.getLink(rs, baseName))
-                .filter(link->query.containsItem(link.toJson(this,0,1)))
+                .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
             Stream<NamedRepositoryObject> workspaces = db.getFolders(id, path, query, rs->SQLAPI.getWorkspace(rs, baseName))
-                .filter(link->query.containsItem(link.toJson(this,0,1)))
+                .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
             return LOG.exit(Stream.concat(links, workspaces));
         } catch (SQLException e) {
