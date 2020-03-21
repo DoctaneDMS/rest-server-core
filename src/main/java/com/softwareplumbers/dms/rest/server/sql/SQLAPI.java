@@ -276,8 +276,13 @@ public class SQLAPI implements AutoCloseable {
     }
 
     String getDocumentLinkByIdSQL(int depth) {
-        Query query = Query.from("parent", getParameterizedNameQuery(depth-1)).intersect(Query.from("id", Range.equals(Param.from(Integer.toString(depth)))));
-        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth), query.toExpression(schema.getLinkFormatter()));
+        Query query;
+        if (depth == 0) 
+            query = Query.from("parentId", Range.equals(Param.from("0"))).intersect(Query.from("id", Range.equals(Param.from("1"))));
+        else 
+            query = Query.from("parent", getParameterizedNameQuery(depth)).intersect(Query.from("id", Range.equals(Param.from(Integer.toString(depth)))));
+            
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth+1), query.toExpression(schema.getLinkFormatter()));
     }
 
     public Optional<QualifiedName> getPathTo(Id id) throws SQLException {
@@ -667,7 +672,7 @@ public class SQLAPI implements AutoCloseable {
             .of(getDocumentLinkByIdSQL(workspacePath.size()))
             .set(1, documentId)
             .set(2, workspacePath)
-            .set(3, rootId)
+            .set(workspacePath.size()+2, rootId)
             .execute(con, mapper)
         ) { 
             return LOG.exit(result.findFirst());

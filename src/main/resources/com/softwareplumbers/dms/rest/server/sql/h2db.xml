@@ -169,7 +169,7 @@
             </value>
         </property>
         
-        <property name="FetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE ID=? AND NAME LIKE ?"/>
+        <property name="FetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE PARENT_ID=? AND NAME LIKE ?"/>
 
         <property name="CreateDocument">
             <value>

@@ -73,6 +73,22 @@ public class TestSQLAPI {
         }
     }
     
+        @Test 
+    public void testGetDocumentLinkByIdSQL() throws SQLException {
+        try (SQLAPI api = factory.getSQLAPI()) {
+            String l0 = api.getDocumentLinkByIdSQL(0);
+            System.out.println(l0);
+            assertTrue(l0.contains("T0.NAME AS PATH"));
+            assertTrue(l0.contains("VIEW_LINKS T0"));
+            assertTrue(l0.contains("WHERE T0.DOCUMENT_ID=? AND T0.PARENT_ID=?"));
+            String l1 = api.getDocumentLinkByIdSQL(1);
+            System.out.println(l1);
+            assertTrue(l1.contains("T1.NAME || '/' || T0.NAME AS PATH"));
+            assertTrue(l1.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
+            assertTrue(l1.contains("WHERE T0.DOCUMENT_ID=? AND T1.NAME=? AND T1.PARENT_ID=?"));
+        }
+    }
+    
     @Test 
     public void testGetFolderSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {

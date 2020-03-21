@@ -259,11 +259,14 @@ public class SQLRepositoryService implements RepositoryService {
             Id docId = Id.ofDocument(reference.id);
             Id versionId = Id.ofVersion(reference.version);
             Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            String name = db.generateUniqueName(folderId, getBaseName(document.getMetadata()));
-            Id idRoot = Id.of(rootId);
-            QualifiedName fullWorkspaceName = db.getPathTo(idRoot)
+            QualifiedName fullWorkspaceName = db.getPathTo(root)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
-                .addAll(workspaceName);            
+                .addAll(workspaceName);  
+            if (Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT.isIn(options)) {
+                Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.ROOT, docId, rs->SQLAPI.getLink(rs, fullWorkspaceName));
+                if (existing.isPresent()) return existing.get();
+            }
+            String name = db.generateUniqueName(folderId, getBaseName(document.getMetadata()));
             DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, rs->SQLAPI.getLink(rs, fullWorkspaceName));
             db.commit();               
             return result;
