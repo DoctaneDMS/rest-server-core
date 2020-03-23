@@ -260,7 +260,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id folderId = Id.of(folder.getId());
             Id docId = Id.ofDocument(reference.id);
             Id versionId = Id.ofVersion(reference.version);
-            Optional<DocumentLink> existing = db.getDocumentLink(root, workspaceName, docId, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.ROOT, docId, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
             if (existing.isPresent()) {
                 if (Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT.isIn(options)) {
                     return existing.get();
@@ -284,8 +284,8 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path));
+            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
+                .orElseThrow(doThrowInvalidWorkspace(rootId, path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
@@ -322,8 +322,8 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
             Id root = Id.of(rootId);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path));
+            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
@@ -377,8 +377,8 @@ public class SQLRepositoryService implements RepositoryService {
             Id root = Id.of(rootId);
             Id docId = Id.ofDocument(reference.id);
             Id versionId = Id.ofVersion(reference.version);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path));
+            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
