@@ -226,7 +226,7 @@
         </property>        
         <property name="UpdateLink">
             <value>
-                UPDATE LINKS SET DOCUMENT_ID=?, VERSION_ID=?, VERSIONED=? WHERE LINKS.ID=?
+                UPDATE LINKS SET DOCUMENT_ID=?, VERSION_ID=? WHERE LINKS.ID=?
             </value>
         </property>
         

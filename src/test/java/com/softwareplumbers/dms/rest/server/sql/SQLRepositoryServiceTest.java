@@ -1,22 +1,19 @@
 package com.softwareplumbers.dms.rest.server.sql;
 
-import com.softwareplumbers.dms.rest.server.tmp.*;
 import java.util.UUID;
 
 import org.junit.Before;
 
-import com.softwareplumbers.common.QualifiedName;
 import com.softwareplumbers.dms.rest.server.model.BaseRepositoryServiceTest;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.common.test.TestModel;
-import com.softwareplumbers.dms.rest.server.model.PartHandlerService;
-import com.softwareplumbers.dms.rest.server.model.ZipFileHandler;
 import java.sql.SQLException;
+import org.junit.After;
+import static org.junit.Assert.assertEquals;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
@@ -31,6 +28,7 @@ public class SQLRepositoryServiceTest extends BaseRepositoryServiceTest {
 	public Schema schema;
 
     boolean init = true;
+    int connectionCount = 0;
     
     // TODO: make this BeforeAll in junit 5
     public void initSchema() {
@@ -74,4 +72,15 @@ public class SQLRepositoryServiceTest extends BaseRepositoryServiceTest {
     public TestModel workspaceMetadataModel() {
         return workspaceMetadataModel;
     }
+    
+    @Before
+    public void setCountBefore() {
+        connectionCount = FluentStatement.getConnectionCount();
+    }
+
+    @After
+    public void setCountAfter() {
+        assertEquals(connectionCount, FluentStatement.getConnectionCount());
+    }
+
 }

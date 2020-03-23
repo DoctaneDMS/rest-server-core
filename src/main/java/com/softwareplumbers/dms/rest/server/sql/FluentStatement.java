@@ -12,7 +12,6 @@ import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.json.Json;
@@ -33,6 +32,30 @@ public abstract class FluentStatement {
     
     protected abstract String buildSQL() throws SQLException;
     protected abstract void buildStatement(PreparedStatement statement) throws SQLException;
+
+    private static int connectionCount = 0;
+    
+    private void logOpen(Connection con) {
+        if (LOG.isDebugEnabled()) {
+            synchronized(this) {
+                connectionCount++;
+            }
+            LOG.debug("Opening connection {}: connection count: {}", objectId(con), connectionCount);
+        }
+    }
+    
+    private void logClose(Connection con) {
+        if (LOG.isDebugEnabled()) {
+            synchronized(this) {
+                connectionCount--;
+            }
+            LOG.debug("Opening connection {}: connection count: {}", objectId(con), connectionCount);
+        }
+    }
+    
+    public static int getConnectionCount() {
+        return connectionCount;
+    }
 
     private static class Base extends FluentStatement {
         private final String sql;
@@ -147,7 +170,7 @@ public abstract class FluentStatement {
     
     public <T> Stream<T> execute(DataSource ds, Mapper<T> mapper) throws SQLException {
         Connection con = ds.getConnection();
-        LOG.debug("opened connection: {}", objectId(con));
+        logOpen(con);
         String sql = buildSQL();
         LOG.debug(sql);
         PreparedStatement statement = con.prepareStatement(sql);
@@ -159,7 +182,7 @@ public abstract class FluentStatement {
             LOG.debug("closing statement: {}", objectId(statement));
             try { statement.close(); } catch (SQLException e) { }
             LOG.debug("closing connection: {}", objectId(con));
-            try { con.close(); } catch (SQLException e) { }
+            try { con.close(); logClose(con); } catch (SQLException e) { }
         });
         return result;
     }

@@ -207,7 +207,7 @@ public class TestSQLAPI {
             Id version = new Id();
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(child_id, "grandchild", id, version, SQLAPI.GET_ID);
-            DocumentLink sibling = api.copyDocumentLink(child_id, QualifiedName.of("grandchild"), parent_id, QualifiedName.of("sibling"), false, rs->SQLAPI.getLink(rs, QualifiedName.of("parent")));
+            DocumentLink sibling = api.copyDocumentLink(child_id, QualifiedName.of("grandchild"), parent_id, QualifiedName.of("sibling"), false, SQLAPI.GET_LINK_WITH_PATH(QualifiedName.of("parent")));
             assertEquals(QualifiedName.of("parent","sibling"), sibling.getName());
             assertEquals(id.toString(), sibling.getId());
             assertEquals(version.toString(), sibling.getVersion());
@@ -223,7 +223,7 @@ public class TestSQLAPI {
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, SQLAPI.GET_ID);
             api.commit();
-            Optional<DocumentLink> result = api.getDocumentLink(folder_id, QualifiedName.of("docname"), rs->SQLAPI.getLink(rs, QualifiedName.of("foldername")));
+            Optional<DocumentLink> result = api.getDocumentLink(folder_id, QualifiedName.of("docname"), SQLAPI.GET_LINK_WITH_PATH(QualifiedName.of("foldername")));
             assertTrue(result.isPresent());
             assertEquals(QualifiedName.of("foldername","docname"), result.get().getName());
             assertEquals(id.toString(), result.get().getId());
@@ -244,7 +244,7 @@ public class TestSQLAPI {
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, SQLAPI.GET_ID);
             api.commit();
-            Optional<DocumentLink> result = api.getDocumentLink(Id.ROOT_ID, QualifiedName.of("foldername","docname"), rs->SQLAPI.getLink(rs, QualifiedName.ROOT));
+            Optional<DocumentLink> result = api.getDocumentLink(Id.ROOT_ID, QualifiedName.of("foldername","docname"), SQLAPI.GET_LINK_WITH_PATH(QualifiedName.ROOT));
             assertTrue(result.isPresent());
             assertEquals(QualifiedName.of("foldername","docname"), result.get().getName());
             assertEquals(id.toString(), result.get().getId());
