@@ -80,23 +80,6 @@ repository objects are returned.
 
 The main configuration file for the Doctane server is a file services.xml. This file contains several spring bean definitions, as described below.
 
-## Key Manager
-
-The 'key manager' object manages the cryptographic data the server needs to connect securely with clients.
-
-```xml   
-<bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
-	<constructor-arg index="0" value="/var/tmp/doctane-proxy.keystore"/>
-	<constructor-arg index="1" value="password"/>
-	<constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
-	<constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
-</bean>
-```
-
-* Argument 0 specifies the location of a JECKS key store on the server filesystem. If this key store does not exist it will be created.
-* Argument 1 specified the keystore password.
-* Arguments 2 and 3 provide identifiers that can be used to retrieve keys. You should not need to change these values.
-
 ## Repository Service Factory
 
 The Doctane server uses one of a number of plug-in modules to connect to a document store. The repository module must
@@ -115,6 +98,32 @@ Multiple mappings can be specified by adding additional 'prop' elements.
      </property>
    </bean>
 ```
+
+The rest-server-core package contains only a single implementation of RepositoryService, SQLRepositoryService, which uses
+an embedded H2 database for metadata and local file-based storage for documents. SQLRepositoryService is a reference 
+implementation against which all standard unit tests are run; it is not strictly intended for production use - although
+it should work well enough for small groups. Details for configuring SQLRepositoryService are included later in this file.
+
+Various implementations of RepositoryService, including FilenetRepositoryService, MySQLRepositoryService, and 
+MongoRepositoryService, are available from Software Plumbers as separately licensable modules.
+
+## Key Manager
+
+The 'key manager' object manages the cryptographic data the server needs to connect securely with clients.
+
+```xml   
+<bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
+	<constructor-arg index="0" value="/var/tmp/doctane-proxy.keystore"/>
+	<constructor-arg index="1" value="password"/>
+	<constructor-arg index="2"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
+	<constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
+</bean>
+```
+
+* Argument 0 specifies the location of a JECKS key store on the server filesystem. If this key store does not exist it will be created.
+* Argument 1 specified the keystore password.
+* Arguments 2 and 3 provide identifiers that can be used to retrieve keys. You should not need to change these values.
+
 
 ## Authentication Components
 
@@ -266,3 +275,62 @@ and authz.ti.
             </property>
         </bean>
 ```
+
+## SQLRepositoryService
+
+The H2 SQLRepositoryService is the reference implementation of a Doctane RepositoryService. Sample
+configuration is included below. Firstly, the database platform support file must be imported:
+
+```xml
+    <import resource="classpath:/com/softwareplumbers/dms/rest/server/sql/h2db.xml" />
+```
+
+The h2db.xml file contains scripts for building the Doctane database schema, and templates
+for various common database operations. In many cases, customizing SQLRepositoryService for
+a different database platform will simply require fine-tuning these scripts and templates
+for the platform in question.
+
+```xml
+    <bean id="SQLAPI" class="com.softwareplumbers.dms.rest.server.sql.SQLAPIFactory" />
+```
+
+The next bean encapsulates all the low-level database operations that the Doctane server
+uses to manipulate and store document data. In some cases, it may be necessary to customise
+this class in order to provided an optimal implementation for a given database platform. 
+
+```xml
+    <!--- configure datasource -->
+	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:file:/var/tmp/doctane/db" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+	</bean> 
+```
+
+The above datasource bean configures the connection to the database in a standard way.
+
+```xml
+    <!--- configure base repository -->
+    <bean id="base" class="com.softwareplumbers.dms.rest.server.sql.SQLRepositoryService" scope="singleton">
+        <property name="basePath" value="/var/tmp/doctane/files"/> 
+    </bean>
+```
+
+Finally, we can configure the SQLRepositoryService itself. 
+
+```
+    <!-- compose additional repository services, such as ZipFileHandler -->
+    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
+        <property name="baseRepository" ref="base"/>
+        <property name="handlers">
+            <array>
+                <bean class="com.softwareplumbers.dms.rest.server.model.ZipFileHandler"/>
+            </array>
+        </property>
+    </bean>
+```
+
+And then we can configure add-on capabilities. The configuration above adds the capability to browse
+files within a zip archive.
+
