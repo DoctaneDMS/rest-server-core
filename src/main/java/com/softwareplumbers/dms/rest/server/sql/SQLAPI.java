@@ -349,7 +349,7 @@ public class SQLAPI implements AutoCloseable {
         }
     }
     
-    public void createDocument(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException, IOException {
+    public void createDocument(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException {
         LOG.entry(mediaType, length, digest, metadata);
         if (metadata == null) metadata = JsonObject.EMPTY_JSON_OBJECT;
         FluentStatement.of(operations.createVersion)
@@ -367,7 +367,7 @@ public class SQLAPI implements AutoCloseable {
         LOG.exit();        
     }
     
-    public void createVersion(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException, IOException {
+    public void createVersion(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException {
         LOG.entry(mediaType, length, digest, metadata);
         FluentStatement.of(operations.createVersion)
             .set(1, id)

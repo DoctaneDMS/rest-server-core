@@ -28,8 +28,12 @@ public class LocalConfig {
     
     @Autowired private ApplicationContext applicationContext;
     
+    @Bean public Filestore filestore() {
+        return new LocalFilesystem(Paths.get("/var/tmp/doctane/filestore"));
+    }
+    
     @Bean public SQLRepositoryService service() {
-        return new SQLRepositoryService(api(), Paths.get("/var/tmp/doctane/filestore"));
+        return new SQLRepositoryService(api(), filestore());
     }
     
     @Bean public SQLAPIFactory api() {

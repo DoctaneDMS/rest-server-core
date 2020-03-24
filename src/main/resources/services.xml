@@ -24,10 +24,15 @@
 		<property name="username" value="sa" />
 		<property name="password" value="" />
 	</bean> 
+    
+    <!--- configure filestore -->
+    <bean id="filestore" class="com.softwareplumbers.dms.rest.server.sql.LocalFilesystem">
+        <property name="basePath" value="/var/tmp/doctane/files"/> 
+    </bean>
 
     <!--- configure base repository -->
     <bean id="base" class="com.softwareplumbers.dms.rest.server.sql.SQLRepositoryService" scope="singleton">
-        <property name="basePath" value="/var/tmp/doctane/files"/> 
+        <property name="filestore" ref="filestore"/> 
     </bean>
 
     <!-- compose additional repository services, such as ZipFileHandler -->
