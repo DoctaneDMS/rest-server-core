@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Comparator;
@@ -50,8 +51,7 @@ public class SQLRepositoryService implements RepositoryService {
     
     private static XLogger LOG = XLoggerFactory.getXLogger(SQLRepositoryService.class);
     
-    private final Path basePath;
-    private final RepositoryObjectFactory factory = new RepositoryObjectFactory();
+    private Path basePath;
     private final SQLAPIFactory dbFactory;
       
     private String getBaseName(JsonObject metadata) {
@@ -101,12 +101,25 @@ public class SQLRepositoryService implements RepositoryService {
         return ()->LOG.throwing(new Exceptions.InvalidWorkspace(id, path));
     }
        
-    @Autowired
     public SQLRepositoryService(SQLAPIFactory dbFactory, Path basePath) {
         this.dbFactory = dbFactory;
         this.basePath = basePath;
     }
     
+    @Autowired
+    public SQLRepositoryService(SQLAPIFactory dbFactory) {
+        this.dbFactory = dbFactory;
+        this.basePath = Paths.get("/var/tmp/doctane/filestore");
+    }
+    
+    public void setBasePath(String path) {
+        this.basePath = Paths.get(path);
+    }
+    
+    public void setBasePath(Path path) {
+        this.basePath = path;
+    }
+
     @Override
     public Reference createDocument(String mediaType, InputStreamSupplier iss, JsonObject metadata) {
         LOG.entry(mediaType, iss, metadata);
@@ -523,9 +536,11 @@ public class SQLRepositoryService implements RepositoryService {
                 return LOG.exit(result);
             } else {
                 if (createMissing && !path.isEmpty()) { // can't create a folder without a path
-                    Id parentId = db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
-                        .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path)));
-                    return db.createFolder(parentId, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent));
+                    Id parentId = path.parent.isEmpty() 
+                        ? root
+                        : db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
+                            .orElseThrow(doThrowInvalidWorkspace(rootId, path));
+                    return LOG.exit(db.createFolder(parentId, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent)));
                 } else {
                     throw LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path));
                 }
@@ -755,7 +770,8 @@ public class SQLRepositoryService implements RepositoryService {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
-                .addAll(path.isEmpty() ? path : path.parent);
+                .addAll(path)
+                .parent;
             Info info = db.getInfo(id,path,SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
             switch(info.type) {
                 case WORKSPACE:

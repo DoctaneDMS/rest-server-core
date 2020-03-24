@@ -23,14 +23,13 @@ import org.springframework.context.annotation.Scope;
  *
  * @author jonathan
  */
-@Configuration
 @ImportResource("classpath:com/softwareplumbers/dms/rest/server/sql/h2db.xml")
 public class LocalConfig {
     
     @Autowired private ApplicationContext applicationContext;
     
     @Bean public SQLRepositoryService service() {
-        return new SQLRepositoryService(api(), Paths.get("/tmp/doctane/filestore"));
+        return new SQLRepositoryService(api(), Paths.get("/var/tmp/doctane/filestore"));
     }
     
     @Bean public SQLAPIFactory api() {
@@ -44,7 +43,7 @@ public class LocalConfig {
     @Bean public DataSource datasource() {
         DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
         dataSourceBuilder.driverClassName("org.h2.Driver");
-        dataSourceBuilder.url("jdbc:h2:file:/tmp/doctane/test");
+        dataSourceBuilder.url("jdbc:h2:file:/var/tmp/doctane/test");
         dataSourceBuilder.username("sa");
         dataSourceBuilder.password("");
         return dataSourceBuilder.build();        

@@ -12,6 +12,7 @@ import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.json.Json;
@@ -128,7 +129,8 @@ public abstract class FluentStatement {
         protected void buildStatement(PreparedStatement statement) throws SQLException {
             base.buildStatement(statement);
             LOG.debug("setting param {} to {}", index, value);
-            statement.setBytes(index, value.getBytes());
+            if (value == null) statement.setNull(index, Types.BINARY);
+            else statement.setBytes(index, value.getBytes());
         } 
     }
 

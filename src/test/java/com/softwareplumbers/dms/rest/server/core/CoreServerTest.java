@@ -4,6 +4,8 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.common.test.DocumentServiceTest;
 import com.softwareplumbers.dms.common.test.TestModel;
+import com.softwareplumbers.dms.rest.server.sql.Schema;
+import java.sql.SQLException;
 import java.util.UUID;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,10 +38,27 @@ public class CoreServerTest extends DocumentServiceTest  {
     @Autowired @Qualifier("documentMetadataModel")
     TestModel documentMetadataModel;
     
-    @Override
-    public RepositoryService service() {
-        return service;
+    @Autowired 
+    Schema schema;
+
+    boolean init = true;
+    
+    // TODO: make this BeforeAll in junit 5
+    public void initSchema() {
+        try {
+            schema.dropSchema();
+            schema.createSchema();
+            schema.updateSchema();
+        } catch(SQLException e) {
+            throw new RuntimeException(e);
+        }        
     }
+
+	@Override
+	public RepositoryService service() {
+        if (init) { init = false; initSchema(); };
+		return service;
+	} 
 
     @Override
     public Reference randomDocumentReference() {

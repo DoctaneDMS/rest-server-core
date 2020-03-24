@@ -154,15 +154,20 @@ public class Schema {
     private String updateScript;
     private String createScript;
     private String dropScript;
+
     
     public void setCreateScript(String script) { createScript=script; }
     public void setUpdateScript(String script) { updateScript=script; }
     public void setDropScript(String script) { dropScript=script; }
-
+    
+    public final DataSource datasource;
+    
     @Autowired
-    DataSource datasource;
+    public Schema(DataSource datasource) {
+        this.datasource = datasource;
+    }
 
-    void dropSchema() throws SQLException {
+    public void dropSchema() throws SQLException {
         try (
             Connection con = datasource.getConnection();
             Statement stmt = con.createStatement()
@@ -171,7 +176,7 @@ public class Schema {
         }        
     }
 
-    void createSchema() throws SQLException {
+    public void createSchema() throws SQLException {
         try (
             Connection con = datasource.getConnection();
             Statement stmt = con.createStatement()
@@ -180,7 +185,7 @@ public class Schema {
         }        
     }
 
-    void updateSchema() throws SQLException {
+    public void updateSchema() throws SQLException {
         try (
             Connection con = datasource.getConnection();
             Statement stmt = con.createStatement()

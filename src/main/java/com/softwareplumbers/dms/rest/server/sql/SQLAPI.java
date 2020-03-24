@@ -515,7 +515,7 @@ public class SQLAPI implements AutoCloseable {
             .set(1, id)
             .set(2, folderId)
             .set(3, targetPath.part)
-            .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
+            .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         FluentStatement.of(operations.copyFolder)
             .set(1, id)

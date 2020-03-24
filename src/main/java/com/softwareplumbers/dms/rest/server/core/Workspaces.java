@@ -325,7 +325,7 @@ public class Workspaces {
         @QueryParam("id") String documentId,
         @Context ContainerRequestContext requestContext
     ) {
-        LOG.entry(repository);
+        LOG.entry(repository, documentId);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
             AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);

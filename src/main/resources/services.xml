@@ -10,7 +10,37 @@
        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" xmlns:aop="http://www.springframework.org/schema/aop">
     
     <context:annotation-config />
-	
+
+    <!--- import config for H2 database type -->    
+    <import resource="classpath:/com/softwareplumbers/dms/rest/server/sql/h2db.xml" />
+  
+    <!--- choose SQL API variant -->  
+    <bean id="SQLAPI" class="com.softwareplumbers.dms.rest.server.sql.SQLAPIFactory" />
+
+    <!--- configure datasource -->
+	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:file:/var/tmp/doctane/db" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+	</bean> 
+
+    <!--- configure base repository -->
+    <bean id="base" class="com.softwareplumbers.dms.rest.server.sql.SQLRepositoryService" scope="singleton">
+        <property name="basePath" value="/var/tmp/doctane/files"/> 
+    </bean>
+
+    <!-- compose additional repository services, such as ZipFileHandler -->
+    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
+        <property name="baseRepository" ref="base"/>
+        <property name="handlers">
+            <array>
+                <bean class="com.softwareplumbers.dms.rest.server.model.ZipFileHandler"/>
+            </array>
+        </property>
+    </bean>
+
+                                          
     <bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
         <constructor-arg index="0" value="/var/tmp/doctane-proxy.keystore"/>
         <constructor-arg index="1" value="/var/tmp/certs"/>
@@ -20,18 +50,6 @@
         <constructor-arg index="4"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
     </bean>
 
-    <bean id="base" class="com.softwareplumbers.dms.rest.server.tmp.TempRepositoryService" scope="singleton">
-        <constructor-arg index="0" type="java.lang.String" value="DocumentTitle"/>
-    </bean>
-    
-    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
-        <property name="baseRepository" ref="base"/>
-        <property name="handlers">
-            <array>
-                <bean class="com.softwareplumbers.dms.rest.server.model.ZipFileHandler"/>
-            </array>
-        </property>
-    </bean>
     
     <bean id="dummyValidation" class="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" scope="singleton">
         <constructor-arg index="0" value="tmp"/>

@@ -1,6 +1,5 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.common.QualifiedName;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
@@ -17,7 +16,6 @@ import java.util.Base64;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -56,23 +54,23 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryBrowser;
-import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
+import com.softwareplumbers.dms.rest.server.sql.Schema;
 import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.InitializationFailure;
 import com.softwareplumbers.keymanager.KeyManager;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.sql.SQLException;
 import java.util.Arrays;
 import javax.json.JsonReader;
-import javax.ws.rs.core.Response.Status;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.client.ClientProperties;
+import org.junit.Before;
 
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 
@@ -109,6 +107,15 @@ public class TempRepositoryServerTest {
     CookieRequestValidationService cookieHandler;
     @Autowired
     KeyManager<?,?> keyManager;
+    @Autowired
+    Schema schema;
+    
+    @Before
+    public void clear() throws SQLException {
+        schema.dropSchema();
+        schema.createSchema();
+        schema.updateSchema();
+    }
     
     private static InputStream getTestFile(String name) {
         return TempRepositoryServerTest.class.getResourceAsStream(name);
@@ -128,7 +135,6 @@ public class TempRepositoryServerTest {
 		JsonObject metadata = getTestMetadata("/" + name + ".json");
 		return metadata.equals(document.getMetadata()) && Arrays.equals(testfile, stream.toByteArray());
 	}
-
     
     /** *  Utility function to post a document using the Jersey client API.Test documents are held in src/test/resources in this project.Two files
     <I>name</I>.txt and <I>name</I>.json make up a single test document, 
@@ -524,17 +530,7 @@ public class TempRepositoryServerTest {
         throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
     }
     
-    public void clear() {
-       	WebTarget target = client.target("http://localhost:" + port + "/admin/temp/tmp/clear" );
 
-    	Response response = target
-    			.request(MediaType.APPLICATION_JSON)
-    			.get();
-    	
-		if (!(response.getStatus() == Response.Status.OK.getStatusCode())) {
-            throw new RuntimeException(String.format("Bad get (%s) returns %s", response.getStatusInfo().getReasonPhrase(), response.readEntity(String.class)));
-		}
-    }
 
 
     /** Test that the server responds on its heartbeat URL.
@@ -549,245 +545,12 @@ public class TempRepositoryServerTest {
     			.get();
 		assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 	}
-	
-    /** Test that posting a test document returns a non-null ID.
-     * 
-     * Posts to /docs/{repository}/ are expected to be multipart posts containing
-     * two parts, one named 'file' and one named 'metadata'.
-     */
-	@Test
-	public void postDocumentTest() throws IllegalStateException, IOException {
-
-		JsonObject response = postDocument("test1", null,"txt");
-		
-		String id = response.getString("id");
-		
-		assertNotNull(id);
-	}
-	
-    /** Test that posting a test file returns a non-null ID.
-     * 
-     * Posts to /docs/{repository}/file are expected to be simple posts containing
-     * binary document data and a content type. The metadata in the resulting documetn
-     * will be empty.
-     */
-	@Test
-	public void postFileTest() throws IllegalStateException, IOException {
-
-    	WebTarget target = client.target("http://localhost:" + port + "/docs/tmp/file");
-    	
-        InputStream file = getTestFile("/test1.txt");
-
-    	Response response = target
-    			.request(MediaType.APPLICATION_JSON_TYPE)
-                .cookie(cookieHandler.generateCookie("test_user"))
-    			.post(Entity.entity(file, MediaType.TEXT_PLAIN));
-    	
-			
-		if (response.getStatus() == Response.Status.CREATED.getStatusCode()) {
-			JsonObject result = response.readEntity(JsonObject.class);
-			assertNotNull(result.get("id"));
-		} else {
-			System.out.println(response.toString());
-			throw new RuntimeException("Bad post");
-		}
-
-	}
     
-    /** Test that posting a test file returns a non-null ID.
-     * 
-     * This tests that no cookie is required when using dummy authentication for a
-     * repository.
-     */
-	@Test
-	public void postFileTestDummyAuth() throws IllegalStateException, IOException {
-
-    	WebTarget target = client.target("http://localhost:" + port + "/docs/dummy/file");
-    	
-        InputStream file = getTestFile("/test1.txt");
-
-    	Response response = target
-    			.request(MediaType.APPLICATION_JSON_TYPE)
-    			.post(Entity.entity(file, MediaType.TEXT_PLAIN));
-    	
-			
-		if (response.getStatus() == Response.Status.CREATED.getStatusCode()) {
-			JsonObject result = response.readEntity(JsonObject.class);
-			assertNotNull(result.get("id"));
-		} else {
-			System.out.println(response.toString());
-			throw new RuntimeException("Bad post");
-		}
-
-	}
-	
-    /** Test that getting a document that was posted returns a document equal to the original.
-     * 
-     * Posts to /docs/{repository}/ are expected to be multipart posts containing
-     * two parts, one named 'file' and one named 'metadata'. The response contains a
-     * json object with an id property. Getting /docs/{repository}/{id} should return
-     * a multipart response with file and metadata components identical to the original.
-     */
-	@Test
-	public void roundtripDocumentTest() throws IllegalStateException, IOException, ParseException {
-
-		JsonObject response = postDocument("test1", null, "txt");
-		
-		String id = response.getString("id");
-		
-		assertNotNull(id);
-		
-		StreamableRepositoryObject doc = getDocument(id);
-		
-		assertNotNull(doc);
-		
-		assertTrue(docEquals("test1", doc, null));
-		
-	}
-    
-    @Test
-	public void getInvalidReferenceTest() throws IllegalStateException, IOException, ParseException {
-        try {
-    		StreamableRepositoryObject doc = getDocument("2321412341234");
-            fail();
-        } catch (HttpError err) {
-            assertEquals(Status.NOT_FOUND.getStatusCode(), err.code);
-        }	
-	}
-    
-    @Test
-	public void getInvalidReferenceTestWithMetadata() throws IllegalStateException, IOException, ParseException {
-
-        try {
-    		JsonObject doc = getDocumentJson("2321412341234", "metadata", JsonObject.class);
-            fail();
-        } catch (HttpError err) {
-            assertEquals(Status.NOT_FOUND.getStatusCode(), err.code);
-        }
-		
-	}
-	
-	
-    /** Test that updating a document returns a new version.
-     * 
-     * Puts to /docs/{repository}/{id} are expected to be multi-part posts containing
-     * two parts, one named 'file' and one named 'metadata'. The response contains a
-     * json object with id and version property. The returned id should be the same
-     * as the original document, whereas the version should be incremented.   
-     */
-	@Test
-	public void putDocumentTest() throws IllegalStateException, IOException, ParseException {
-
-		JsonObject response1 = postDocument("test1", null, "txt");
-		
-		assertNotNull(response1.getString("id"));
-		
-		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"),"txt");
-		
-		assertNotNull(response2.getString("id"));
-		
-		assertEquals(response1.getString("id"), response2.getString("id"));
-		//TODO: fixme
-		//assertNotEquals(response1.getInt("version"), response2.getInt("version"));
-		
-	}
-	
-    /** Test that we can create a named document in a workspace by a put to a specific url
-     * 
-     * Puts to /ws/{repository}/path may either be multi-part content containing
-     * a document, or simple content containing an update to a workspace. The response contains a
-     * json object, with either id and version property or...?
-     */
-	@Test
-	public void putDocumentInWorkspaceTest() throws IllegalStateException, IOException, ParseException {
-		JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1","txt");
-		String wsId = response1.getString("id");
-		assertNotNull(wsId);
-		JsonArray response2 = getWorkspaceJson("wsname/*", JsonArray.class);
-		assertEquals(1, response2.size());		
-	}
-	
 	private static Reference getRef(JsonValue value) {
 	    JsonObject obj = (JsonObject)value;
 	    return new Reference(obj.getString("id", null), obj.getString("version", null));
 	}
-	
-	@Test
-	public void searchDocumentTest() throws IllegalStateException, IOException, ParseException {
-
-		JsonArray catalog0 = getCatalog("/",null);
-		JsonObject response1 = postDocument("test1", null, "txt");
-		JsonObject response2 = putDocument("test2", "/docs/tmp/" + response1.getString("id"),"txt");
-		JsonObject response3 = postDocument("test3", null, "txt");
-		JsonArray catalog1 = getCatalog("/",null);
-		assertEquals(2, catalog1.size() - catalog0.size());
-		assertTrue(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response2))));
-		assertTrue(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response3))));
-		assertFalse(catalog1.stream().anyMatch(item->getRef(item).equals(Reference.fromJson(response1))));
-	}
-	
-	@Test
-	public void searchWorkspaceTest() throws IOException, ParseException 
-	{
-		String workspaceA = UUID.randomUUID().toString();
-		String workspaceB = UUID.randomUUID().toString();
-		
-		clear();
-		postDocument("test1", workspaceA, "txt");
-		postDocument("test2", workspaceA, "txt");
-		postDocument("test3", workspaceB, "txt");
-		JsonArray catalog0 = getCatalog("/", workspaceA);
-		assertEquals(2, catalog0.size());
-		JsonArray catalog1 = getCatalog("/", workspaceB);
-		assertEquals(1, catalog1.size());
-	}
-	
-	@Test
-	public void createWorkspaceTest() throws IOException {
-		JsonObject workspace = Json.createObjectBuilder()
-			.add("state","Open")
-			.build();
-		
-		JsonObject result = putWorkspace("test4/test5", workspace);
-		
-		assertTrue(result.containsKey("id"));
-		
-		JsonObject result2 = getWorkspaceJson("test4/test5", JsonObject.class);
-		
-		assertEquals("test4/test5", result2.getString("name"));
-		assertEquals("Open", result2.getString("state"));
-	}
-	
-	@Test
-	public void getWorkspaceByIdTest() throws IOException {
-		JsonObject workspace = Json.createObjectBuilder()
-				.add("state","Open")
-				.build();
-			
-			JsonObject result = putWorkspace("test4/test5", workspace);
-			
-			assertTrue(result.containsKey("id"));
-			
-			JsonObject result2 = getWorkspaceJson("~"+result.getString("id"), JsonObject.class);
-			
-			assertEquals("test4/test5", result2.getString("name"));
-			assertEquals("Open", result2.getString("state"));		
-	}
-	
-    /** Test that we can get a document from a workspace either as json or a full multipart response
-     * 
-     */
-    @Test
-    public void getDocumentFromWorkspaceTest() throws IllegalStateException, IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
-        String wsId = response1.getString("id");
-        assertNotNull(wsId);
-        JsonObject response2 = getWorkspaceJson("wsname/doc1", JsonObject.class);
-        assertEquals(wsId, response2.getString("id"));      
-        Document doc = (Document)getDocumentFromWorkspace("wsname/doc1");
-        assertEquals(wsId, doc.getId());
-    }
-    
+	  
     @Test
     public void testOptionsHasCORSHeaders() {
         WebTarget target = client.target("http://localhost:" + port + "/ws/tmp/");
@@ -800,37 +563,7 @@ public class TempRepositoryServerTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertNotNull(response.getHeaderString("Access-Control-Allow-Headers"));
     }
-    
-    @Test
-    public void testCreateDocumentLink() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
-        String wsId = response1.getString("id");
-        assertNotNull(wsId);
-        putDocumentLink("/ws/tmp/anotherws/myDoc", wsId, UpdateType.CREATE);
-        Document doc = (Document)getDocumentFromWorkspace("anotherws/myDoc");
-        assertEquals(wsId, doc.getId());
-    }
-    
-    @Test
-    public void testCreateDocumentLinkGeneratesName() throws IOException, ParseException {
-        JsonObject response1 = postDocument("anon", null, "txt");
-        String docId = response1.getString("id");
-        assertNotNull(docId);
-        JsonObject response2 = postDocumentLink("/ws/tmp/anotherws", docId, UpdateType.CREATE);
-        String docName = response2.getString("name");
-        Document doc = (Document)getDocumentFromWorkspace(docName);
-        assertEquals(docId, doc.getId());
-    }
-
-    @Test
-    public void testWildcardWithId() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname1/doc1", "txt");
-        String wsId = response1.getString("id");
-        putDocumentLink("/ws/tmp/anotherws1/myDoc", wsId, UpdateType.CREATE);
-        JsonArray result = getWorkspaceJson("/*/~"+wsId, JsonArray.class);
-        assertEquals(2, result.size());
-    }
-    
+        
     @Test
     public void testServiceAccountLogin() throws InitializationFailure, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, BadKeyException, SignatureException {
         String account = SystemKeyPairs.DEFAULT_SERVICE_ACCOUNT.name();
@@ -929,23 +662,6 @@ public class TempRepositoryServerTest {
     }
 
     @Test
-    public void testListWorkspaces() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname2/doc2", "txt");
-        String docId = response1.getString("id");
-        putDocumentLink("/ws/tmp/anotherws8/myDoc", docId, UpdateType.CREATE);
-        JsonArray result = getDocumentJson(docId, "workspaces", JsonArray.class);
-        assertEquals(2, result.size());
-    }
-    
-    @Test
-    public void testGetMetadata() throws IOException, ParseException {
-        JsonObject response1 = postDocument("test2", null, "txt");
-        String docId = response1.getString("id");
-        JsonObject result = getDocumentJson(docId, "metadata", JsonObject.class);
-        assertEquals(getTestMetadata("/test2.json"), result.getJsonObject("metadata"));
-    }
-    
-    @Test
     public void testGetDocumentXMLFromWorkspaceWithContentType() throws IOException, ParseException, TransformerException {
         JsonObject response1 = putDocument("testdoc", "/ws/tmp/wsname/doc4", "docx");
         assertNotNull(response1);
@@ -964,17 +680,7 @@ public class TempRepositoryServerTest {
         NodeList tds = xmlDoc.getElementsByTagName("td");
         assertEquals(27, tds.getLength());
     }
-    
-    @Test
-    public void testCreateDocumentLinkWithPost() throws IOException, ParseException {
-        JsonObject response1 = putDocument("test2", "/ws/tmp/wsname/doc1", "txt");
-        String wsId = response1.getString("id");
-        assertNotNull(wsId);
-        JsonObject response2 = postDocumentLink("/ws/tmp/anotherws2", wsId, UpdateType.CREATE);
-        QualifiedName name = QualifiedName.parse(response2.getString("name"),"/");
-        Document doc = (Document)getDocumentFromWorkspace("anotherws2/" + name.part);
-        assertEquals(wsId, doc.getId());
-    }
+
     
 }
 

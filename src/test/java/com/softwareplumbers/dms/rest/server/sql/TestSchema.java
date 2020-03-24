@@ -5,7 +5,6 @@
  */
 package com.softwareplumbers.dms.rest.server.sql;
 
-import com.softwareplumbers.dms.rest.server.tmp.TmpConfig;
 import java.sql.SQLException;
 import org.junit.Test;
 import org.junit.runner.RunWith;

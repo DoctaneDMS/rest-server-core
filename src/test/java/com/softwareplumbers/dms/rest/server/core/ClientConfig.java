@@ -12,7 +12,6 @@ import java.security.KeyStoreException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import com.softwareplumbers.dms.common.test.TestModel;
 import com.softwareplumbers.dms.common.test.TestModel.StringField;
@@ -20,9 +19,7 @@ import com.softwareplumbers.dms.common.test.TestModel.BooleanField;
 import com.softwareplumbers.dms.common.test.TestModel.SessionIdField;
 import com.softwareplumbers.dms.common.test.TestModel.Field;
 import com.softwareplumbers.dms.rest.client.spring.DocumentServiceImpl;
-import com.softwareplumbers.dms.rest.client.spring.KeyPairs;
 import com.softwareplumbers.dms.rest.client.spring.LoginHandler;
-import com.softwareplumbers.dms.rest.client.spring.SecretKeys;
 import com.softwareplumbers.dms.rest.client.spring.SignedRequestLoginHandler;
 /**
  *
