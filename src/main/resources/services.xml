@@ -12,10 +12,10 @@
     <context:annotation-config />
 
     <!--- import config for H2 database type -->    
-    <import resource="classpath:/com/softwareplumbers/dms/rest/server/sql/h2db.xml" />
+    <import resource="classpath:/com/softwareplumbers/dms/service/sql/h2db.xml" />
   
     <!--- choose SQL API variant -->  
-    <bean id="SQLAPI" class="com.softwareplumbers.dms.rest.server.sql.SQLAPIFactory" />
+    <bean id="SQLAPI" class="com.softwareplumbers.dms.service.sql.SQLAPIFactory" />
 
     <!--- configure datasource -->
 	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
@@ -26,12 +26,12 @@
 	</bean> 
     
     <!--- configure filestore -->
-    <bean id="filestore" class="com.softwareplumbers.dms.rest.server.sql.LocalFilesystem">
-        <property name="basePath" value="/var/tmp/doctane/files"/> 
+    <bean id="filestore" class="com.softwareplumbers.dms.service.sql.LocalFilesystem">
+        <property name="Path" value="/var/tmp/doctane/files"/> 
     </bean>
 
     <!--- configure base repository -->
-    <bean id="base" class="com.softwareplumbers.dms.rest.server.sql.SQLRepositoryService" scope="singleton">
+    <bean id="base" class="com.softwareplumbers.dms.service.sql.SQLRepositoryService" scope="singleton">
         <property name="filestore" ref="filestore"/> 
     </bean>
 

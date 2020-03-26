@@ -59,7 +59,7 @@ import com.softwareplumbers.dms.RepositoryBrowser;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
-import com.softwareplumbers.dms.rest.server.sql.Schema;
+import com.softwareplumbers.dms.service.sql.Schema;
 import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.InitializationFailure;
 import com.softwareplumbers.keymanager.KeyManager;
