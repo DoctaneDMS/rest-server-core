@@ -31,6 +31,7 @@ bootRun {
 	systemProperties = System.properties
     systemProperty "doctane.keystore.password", propValue("keystorePassword", "changeme")
     systemProperty "spring.profiles.active", "test"
+    classpath = sourceSets.test.runtimeClasspath
 }
 
 test {
@@ -65,6 +66,7 @@ bootRepackage  {
 task repackageTask1(type: BootRepackage, dependsOn: bootJar1) {
 	classifier='standalone'
 	withJarTask='bootJar1'
+    customConfiguration = 'bootClasspath'
 }
 
 jar {
@@ -81,6 +83,10 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 task testsJar(type: Jar, dependsOn: classes) {
     classifier 'tests'
     from sourceSets.test.output
+}
+
+task showConfigurations {
+    configurations.each { println it.name }
 }
 
 assemble {
@@ -128,6 +134,12 @@ dependencyManagement {
      }
 }
 
+configurations {
+    defaultService
+    testCompile.extendsFrom(defaultService)
+    bootClasspath.extendsFrom(runtime, defaultService)
+}
+
 configurations.all {
     // Check for updates to dependencies marked 'changing' every build
     resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
@@ -157,12 +169,13 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-ext', version: '1.7.31-SNAPSHOT'
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31-SNAPSHOT'
     compile group: 'org.apache.commons', name: 'commons-text', version: '1.8' 
+
+    defaultService group: 'org.springframework.boot', name:'spring-boot-starter-jdbc'
+    defaultService group: 'com.h2database', name: 'h2', version: '1.4.200'
+    defaultService group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
+    defaultService group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: 'master-SNAPSHOT'
     
     testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT', classifier: 'tests'
     testCompile group: 'com.softwareplumbers.oss', name:'dms-client-spring', version: 'master-SNAPSHOT'
-    testCompile group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: 'master-SNAPSHOT'
     testCompile group: 'org.springframework.boot', name:'spring-boot-starter-test'
-    testCompile group: 'org.springframework.boot', name:'spring-boot-starter-jdbc'
-    testCompile group: 'com.h2database', name: 'h2', version: '1.4.200'
-    testCompile group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
 }
