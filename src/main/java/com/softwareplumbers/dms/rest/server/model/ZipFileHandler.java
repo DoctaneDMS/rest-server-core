@@ -8,7 +8,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.dms.Constants;
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.NamedRepositoryObject;

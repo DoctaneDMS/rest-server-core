@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;

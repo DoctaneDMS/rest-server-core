@@ -46,7 +46,7 @@ import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
 import org.slf4j.ext.XLogger;
 import com.softwareplumbers.dms.Workspace;
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService;

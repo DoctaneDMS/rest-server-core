@@ -4,7 +4,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
 import com.softwareplumbers.dms.Document;

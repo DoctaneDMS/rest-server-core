@@ -1,6 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import java.util.stream.Stream;
 
 import javax.json.Json;

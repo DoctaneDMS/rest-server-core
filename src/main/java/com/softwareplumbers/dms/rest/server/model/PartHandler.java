@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.dms.RepositoryService;

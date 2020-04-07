@@ -8,7 +8,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import java.util.ArrayList;
 import java.util.List;
