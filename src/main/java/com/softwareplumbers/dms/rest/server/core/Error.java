@@ -128,7 +128,7 @@ public class Error {
 		return builder.build();
 	}
 
-    public static JsonObject objectNotFound(String repository, WorkspacePath name) {
+    public static JsonObject objectNotFound(String repository, RepositoryPath name) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
 				.add("error", "Object " + name + " does not exist in repository " + repository)
 				.add("name", name.toString())
@@ -145,8 +145,16 @@ public class Error {
 	public static JsonObject missingResourcePath() {
 		return Json.createObjectBuilder().add("error", "resource path missing from request").build();						
 	}
-	
-	public static JsonObject missingFile() {
+
+	public static JsonObject wildcardNotAllowed() {
+		return Json.createObjectBuilder().add("error", "wildcard not allowed in path").build();						
+	}
+    
+	public static JsonObject partNotAllowed() {
+		return Json.createObjectBuilder().add("error", "part not allowed in path").build();						
+	}
+
+    public static JsonObject missingFile() {
 		return Json.createObjectBuilder().add("error", "Document file missing from request").build();				
 	}
 

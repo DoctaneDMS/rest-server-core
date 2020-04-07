@@ -6,6 +6,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.common.immutablelist.QualifiedName;
+import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.rest.server.core.RepositoryPath.ElementType;
 import com.softwareplumbers.dms.rest.server.core.RepositoryPath.IdElement;
 import com.softwareplumbers.dms.rest.server.core.RepositoryPath.NamedElement;
@@ -26,6 +27,7 @@ public class RepositoryPathTest {
     @Test
     public void testSimplePath() {
         RepositoryPath path = RepositoryPath.valueOf("/xyz/abc/234");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.ROOT, path.getQueryPath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
         assertEquals(path, path.getDocumentPath());
@@ -38,6 +40,7 @@ public class RepositoryPathTest {
     @Test
     public void testSimplePathWithRootId() {
         RepositoryPath path = RepositoryPath.valueOf("~xyx/abc/234");
+        assertEquals("xyx", path.getRootId());
         assertEquals(RepositoryPath.ROOT, path.getQueryPath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
         assertEquals(path, path.getDocumentPath());
@@ -50,6 +53,7 @@ public class RepositoryPathTest {
     @Test
     public void testQueryPath1() {
         RepositoryPath path = RepositoryPath.valueOf("xyx/ab*c/234");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.valueOf("ab*c/234"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("xyx"), path.getSimplePath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
@@ -63,6 +67,7 @@ public class RepositoryPathTest {
     @Test
     public void testQueryPath2() {
         RepositoryPath path = RepositoryPath.valueOf("xyx/ab?c/*");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.valueOf("ab?c/*"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("xyx"), path.getSimplePath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
@@ -76,6 +81,7 @@ public class RepositoryPathTest {
     @Test
     public void testQueryPathRootId() {
         RepositoryPath path = RepositoryPath.valueOf("~xyx/ab?c/*");
+        assertEquals("xyx", path.getRootId());
         assertEquals(RepositoryPath.valueOf("ab?c/*"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("~xyx"), path.getSimplePath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
@@ -89,6 +95,7 @@ public class RepositoryPathTest {
     @Test
     public void testSimplePathWithParts() {
         RepositoryPath  path = RepositoryPath.valueOf("/abc/xyz/~/234/ghi");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.ROOT, path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("abc/xyz"), path.getDocumentPath());
         assertEquals(RepositoryPath.valueOf("~/234/ghi"), path.getPartPath());
@@ -103,6 +110,7 @@ public class RepositoryPathTest {
     @Test
     public void testSimplePathWithRootPart() {
         RepositoryPath  path = RepositoryPath.valueOf("/abc/xyz/~");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.ROOT, path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("abc/xyz"), path.getDocumentPath());
         assertEquals(RepositoryPath.valueOf("~"), path.getPartPath());
@@ -115,6 +123,7 @@ public class RepositoryPathTest {
     @Test
     public void testSimplePathWithDocumentId() {
         RepositoryPath  path = RepositoryPath.valueOf("/abc/~sdfg");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.ROOT, path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("abc/~sdfg"), path.getDocumentPath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
@@ -126,6 +135,7 @@ public class RepositoryPathTest {
     @Test
     public void testQueryPathWithDocumentId() {
         RepositoryPath  path = RepositoryPath.valueOf("/abc/*/~sdfg");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.valueOf("*/~sdfg"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("abc"), path.getSimplePath());
         assertEquals(RepositoryPath.ROOT, path.getPartPath());
@@ -138,6 +148,7 @@ public class RepositoryPathTest {
     @Test
     public void testDocumentIdWithParts() {
         RepositoryPath  path = RepositoryPath.valueOf("/abc/~sdfg/~/234/ghi");
+        assertEquals(Constants.ROOT_ID, path.getRootId());
         assertEquals(RepositoryPath.ROOT, path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("abc/~sdfg"), path.getDocumentPath());
         assertEquals(RepositoryPath.valueOf("~/234/ghi"), path.getPartPath());
@@ -152,6 +163,7 @@ public class RepositoryPathTest {
     @Test
     public void testWorkpaceIdDocumentIdWithParts() {
         RepositoryPath  path = RepositoryPath.valueOf("~123/abc/def/s*/x*/~sdfg/~/234/ghi");
+        assertEquals("123", path.getRootId());
         assertEquals(RepositoryPath.valueOf("s*/x*/~sdfg/~/234/ghi"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("~123/abc/def"), path.getSimplePath());
         assertEquals(RepositoryPath.valueOf("~123/abc/def/s*/x*/~sdfg"), path.getDocumentPath());
@@ -171,6 +183,7 @@ public class RepositoryPathTest {
     @Test
     public void testWorkpaceIdDocumentIdWithQueryParts() {
         RepositoryPath  path = RepositoryPath.valueOf("~123/abc/def/s*/x*/~sdfg/~/234/ghi?");
+        assertEquals("123", path.getRootId());
         assertEquals(RepositoryPath.valueOf("s*/x*/~sdfg/~/234/ghi?"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("~123/abc/def"), path.getSimplePath());
         assertEquals(RepositoryPath.valueOf("~123/abc/def/s*/x*/~sdfg"), path.getDocumentPath());
@@ -191,10 +204,13 @@ public class RepositoryPathTest {
     @Test
     public void testWorkpaceIdDocumentIdWithQueryPartsAndVersions() {
         RepositoryPath  path = RepositoryPath.valueOf("~123@789/abc/def@123/s*/x*/~sdfg@111/~/234/ghi?");
+        assertEquals("123", path.getRootId());
         assertEquals(RepositoryPath.valueOf("s*/x*/~sdfg@111/~/234/ghi?"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("~123@789/abc/def@123"), path.getSimplePath());
         assertEquals(RepositoryPath.valueOf("~123@789/abc/def@123/s*/x*/~sdfg@111"), path.getDocumentPath());
         assertEquals(RepositoryPath.valueOf("~/234/ghi?"), path.getPartPath());
+        assertEquals(RepositoryPath.valueOf("abc/def@123/s*/x*/~sdfg@111/~/234/ghi?"), path.getAfterVersion());
+        assertEquals(RepositoryPath.valueOf("~123@789"), path.getVersioned());
         
         assertEquals(new IdElement("123", "789"), path.get(0));
         assertEquals(new VersionedElement(ElementType.DOCUMENT_PATH, "abc", null), path.get(1));
@@ -211,6 +227,7 @@ public class RepositoryPathTest {
     @Test
     public void testWorkpaceIdDocumentIdWithQueryPartsAndEscapedVersions() {
         RepositoryPath  path = RepositoryPath.valueOf("~123\\@789/abc/def\\@123/s*/x*/~sdfg\\@111/~/234/ghi?");
+        assertEquals("123@789", path.getRootId());
         assertEquals(RepositoryPath.valueOf("s*/x*/~sdfg\\@111/~/234/ghi?"), path.getQueryPath());
         assertEquals(RepositoryPath.valueOf("~123\\@789/abc/def\\@123"), path.getSimplePath());
         assertEquals(RepositoryPath.valueOf("~123\\@789/abc/def\\@123/s*/x*/~sdfg\\@111"), path.getDocumentPath());

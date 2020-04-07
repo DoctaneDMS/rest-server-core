@@ -56,6 +56,7 @@ import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.StreamableDocumentPart;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
+import com.softwareplumbers.dms.rest.server.core.RepositoryPath.IdElement;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Arrays;
@@ -127,17 +128,14 @@ public class Workspaces {
         this.authorizationServiceFactory = authorizationServiceFactory;
     }
     
-    private Response createResponse(RepositoryService service, WorkspacePath workspacePath, MediaType requestedMediaType, NamedRepositoryObject result) throws UnsupportedEncodingException {
+    private Response createResponse(RepositoryService service, RepositoryPath workspacePath, MediaType requestedMediaType, NamedRepositoryObject result) throws UnsupportedEncodingException {
         switch (result.getType()) {
             case WORKSPACE:
             case DOCUMENT_PART:
                 return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).entity(result.toJson(service,1,0)).build());                    		
            	case DOCUMENT_LINK:
             case STREAMABLE_DOCUMENT_PART:
-                String documentName = workspacePath.staticPath.part;
-                if (workspacePath.partPath.isPresent()) {
-                    documentName = workspacePath.partPath.get().part;
-                }
+                String documentName = workspacePath.part.toString();
                 if (requestedMediaType == MediaType.MULTIPART_FORM_DATA_TYPE)  {
                     StreamableRepositoryObject document = (StreamableRepositoryObject)result;
                     FormDataBodyPart metadata = new FormDataBodyPart();
@@ -214,7 +212,7 @@ public class Workspaces {
     @Path("/{repository}/{workspace:[^?]+}")
     public Response get(
         @PathParam("repository") String repository,
-        @PathParam("workspace") WorkspacePath workspacePath,
+        @PathParam("workspace") RepositoryPath workspacePath,
         @QueryParam("filter") String filter,
         @QueryParam("contentType") @DefaultValue("*/*") String contentType,
         @Context HttpHeaders headers,
@@ -234,22 +232,27 @@ public class Workspaces {
 
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
+            
+            String rootId = workspacePath.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
+            workspacePath = workspacePath.afterRootId();
+            
+            Optional<IdElement> id = workspacePath.getId();
 
             // Might we return multiple results?
-            if (!workspacePath.queryPath.isEmpty() || workspacePath.queryPart || workspacePath.documentId != null) {
-                Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, workspacePath.rootId, workspacePath.staticPath);
+            if (!workspacePath.getDocumentPath().getQueryPath().isEmpty() || !workspacePath.getPartPath().getQueryPath().isEmpty() || id.isPresent()) {
+                Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, rootId, workspacePath.getDocumentPath().getSimplePath().getDocumentName());
                 Query combinedConstraint = accessConstraint.intersect(filterConstraint);
-                QualifiedName fullPath = workspacePath.staticPath.addAll(workspacePath.queryPath);
                 Options.Search.Builder options = Options.Search.EMPTY
                     .addOptionIf(Options.SEARCH_OLD_VERSIONS, false)
-                    .addOption(Options.PART, workspacePath.partPath);
+                    .addOption(Options.PART, workspacePath.getPartName());
                 
                 Stream<NamedRepositoryObject> results;
-                if (workspacePath.documentId != null) {
-                    Stream<DocumentLink> links = service.listWorkspaces(workspacePath.documentId, fullPath, combinedConstraint, options.build());
+                if (id.isPresent()) {
+                    
+                    Stream<DocumentLink> links = service.listWorkspaces(id.get().id, workspacePath.beforeId().getDocumentName(), combinedConstraint, options.build());
                     results = links.map(item->(NamedRepositoryObject)item); // .onClose(()->links.close()) NO DOCUMENTATION as to whether this is necessary or not.
                 } else {
-                    results = service.catalogueByName(workspacePath.rootId, fullPath, combinedConstraint, options.build());
+                    results = service.catalogueByName(rootId, workspacePath.getDocumentPath().getDocumentName(), combinedConstraint, options.build());
                 }
                 
                 try {
@@ -276,8 +279,8 @@ public class Workspaces {
                 // Path has no wildcards, so we are returning at most one object
                 NamedRepositoryObject result;
                 Options.Get.Builder options = Options.Get.EMPTY;
-                if (workspacePath.partPath.isPresent()) options = options.addOption(Options.PART.of(workspacePath.partPath.get()));                
-                result = service.getObjectByName(workspacePath.rootId, workspacePath.staticPath, options.build());
+                options.addOption(Options.PART, workspacePath.getPartName());                
+                result = service.getObjectByName(rootId, workspacePath.getDocumentName(), options.build());
                 if (result != null) { 
                     Query acl = authorizationService.getObjectACL(result, AuthorizationService.ObjectAccessRole.READ);
                     if (!acl.containsItem(userMetadata)) {
@@ -395,7 +398,7 @@ public class Workspaces {
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response put(
             @PathParam("repository") String repository,
-            @PathParam("workspace") WorkspacePath workspacePath,
+            @PathParam("workspace") RepositoryPath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
             @QueryParam("updateType") @DefaultValue("CREATE_OR_UPDATE") UpdateType updateType,
             @Context ContainerRequestContext requestContext,
@@ -414,7 +417,15 @@ public class Workspaces {
 
             RepositoryObject.Type type = RepositoryObject.getType(object);
 
-            Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, getRequiredRole(updateType));
+            String rootId = workspacePath.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
+            workspacePath = workspacePath.afterRootId();
+            
+            if (!workspacePath.getPartPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.partNotAllowed()));
+            if (!workspacePath.getQueryPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.wildcardNotAllowed()));                
+
+            Query acl = authorizationService.getObjectACL(rootId, workspacePath.getDocumentName(), type, null, getRequiredRole(updateType));
                 
             if (!acl.containsItem(userMetadata)) {
                 return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
@@ -431,18 +442,18 @@ public class Workspaces {
                 if (updateType == UpdateType.CREATE) {
                 	Options.Create.Builder options = Options.Create.EMPTY
                         .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
-                    workspace = service.createWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, options.build());
+                    workspace = service.createWorkspaceByName(rootId, workspacePath.getDocumentName(), state, metadata, options.build());
                 } else if (updateType == UpdateType.COPY) {
                     Query aclSource = authorizationService.getObjectACL(Constants.ROOT_ID, name, type, null, ObjectAccessRole.READ);
                     if (!acl.containsItem(userMetadata)) {
                         return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
                     }
-                    workspace = service.copyWorkspace(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPath, createWorkspace);
+                    workspace = service.copyWorkspace(Constants.ROOT_ID, name, rootId, workspacePath.getDocumentName(), createWorkspace);
                 } else {
                     Options.Update.Builder options = Options.Update.EMPTY
                         .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
                         .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE);
-                    workspace = service.updateWorkspaceByName(workspacePath.rootId, workspacePath.staticPath, state, metadata, options.build());
+                    workspace = service.updateWorkspaceByName(rootId, workspacePath.getDocumentName(), state, metadata, options.build());
                 }
                 
                 return LOG.exit(Response.accepted().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build());    
@@ -460,7 +471,7 @@ public class Workspaces {
                         throw new InvalidDocumentId("null");
                     } else {
                         Options.Create.Builder options = Options.Create.EMPTY.addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
-                        link = service.createDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
+                        link = service.createDocumentLink(rootId, workspacePath.getDocumentName(), reference, options.build());
                     }
                     
                 } else if (updateType == UpdateType.COPY) {
@@ -468,15 +479,15 @@ public class Workspaces {
                     if (!acl.containsItem(userMetadata)) {
                         return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
                     }
-                    link = service.copyDocumentLink(Constants.ROOT_ID, name, workspacePath.rootId, workspacePath.staticPath, createWorkspace);
+                    link = service.copyDocumentLink(Constants.ROOT_ID, name, rootId, workspacePath.getDocumentName(), createWorkspace);
                 } else {
                     if (reference == null || reference.id == null) {
-                        link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, null, null, metadata);
+                        link = service.updateDocumentLink(rootId, workspacePath.getDocumentName(), null, null, metadata);
                     } else {
                         Options.Update.Builder options = Options.Update.EMPTY
                             .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE)
                             .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
-                        link = service.updateDocumentLink(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
+                        link = service.updateDocumentLink(rootId, workspacePath.getDocumentName(), reference, options.build());
                     }
                 }
                 
@@ -537,7 +548,7 @@ public class Workspaces {
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response post(
             @PathParam("repository") String repository,
-            @PathParam("workspace") WorkspacePath workspacePath,
+            @PathParam("workspace") RepositoryPath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
             @QueryParam("returnExisting") @DefaultValue("true") boolean returnExisting,
             @Context UriInfo uriInfo,
@@ -553,8 +564,16 @@ public class Workspaces {
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
             RepositoryObject.Type type = RepositoryObject.Type.valueOf(object.getString("type", RepositoryObject.Type.WORKSPACE.name()));
-
-            Query acl = authorizationService.getObjectACL(workspacePath.rootId, workspacePath.staticPath, type, null, ObjectAccessRole.CREATE);
+            
+            String rootId = workspacePath.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
+            workspacePath = workspacePath.afterRootId();
+            
+            if (!workspacePath.getPartPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.partNotAllowed()));
+            if (!workspacePath.getQueryPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.wildcardNotAllowed()));  
+            
+            Query acl = authorizationService.getObjectACL(rootId, workspacePath.getDocumentName(), type, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, workspacePath.toString())));
             }
@@ -564,7 +583,7 @@ public class Workspaces {
                 JsonObject metadata = object.getJsonObject("metadata");
                 Workspace.State state = Workspace.getState(object);
                 Options.Create.Builder options = Options.Create.EMPTY.addOptionIf(Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT, returnExisting);
-                Workspace workspace = service.createWorkspaceAndName(workspacePath.rootId, workspacePath.staticPath, state, metadata, options.build());
+                Workspace workspace = service.createWorkspaceAndName(rootId, workspacePath.getDocumentName(), state, metadata, options.build());
                 URI created = uriInfo.getAbsolutePathBuilder().path(workspace.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.exit(Response.created(created).entity(workspace.toJson(service, 0, 0)).build());                
             } else {
@@ -576,7 +595,7 @@ public class Workspaces {
                 Options.Create.Builder options = Options.Create.EMPTY
                     .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
                     .addOptionIf(Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT, returnExisting);
-                DocumentLink link = service.createDocumentLinkAndName(workspacePath.rootId, workspacePath.staticPath, reference, options.build());
+                DocumentLink link = service.createDocumentLinkAndName(rootId, workspacePath.getDocumentName(), reference, options.build());
                 URI created = uriInfo.getAbsolutePathBuilder().path(link.getName().transform(Workspaces::stripBraces).join("/")).build();
                 return LOG.exit(Response.created(created).entity(link.toJson(service, 1, 0)).build());
             }
@@ -621,14 +640,14 @@ public class Workspaces {
     @Consumes({ MediaType.APPLICATION_JSON })
     public Response postWithNoPath(
             @PathParam("repository") String repository,
-            @PathParam("workspace") WorkspacePath workspacePath,
+            @PathParam("workspace") RepositoryPath workspacePath,
             @QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
             @QueryParam("returnExisting") @DefaultValue("true") boolean returnExisting,
             @Context UriInfo uriInfo,
             @Context ContainerRequestContext requestContext,
             JsonObject object) {
     
-        return post(repository, WorkspacePath.valueOf(""), createWorkspace, returnExisting, uriInfo, requestContext, object);
+        return post(repository, RepositoryPath.valueOf(""), createWorkspace, returnExisting, uriInfo, requestContext, object);
         
     }
     /** PUT document on path /ws/{repository}/{path}
@@ -653,7 +672,7 @@ public class Workspaces {
     @Consumes({ MediaType.MULTIPART_FORM_DATA })
     public Response putDocument(
         @PathParam("repository") String repository,
-        @PathParam("workspace") WorkspacePath path,
+        @PathParam("workspace") RepositoryPath path,
         @FormDataParam("metadata") FormDataBodyPart metadata_part,
         @FormDataParam("file") FormDataBodyPart file_part,
         @QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
@@ -671,21 +690,29 @@ public class Workspaces {
 
             if (path == null || path.isEmpty())
                 return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
-
-            Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
+            
+            String rootId = path.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
+            path = path.afterRootId();
+            
+            if (!path.getPartPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.partNotAllowed()));
+            if (!path.getQueryPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.wildcardNotAllowed()));  
+            
+            Query acl = authorizationService.getObjectACL(rootId, path.getDocumentName(), RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
             }
 
-            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.staticPath.part);
+            MediaType computedMediaType = MediaTypes.getComputedMediaType(file_part.getMediaType(), path.getDocumentName().part);
             
             Options.Update.Builder options = Options.Update.EMPTY
                 .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
                 .addOptionIf(Options.CREATE_MISSING_ITEM, createDocument);
 
             DocumentLink result = service.updateDocumentLink(
-                    path.rootId, 
-                    path.staticPath, 
+                    rootId, 
+                    path.getDocumentName(), 
                     computedMediaType.toString(),
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
@@ -727,7 +754,7 @@ public class Workspaces {
     @Consumes({ MediaType.MULTIPART_FORM_DATA })
     public Response postDocument(
         @PathParam("repository") String repository,
-        @PathParam("workspace") WorkspacePath path,
+        @PathParam("workspace") RepositoryPath path,
         @FormDataParam("metadata") FormDataBodyPart metadata_part,
         @FormDataParam("file") FormDataBodyPart file_part,
         @QueryParam("createWorkspace") @DefaultValue("true") boolean createWorkspace,
@@ -746,7 +773,16 @@ public class Workspaces {
             if (path == null || path.isEmpty())
                 return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
 
-            Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
+            
+            String rootId = path.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
+            path = path.afterRootId();
+            
+            if (!path.getPartPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.partNotAllowed()));
+            if (!path.getQueryPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.wildcardNotAllowed()));  
+            
+            Query acl = authorizationService.getObjectACL(rootId, path.getDocumentName(), RepositoryObject.Type.DOCUMENT_LINK, null, ObjectAccessRole.CREATE);
             if (!acl.containsItem(userMetadata)) {
                 return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.toString())));
             }
@@ -755,8 +791,8 @@ public class Workspaces {
 
 
             DocumentLink result = service.createDocumentLinkAndName(
-                    path.rootId, 
-                    path.staticPath, 
+                    rootId, 
+                    path.getDocumentName(), 
                     file_part.getMediaType().toString(),
                     ()->file_part.getEntityAs(InputStream.class),
                     metadata_part.getEntityAs(JsonObject.class), 
@@ -790,7 +826,7 @@ public class Workspaces {
     @Path("/{repository}/{path:[^?]+}")
     public Response deleteDocument(
         @PathParam("repository") String repository,
-        @PathParam("path") WorkspacePath path,
+        @PathParam("path") RepositoryPath path,
         @Context ContainerRequestContext requestContext
     ) {
         LOG.entry(repository, path);
@@ -803,22 +839,29 @@ public class Workspaces {
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
-            if (path.queryPath != QualifiedName.ROOT)
-                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST, Error.badOperation("wildcards not permitted in deleted")));
+            String rootId = path.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
+            path = path.afterRootId();
             
-            if (path.documentId != null) {
-                Query acl = authorizationService.getObjectACLById(path.rootId, path.staticPath, path.documentId, ObjectAccessRole.DELETE);
+            if (!path.getPartPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.partNotAllowed()));
+            if (!path.getQueryPath().isEmpty())
+                return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.wildcardNotAllowed())); 
+            
+            Optional<IdElement> id = path.getId();
+            
+            if (id.isPresent()) {
+                Query acl = authorizationService.getObjectACLById(rootId, path.beforeId().getDocumentName(), id.get().id, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
-                    service.deleteDocument(path.rootId, path.staticPath, path.documentId);
+                    service.deleteDocument(rootId, path.beforeId().getDocumentName(), id.get().id);
                 } else {
-                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath, path.documentId)));                
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.getDocumentName(), id.get().id)));                
                 }
             } else {
-                Query acl = authorizationService.getObjectACL(path.rootId, path.staticPath, null, null, ObjectAccessRole.DELETE);
+                Query acl = authorizationService.getObjectACL(rootId, path.getDocumentName(), null, null, ObjectAccessRole.DELETE);
                 if (acl.containsItem(userMetadata)) {
-                    service.deleteObjectByName(path.rootId, path.staticPath);
+                    service.deleteObjectByName(rootId, path.getDocumentName());
                 } else {
-                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.staticPath)));                                    
+                    return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, path.getDocumentName())));                                    
                 }
             }
 

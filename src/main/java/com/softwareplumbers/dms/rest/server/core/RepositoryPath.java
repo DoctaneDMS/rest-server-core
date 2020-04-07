@@ -8,7 +8,10 @@ package com.softwareplumbers.dms.rest.server.core;
 import com.softwareplumbers.common.abstractpattern.Pattern;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.immutablelist.AbstractImmutableList;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
+import com.softwareplumbers.dms.Constants;
 import java.util.Comparator;
+import java.util.Optional;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
@@ -283,13 +286,13 @@ public class RepositoryPath extends AbstractImmutableList<RepositoryPath.Element
         return ix < 0 ? ROOT : rightFromStart(ix);
     }
 
-    public RepositoryPath getUnversioned() {
-        int ix = indexOf(e -> e.type == ElementType.DOCUMENT_PATH && ((VersionedElement)e).version != null);
+    public RepositoryPath getVersioned() {
+        int ix = indexOf(e -> e.type == ElementType.DOCUMENT_PATH && ((VersionedElement)e).version != null || e.type == ElementType.OBJECT_ID && ((IdElement)e).version != null);
         return left(ix);        
     }
     
-    public RepositoryPath getVersioned() {
-        int ix = indexOf(e -> e.type == ElementType.DOCUMENT_PATH && ((VersionedElement)e).version != null);
+    public RepositoryPath getAfterVersion() {
+        int ix = indexOf(e -> e.type == ElementType.DOCUMENT_PATH && ((VersionedElement)e).version != null || e.type == ElementType.OBJECT_ID && ((IdElement)e).version != null);
         return ix < 0 ? ROOT : rightFromStart(ix);
     }
 
@@ -302,4 +305,43 @@ public class RepositoryPath extends AbstractImmutableList<RepositoryPath.Element
         int ix = indexOf(e -> e.type != ElementType.OBJECT_ID && e.type != ElementType.PART_ROOT && !((NamedElement)e).pattern.isSimple());
         return ix < 0 ? ROOT : rightFromStart(ix);        
     }
+    
+    public Optional<IdElement> getRootId() {
+        Element e = get(0);
+        if (e.type == ElementType.OBJECT_ID)
+            return Optional.of((IdElement)e);
+        else
+            return Optional.empty();
+    }
+    
+    public RepositoryPath afterRootId() {
+        Element e = get(0);
+        if (e.type == ElementType.OBJECT_ID)
+            return rightFromStart(0);
+        else
+            return this;        
+    }
+
+    public Optional<IdElement> getId() {
+        int ix = indexOf(e -> e.type == ElementType.OBJECT_ID);
+        return ix < 0 ? Optional.empty() : Optional.of((IdElement)get(ix));                
+    }
+ 
+    public RepositoryPath beforeId() {
+        int ix = indexOf(e -> e.type == ElementType.OBJECT_ID);
+        return ix < 0 ? this : left(ix);                
+    }
+    
+    
+    
+    public QualifiedName getDocumentName() {
+        return apply(QualifiedName.ROOT, (qn, e)->e.type==ElementType.DOCUMENT_PATH ? qn.add((((NamedElement)e).name)) : qn);
+    }
+    
+    public Optional<QualifiedName> getPartName() {
+        RepositoryPath partPath = getPartPath();
+        if (partPath.isEmpty()) return Optional.empty();
+        return Optional.of(apply(QualifiedName.ROOT, (qn, e)->e.type==ElementType.PART_PATH ? qn.add((((NamedElement)e).name)) : qn));
+    }
+
 }
