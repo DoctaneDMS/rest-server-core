@@ -288,12 +288,12 @@ public class RepositoryPath extends AbstractImmutableList<RepositoryPath.Element
 
     public RepositoryPath getVersioned() {
         int ix = indexOf(e -> e.type == ElementType.DOCUMENT_PATH && ((VersionedElement)e).version != null || e.type == ElementType.OBJECT_ID && ((IdElement)e).version != null);
-        return left(ix);        
+        return left(ix+1);        
     }
     
     public RepositoryPath getAfterVersion() {
         int ix = indexOf(e -> e.type == ElementType.DOCUMENT_PATH && ((VersionedElement)e).version != null || e.type == ElementType.OBJECT_ID && ((IdElement)e).version != null);
-        return ix < 0 ? ROOT : rightFromStart(ix);
+        return ix < 0 ? ROOT : rightFromStart(ix+1);
     }
 
     public RepositoryPath getSimplePath() {
@@ -307,6 +307,7 @@ public class RepositoryPath extends AbstractImmutableList<RepositoryPath.Element
     }
     
     public Optional<IdElement> getRootId() {
+        if (isEmpty()) return Optional.empty();
         Element e = get(0);
         if (e.type == ElementType.OBJECT_ID)
             return Optional.of((IdElement)e);
@@ -315,9 +316,10 @@ public class RepositoryPath extends AbstractImmutableList<RepositoryPath.Element
     }
     
     public RepositoryPath afterRootId() {
+        if (isEmpty()) return ROOT;
         Element e = get(0);
         if (e.type == ElementType.OBJECT_ID)
-            return rightFromStart(0);
+            return rightFromStart(1);
         else
             return this;        
     }
