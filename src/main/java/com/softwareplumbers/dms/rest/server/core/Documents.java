@@ -43,6 +43,9 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
+import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
+import com.softwareplumbers.dms.Options;
+import com.softwareplumbers.dms.RepositoryPath;
 import java.io.ByteArrayInputStream;
 import org.slf4j.ext.XLogger;
 import java.util.Arrays;
@@ -369,9 +372,9 @@ public class Documents {
     		if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
 
-            Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, null, QualifiedName.ROOT);
+            Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, RepositoryPath.ROOT);
             JsonArrayBuilder results = Json.createArrayBuilder();
-            Stream<DocumentLink> links = service.listWorkspaces(id, null, accessConstraint);
+            Stream<DocumentLink> links = service.catalogueByName(RepositoryPath.ROOT.addDocumentId(id, null), accessConstraint, Options.FREE_SEARCH).map(DocumentLink.class::cast);
             if (links != null) links.forEach(item -> results.add(item.toJson()));
             return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build());
                     
@@ -381,7 +384,7 @@ public class Documents {
             LOG.error(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
-        } catch (InvalidDocumentId e) {
+        } catch (InvalidWorkspace e) {
             return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
         }
     }    

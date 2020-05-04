@@ -7,16 +7,14 @@ package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Reference;
-import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import java.util.ArrayList;
 import java.util.List;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-import javax.ws.rs.core.MediaType;
 import com.softwareplumbers.dms.Exceptions.*;
+import com.softwareplumbers.dms.RepositoryPath;
 
 /**
  *
@@ -46,27 +44,27 @@ public class FederatedAuthorizationService implements AuthorizationService {
 
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace {
+    public Query getObjectACL(RepositoryPath path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getObjectACL(rootId, path, type, metadata, role));
+            result = result.union(service.getObjectACL(path, type, metadata, role));
         return result;
     }
 
 
     @Override
-    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId {
+    public Query getObjectACLById(RepositoryPath path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getObjectACLById(rootId, path, documentId, role));
+            result = result.union(service.getObjectACLById(path, documentId, role));
         return result;
     }
 
     @Override
-    public Query getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate) {
+    public Query getAccessConstraint(JsonObject userMetadata, RepositoryPath pathTemplate) {
         Query result = Query.EMPTY;
         for (AuthorizationService service : authorizationServices)
-            result = result.union(service.getAccessConstraint(userMetadata, rootId, pathTemplate));
+            result = result.union(service.getAccessConstraint(userMetadata, pathTemplate));
         return result;
     }
 

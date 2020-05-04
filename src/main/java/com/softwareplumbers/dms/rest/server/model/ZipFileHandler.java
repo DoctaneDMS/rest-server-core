@@ -8,13 +8,14 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.DocumentPart;
 import com.softwareplumbers.dms.Constants;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryBrowser;
 import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryPath;
+import com.softwareplumbers.dms.RepositoryPath.NamedElement;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.common.impl.DocumentPartImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
@@ -60,11 +61,20 @@ public class ZipFileHandler implements PartHandler {
         }
 
         @Override
-        public NamedRepositoryObject getChild(RepositoryBrowser service, RepositoryObject object, QualifiedName name) throws InvalidObjectName {
+        public NamedRepositoryObject getChild(RepositoryBrowser service, RepositoryObject object, RepositoryPath name) throws InvalidObjectName {
             if (name.parent.isEmpty()) {
-                return children.stream().filter(child -> child.getName().part.equals(name.part)).findAny().orElseThrow(()->new InvalidObjectName(Constants.NO_ID, name));
+                switch (name.part.type) {
+                    case PART_ROOT:
+                        return self;
+                    case PART_PATH:
+                        NamedElement part = (NamedElement)name.part;
+                        return children.stream().filter(child -> child.getName().part.equals(name.part)).findAny().orElseThrow(()->new InvalidObjectName(name));
+                    default:
+                        throw new InvalidObjectName(name);
+                           
+                }
             } else {
-                return getChild(service, object, name.parent).getChild(service, QualifiedName.of(name.part));
+                return getChild(service, object, name.parent).getChild(service, RepositoryPath.ROOT.add(name.part));
             }
         }
         
@@ -74,13 +84,13 @@ public class ZipFileHandler implements PartHandler {
         }
 
         @Override
-        public Optional<RepositoryObject> getObject(RepositoryBrowser service, Reference ref, Optional<QualifiedName> part) {
+        public Optional<RepositoryObject> getObject(RepositoryBrowser service, Reference ref, RepositoryPath part) {
             return delegate.getObject(service, ref, part);
         }
 
         @Override
-        public Optional<RepositoryObject> getObject(RepositoryBrowser service, QualifiedName name, Optional<QualifiedName> part) {
-            return delegate.getObject(service, name, part);
+        public Optional<RepositoryObject> getObject(RepositoryBrowser service, RepositoryPath part) {
+            return delegate.getObject(service, part);
         }
         
         public ZipFileData(LocalData delegate, RepositoryObject parent, byte[] data) {
@@ -102,15 +112,15 @@ public class ZipFileHandler implements PartHandler {
         }
     }
     
-    private ZipFileData createEntry(QualifiedName name, Optional<QualifiedName> parentName, Document zipfile) {
+    private ZipFileData createEntry(RepositoryPath name, Document zipfile) {
         ZipFileData newEntry = new ZipFileData(LocalData.NONE, zipfile, null);
-        DocumentPart part = new DocumentPartImpl(zipfile.getReference(), parentName, QualifiedName.ROOT, Constants.EMPTY_METADATA, true, newEntry);
+        DocumentPart part = new DocumentPartImpl(zipfile.getReference(), name, Constants.EMPTY_METADATA, true, newEntry);
         newEntry.self = part;
         return newEntry;
     }
     
-    private ZipFileData getOrCreateEntry(Map<QualifiedName, ZipFileData> localData, Optional<QualifiedName> parentName, Document zipfile, QualifiedName name) {
-        return localData.computeIfAbsent(name, entryName->createEntry(entryName, parentName, zipfile));
+    private ZipFileData getOrCreateEntry(Map<RepositoryPath, ZipFileData> localData, RepositoryPath path, Document zipfile) {
+        return localData.computeIfAbsent(path, name->createEntry(name, zipfile));
     }
     
     private void addIfNotNull(JsonObjectBuilder builder, String name, Object value) {
@@ -128,28 +138,27 @@ public class ZipFileHandler implements PartHandler {
             
     public DocumentPart build(RepositoryService service, Document zipfile) {
 
-        Map<QualifiedName, ZipFileData> localData = new HashMap<>();
-        Optional<QualifiedName> parentName = zipfile instanceof NamedRepositoryObject ? Optional.of(((NamedRepositoryObject)zipfile).getName()) : Optional.empty();
+        Map<RepositoryPath, ZipFileData> localData = new HashMap<>();
+        RepositoryPath parentName = zipfile instanceof NamedRepositoryObject ? ((NamedRepositoryObject)zipfile).getName() : RepositoryPath.ROOT;
 
-        DocumentPart root = getOrCreateEntry(localData, parentName, zipfile, QualifiedName.ROOT).self;
+        getOrCreateEntry(localData, parentName, zipfile);
         
         try (ZipInputStream zifs = new ZipInputStream(zipfile.getData(service))) {
             ZipEntry currentEntry = zifs.getNextEntry();    
         
             while (currentEntry != null) {
-                QualifiedName name = QualifiedName.parse(currentEntry.getName(), "/");
-                ZipFileData parentData = getOrCreateEntry(localData, parentName, zipfile, name.parent);
+                RepositoryPath name = parentName.addRootPart().addPartPaths(currentEntry.getName().split("/"));
+                ZipFileData parentData = getOrCreateEntry(localData, name.parent, zipfile);
                 RepositoryObject parentObject = parentData.self;
                 DocumentPart result;
                 ZipFileData node;
                 if (currentEntry.isDirectory()) {
                     node  = new ZipFileData(LocalData.NONE, parentObject, null);
-                    result = new DocumentPartImpl(zipfile.getReference(), parentName, name, convertMetadata(currentEntry), true, node);
-                    
+                    result = new DocumentPartImpl(zipfile.getReference(), name, convertMetadata(currentEntry), true, node);                    
                 } else  {
-                    MediaType type = MediaTypes.getTypeFromFilename(name.part);
+                    MediaType type = MediaTypes.getTypeFromFilename(name.part.getName().get());
                     node  = new ZipFileData(LocalData.NONE, parentObject, IOUtils.toByteArray(zifs));
-                    result = new StreamableDocumentPartImpl(zipfile.getReference(), parentName, name, type.toString(), node.data.length, Constants.NO_DIGEST, convertMetadata(currentEntry), false, node);
+                    result = new StreamableDocumentPartImpl(zipfile.getReference(), name, type.toString(), node.data.length, Constants.NO_DIGEST, convertMetadata(currentEntry), false, node);
                 }
                 node.self = result;
                 parentData.children.add(result);
@@ -163,7 +172,7 @@ public class ZipFileHandler implements PartHandler {
         
         // Technically we should try to correct any directory entries with zero members to navigable = false;
         
-        return localData.get(QualifiedName.ROOT).self;
+        return localData.get(RepositoryPath.PART_ROOT).self;
         
     }
 

@@ -29,6 +29,7 @@ import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Options;
+import com.softwareplumbers.dms.RepositoryPath;
 import javax.json.JsonValue;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
@@ -100,7 +101,7 @@ public class Catalogue {
     			Query queryQuery = filter == null ? Query.UNBOUNDED : Query.urlDecode(filter);
     			
     			if (workspace != null)
-    				infos = service.catalogueByName(workspace, QualifiedName.ROOT, queryQuery , Options.Search.EMPTY.addOptionIf(Options.SEARCH_OLD_VERSIONS, searchHistory).build());
+    				infos = service.catalogueByName(RepositoryPath.ROOT.addId(workspace), queryQuery, Options.Search.EMPTY.addOptionIf(Options.SEARCH_OLD_VERSIONS, searchHistory).build());
     			else
     				infos = service.catalogue(queryQuery, searchHistory);
     			
@@ -200,7 +201,7 @@ public class Catalogue {
             
             Query filterQuery = filter == null ? Query.UNBOUNDED : Query.urlDecode(filter);
             
-            try (Stream<DocumentPart> rs=service.catalogueParts(new Reference(id,version), QualifiedName.ROOT)) {
+            try (Stream<DocumentPart> rs=service.catalogueParts(new Reference(id,version), RepositoryPath.PART_ROOT)) {
                 rs.map(DocumentPart::toJson)
                     .filter(obj->filterQuery.containsItem(obj))
                     .forEach(obj->result.add(obj));

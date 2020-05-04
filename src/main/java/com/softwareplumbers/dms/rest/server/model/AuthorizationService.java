@@ -9,12 +9,12 @@ import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.Document;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
+import com.softwareplumbers.dms.RepositoryPath;
 import javax.json.JsonObject;
 import javax.ws.rs.core.MediaType;
 
@@ -82,7 +82,6 @@ public interface AuthorizationService {
      * for the role check is absent, this may generate an additional request to
      * the back-end repository.
      * 
-     * @param rootId Id of search root
      * @param path path from root to object
      * @param type type of repository object
      * @param metadata metadata of object
@@ -91,7 +90,7 @@ public interface AuthorizationService {
      * @throws InvalidObjectName
      * @throws InvalidWorkspace
      */
-    Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
+    Query getObjectACL(RepositoryPath path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
     
     /**  Get the Access Control List for a Repository Object (Workspace or Document).
      * 
@@ -103,7 +102,7 @@ public interface AuthorizationService {
      */
     default Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
         try {
-            return getObjectACL(null, object.getName(), object.getType(), object.getMetadata(), role);
+            return getObjectACL(object.getName(), object.getType(), object.getMetadata(), role);
         } catch (InvalidObjectName | InvalidWorkspace err) {
             throw new RuntimeException("Unexpectedly invalid name " + object.getName());
         } 
@@ -114,7 +113,6 @@ public interface AuthorizationService {
      * If getObjectACL(rootId, path).contains(Value.from(userMetadata)) returns true, the user has can perform the given
      * role on the referenced repository object.
      * 
-     * @param rootId id of initial workspace in path
      * @param path path to folder
      * @param documentId of document in folder
      * @param role to get ACL for
@@ -123,7 +121,7 @@ public interface AuthorizationService {
      * @throws InvalidWorkspace if root id is not valid
      * @throws InvalidDocumentId if documentId is not valid
      */
-    Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId;
+    Query getObjectACLById(RepositoryPath path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId;
 
     /** Get An Access Constraint for the given user searching on the given path.
      * 
@@ -138,7 +136,7 @@ public interface AuthorizationService {
      * @param pathTemplate Path to search on (may contain wildcards).
      * @return An access constraint which can filter out search results for which the user has no permission to view
      */
-    Query getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate);    
+    Query getAccessConstraint(JsonObject userMetadata, RepositoryPath pathTemplate);    
     
     /** Get An Access Constraint for the given user searching on the given path.
      * 
@@ -153,7 +151,7 @@ public interface AuthorizationService {
      * @return An access constraint which can filter out search results for which the user has no permission to view
      */
     default Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot) {
-        return getAccessConstraint(userMetadata, null, searchRoot.getName());
+        return getAccessConstraint(userMetadata, searchRoot.getName());
     }
     
     /** Get metadata for a given user Id.

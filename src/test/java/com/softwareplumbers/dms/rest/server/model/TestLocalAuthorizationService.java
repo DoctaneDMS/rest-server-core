@@ -3,6 +3,7 @@ package com.softwareplumbers.dms.rest.server.model;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.dms.RepositoryPath;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -30,7 +31,7 @@ public class TestLocalAuthorizationService {
     }
     
     @Test public void testGetObjectACL() {
-        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, null, null, AuthorizationService.ObjectAccessRole.READ);
+        Query acl = service.getObjectACL(RepositoryPath.ROOT, null, null, AuthorizationService.ObjectAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(JsonValue.EMPTY_JSON_OBJECT), equalTo(false));
     }

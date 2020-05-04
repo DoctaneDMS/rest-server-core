@@ -4,7 +4,6 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
 import com.softwareplumbers.dms.Document;
@@ -14,6 +13,8 @@ import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
+import com.softwareplumbers.dms.Reference;
+import com.softwareplumbers.dms.RepositoryPath;
 import org.slf4j.ext.XLogger;
 import javax.json.JsonValue;
 
@@ -53,7 +54,6 @@ public class Error {
 		return Json.createObjectBuilder()
                 .add("code","INVALID_WORKSPACE")
 				.add("error", "Workspace name " + err.workspace + " is invalid")
-				.add("workspaceId", err.rootId == null ? JsonValue.NULL : Json.createValue(err.rootId))
 				.add("workspaceName", err.workspace.toString())
 				.build();		
 	}
@@ -75,8 +75,8 @@ public class Error {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
                 .add("code","INVALID_WORKSPACE_STATE")
 				.add("error", "Workspace " + err.workspace + " is in invalid state " + err.state)
-				.add("workspaceName", err.workspace);
-		
+				.add("workspaceName", err.workspace.join("/"));
+	
 		if (err.state != null) builder = builder.add("state", err.state.toString());
 				
 		return builder.build();		
@@ -116,15 +116,6 @@ public class Error {
 			? builder.add("version", JsonObject.NULL)
 			: builder.add("version", version);
 		
-		return builder.build();
-	}
-
-	public static JsonObject objectNotFound(String repository, QualifiedName name) {
-		JsonObjectBuilder builder = Json.createObjectBuilder()
-				.add("error", "Object " + name + " does not exist in repository " + repository)
-				.add("name", name.toString())
-				.add("repository", repository);
-				
 		return builder.build();
 	}
 
@@ -179,7 +170,7 @@ public class Error {
     }
 
     public static JsonObject unauthorized(Query acl, Document doc) {
-        return unauthorized(acl, doc.getId());
+        return unauthorized(acl, doc.getReference());
     }
     
     public static JsonObject unauthorized(Query acl, String id) {
@@ -202,16 +193,19 @@ public class Error {
             .build();        
     }
 
-    public static JsonObject unauthorized(Query acl, QualifiedName obj, String documentId) {
-        return unauthorized(acl, obj.add("~" + documentId));
-    }
-    
-    public static JsonObject unauthorized(Query acl, QualifiedName obj) {
+    public static JsonObject unauthorized(Query acl, RepositoryPath obj) {
         return Json.createObjectBuilder()
             .add("error", "No rights to access object " + obj)
             .add("acl", acl.toJSON())
             .build();
     }
+    
+    public static JsonObject unauthorized(Query acl, Reference ref) {
+        return Json.createObjectBuilder()
+            .add("error", "No rights to access object " + ref.toString())
+            .add("acl", acl.toJSON())
+            .build();
+    }    
 
     public static Response errorResponse(Status status, JsonObject error) {
         return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(error).build();

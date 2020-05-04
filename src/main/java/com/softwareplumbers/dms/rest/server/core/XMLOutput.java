@@ -56,7 +56,7 @@ public class XMLOutput implements StreamingOutput {
     	    TransformerHandler handler;
         	Parser parser;
             MediaType type = MediaType.valueOf(document.getMediaType());
-            String name = document instanceof DocumentLink ? ((DocumentLink)document).getName().part : null;
+            String name = document instanceof DocumentLink ? ((DocumentLink)document).getName().part.getName().get() : null;
             
     	    try (InputStream stream = document.getData(service)) {
                 if (MediaTypes.isOpenOfficeXMLDoc(type, name))

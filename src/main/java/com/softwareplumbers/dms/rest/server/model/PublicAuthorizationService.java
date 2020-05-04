@@ -7,13 +7,11 @@ package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Reference;
-import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
-import javax.ws.rs.core.MediaType;
 import com.softwareplumbers.dms.Exceptions.*;
+import com.softwareplumbers.dms.RepositoryPath;
 
 
 /**
@@ -28,12 +26,12 @@ public class PublicAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace {
+    public Query getObjectACL(RepositoryPath path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace {
         return Query.UNBOUNDED;
     }
 
     @Override
-    public Query getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate) {
+    public Query getAccessConstraint(JsonObject userMetadata, RepositoryPath pathTemplate) {
         return Query.UNBOUNDED;
     }
 
@@ -43,7 +41,7 @@ public class PublicAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) {
+    public Query getObjectACLById(RepositoryPath path, String documentId, ObjectAccessRole role) {
         return Query.UNBOUNDED;
     }
 

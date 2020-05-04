@@ -5,8 +5,8 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
@@ -16,7 +16,9 @@ import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryService;
+import com.softwareplumbers.dms.VersionedRepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,88 +66,83 @@ public class RepositoryDecorator implements RepositoryService {
     }
 
     @Override
-    public DocumentLink getDocumentLink(String rootId, QualifiedName workspaceName, String id, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidDocumentId {
-        return mapResult(baseRepository.getDocumentLink(rootId, workspaceName, id, options));
+    public DocumentLink createDocumentLink(RepositoryPath objectName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        return mapResult(baseRepository.createDocumentLink(objectName, mediaType, iss, metadata, options));
     }
 
     @Override
-    public DocumentLink createDocumentLink(String rootId, QualifiedName objectName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        return mapResult(baseRepository.createDocumentLink(rootId, objectName, mediaType, iss, metadata, options));
+    public DocumentLink createDocumentLinkAndName(RepositoryPath objectName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+        return mapResult(baseRepository.createDocumentLinkAndName(objectName, mediaType, iss, metadata, options));
     }
 
     @Override
-    public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName objectName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
-        return mapResult(baseRepository.createDocumentLinkAndName(rootId, objectName, mediaType, iss, metadata, options));
+    public DocumentLink createDocumentLinkAndName(RepositoryPath objectName, Reference rfrnc, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
+        return mapResult(baseRepository.createDocumentLinkAndName(objectName, rfrnc, options));
     }
 
     @Override
-    public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName objectName, Reference rfrnc, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
-        return mapResult(baseRepository.createDocumentLinkAndName(rootId, objectName, rfrnc, options));
+    public DocumentLink createDocumentLink(RepositoryPath objectName, Reference rfrnc, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidReference, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        return mapResult(baseRepository.createDocumentLink(objectName, rfrnc, options));
     }
 
     @Override
-    public DocumentLink createDocumentLink(String rootId, QualifiedName objectName, Reference rfrnc, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidReference, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        return mapResult(baseRepository.createDocumentLink(rootId, objectName, rfrnc, options));
+    public DocumentLink updateDocumentLink(RepositoryPath objectName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        return mapResult(baseRepository.updateDocumentLink(objectName, mediaType, iss, metadata, options));
     }
 
     @Override
-    public DocumentLink updateDocumentLink(String rootId, QualifiedName objectName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        return mapResult(baseRepository.updateDocumentLink(rootId, objectName, mediaType, iss, metadata, options));
+    public DocumentLink updateDocumentLink(RepositoryPath objectName, Reference rfrnc, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
+        return mapResult(baseRepository.updateDocumentLink(objectName, rfrnc, options));
     }
 
     @Override
-    public DocumentLink updateDocumentLink(String rootId, QualifiedName objectName, Reference rfrnc, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
-        return mapResult(baseRepository.updateDocumentLink(rootId, objectName, rfrnc, options));
+    public NamedRepositoryObject copyObject(RepositoryPath objectName, RepositoryPath targetName, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        return mapResult(baseRepository.copyObject(objectName, targetName, bln));
     }
 
     @Override
-    public NamedRepositoryObject copyObject(String rootId, QualifiedName objectName, String targetId, QualifiedName targetName, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        return mapResult(baseRepository.copyObject(rootId, objectName, targetId, targetName, bln));
+    public DocumentLink copyDocumentLink(RepositoryPath objectName, RepositoryPath targetName, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        return mapResult(baseRepository.copyDocumentLink(objectName, targetName, bln));
     }
 
     @Override
-    public DocumentLink copyDocumentLink(String rootId, QualifiedName objectName, String targetId, QualifiedName targetName, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        return mapResult(baseRepository.copyDocumentLink(rootId, objectName, targetId, targetName, bln));
+    public Workspace copyWorkspace(RepositoryPath objectName, RepositoryPath targetName, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        return mapResult(baseRepository.copyWorkspace(objectName, targetName, bln));
     }
 
     @Override
-    public Workspace copyWorkspace(String rootId, QualifiedName objectName, String targetId, QualifiedName targetName, boolean bln) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        return mapResult(baseRepository.copyWorkspace(rootId, objectName, targetId, targetName, bln));
+    public Workspace createWorkspaceByName(RepositoryPath objectName, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+        return mapResult(baseRepository.createWorkspaceByName(objectName, state, metadata, options));
     }
 
     @Override
-    public Workspace createWorkspaceByName(String rootId, QualifiedName objectName, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
-        return mapResult(baseRepository.createWorkspaceByName(rootId, objectName, state, metadata, options));
+    public Workspace createWorkspaceAndName(RepositoryPath objectName, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+        return mapResult(baseRepository.createWorkspaceAndName(objectName, state, metadata, options));        
     }
 
     @Override
-    public Workspace createWorkspaceAndName(String rootId, QualifiedName objectName, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
-        return mapResult(baseRepository.createWorkspaceAndName(rootId, objectName, state, metadata, options));        
+    public Workspace updateWorkspaceByName(RepositoryPath objectName, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace {
+        return mapResult(baseRepository.updateWorkspaceByName(objectName, state, metadata, options));
     }
 
     @Override
-    public Workspace updateWorkspaceByName(String rootId, QualifiedName objectName, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace {
-        return mapResult(baseRepository.updateWorkspaceByName(rootId, objectName, state, metadata, options));
+    public void deleteDocument(RepositoryPath workspaceName, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+        baseRepository.deleteDocument(workspaceName, documentId);        
     }
 
     @Override
-    public void deleteDocument(String rootId, QualifiedName workspaceName, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
-        baseRepository.deleteDocument(rootId, workspaceName, documentId);        
+    public void deleteObjectByName(RepositoryPath objectName) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        baseRepository.deleteObjectByName(objectName);
     }
 
     @Override
-    public void deleteObjectByName(String rootId, QualifiedName objectName) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        baseRepository.deleteObjectByName(rootId, objectName);
+    public InputStream getData(RepositoryPath objectName, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
+        return baseRepository.getData(objectName, options);
     }
 
     @Override
-    public InputStream getData(String rootId, QualifiedName objectName, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
-        return baseRepository.getData(rootId, objectName, options);
-    }
-
-    @Override
-    public void writeData(String rootId, QualifiedName objectName, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
-        baseRepository.writeData(rootId, objectName, out, options);
+    public void writeData(RepositoryPath objectName, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
+        baseRepository.writeData(objectName, out, options);
     }
 
     @Override
@@ -154,28 +151,18 @@ public class RepositoryDecorator implements RepositoryService {
     }
 
     @Override
-    public DocumentPart getPart(Reference rfrnc, QualifiedName qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
+    public RepositoryObject getPart(Reference rfrnc, RepositoryPath qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
         return mapResult(baseRepository.getPart(rfrnc, qn));
     }
 
     @Override
-    public InputStream getData(Reference rfrnc, Optional<QualifiedName> partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        return baseRepository.getData(rfrnc, partName);
-    }
-
-    @Override
-    public void writeData(Reference rfrnc, Optional<QualifiedName> optnl, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        baseRepository.writeData(rfrnc, optnl, out);
-    }
-
-    @Override
-    public Stream<DocumentPart> catalogueParts(Reference rfrnc, QualifiedName qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
+    public Stream<DocumentPart> catalogueParts(Reference rfrnc, RepositoryPath qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
         return mapResult(baseRepository.catalogueParts(rfrnc, qn));
     }
 
     @Override
-    public DocumentLink getDocumentLink(String rootId, QualifiedName objectName, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        return mapResult(baseRepository.getDocumentLink(rootId, objectName, options));
+    public DocumentLink getDocumentLink(RepositoryPath objectName, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        return mapResult(baseRepository.getDocumentLink(objectName, options));
     }
 
     @Override
@@ -184,13 +171,8 @@ public class RepositoryDecorator implements RepositoryService {
     }
 
     @Override
-    public Stream<NamedRepositoryObject> catalogueById(String rootId, QualifiedName path, String objectId, Query query, Options.Search... searchs)  throws Exceptions.InvalidWorkspace {
-        return mapResult(baseRepository.catalogueById(rootId, path, objectId, query, searchs));
-    }
-
-    @Override
-    public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName objectName, Query query, Options.Search... searchs) throws Exceptions.InvalidWorkspace {
-        return mapResult(baseRepository.catalogueByName(rootId, objectName, query, searchs));
+    public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath objectName, Query query, Options.Search... searchs) throws Exceptions.InvalidWorkspace {
+        return mapResult(baseRepository.catalogueByName(objectName, query, searchs));
     }
 
     @Override
@@ -199,22 +181,32 @@ public class RepositoryDecorator implements RepositoryService {
     }
 
     @Override
-    public NamedRepositoryObject getObjectByName(String rootId, QualifiedName objectName, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        return mapResult(baseRepository.getObjectByName(rootId, objectName, options));
+    public NamedRepositoryObject getObjectByName(RepositoryPath objectName, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        return mapResult(baseRepository.getObjectByName(objectName, options));
     }
 
     @Override
-    public Workspace getWorkspaceByName(String string, QualifiedName qn) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        return mapResult(baseRepository.getWorkspaceByName(string, qn));
-    }
-
-    @Override
-    public Stream<DocumentLink> listWorkspaces(String rootId, QualifiedName objectName, Query query, Options.Search... options) throws Exceptions.InvalidDocumentId {
-        return mapResult(baseRepository.listWorkspaces(rootId, objectName, query, options));
+    public Workspace getWorkspaceByName(RepositoryPath qn) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        return mapResult(baseRepository.getWorkspaceByName(qn));
     }
     
     public <T> Optional<T> getImplementation(Class<T> clazz) {
         return clazz.isAssignableFrom(getClass()) ? Optional.of((T)this) : baseRepository.getImplementation(clazz);
+    }
+
+    @Override
+    public VersionedRepositoryObject publish(RepositoryPath rp, String versionName) throws Exceptions.InvalidObjectName, Exceptions.InvalidVersionName {
+        return mapResult(baseRepository.publish(rp, versionName));
+    }
+
+    @Override
+    public InputStream getData(Reference rfrnc, RepositoryPath path) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        return baseRepository.getData(rfrnc, path);
+    }
+
+    @Override
+    public void writeData(Reference rfrnc, RepositoryPath path, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        baseRepository.writeData(rfrnc, path, out);
     }
     
 }

@@ -5,6 +5,7 @@ import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.Exceptions.*;
+import com.softwareplumbers.dms.RepositoryPath;
 
 import java.util.Arrays;
 import javax.json.Json;
@@ -63,7 +64,7 @@ public class TestFederatedAuthorizationService {
     }
 
     @Test public void testGetObjectACL() throws InvalidObjectName, InvalidWorkspace {
-        Query acl = service.getObjectACL("rootId", QualifiedName.ROOT, null, null,  AuthorizationService.ObjectAccessRole.READ);
+        Query acl = service.getObjectACL(RepositoryPath.ROOT, null, null,  AuthorizationService.ObjectAccessRole.READ);
         assertThat(acl.containsItem(USER_METADATA_SERVICE_ACCOUNT), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_AND_SVC_AC), equalTo(true));
         assertThat(acl.containsItem(USER_METADATA_KBSL_BRANCH), equalTo(false));

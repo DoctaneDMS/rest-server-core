@@ -5,9 +5,6 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.common.immutablelist.QualifiedName;
-import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
-import com.softwareplumbers.common.abstractpattern.visitor.Builders;
 import com.softwareplumbers.common.abstractpattern.visitor.Visitor.PatternSyntaxException;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.Constants;
@@ -20,9 +17,10 @@ import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryPath;
+import com.softwareplumbers.dms.RepositoryPath.NamedElement;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.StreamableDocumentPart;
-import com.softwareplumbers.dms.StreamableRepositoryObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -102,7 +100,7 @@ public class PartHandlerService extends RepositoryDecorator {
         }
     }
     
-    DocumentPart getChildPart(Document document, QualifiedName partName) throws Exceptions.InvalidObjectName {
+    DocumentPart getChildPart(Document document, RepositoryPath partName) throws Exceptions.InvalidObjectName {
         LOG.entry(document, partName);
         Optional<DocumentPart> rootPart = getRootPart(document);
         if (rootPart.isPresent()) {
@@ -111,101 +109,104 @@ public class PartHandlerService extends RepositoryDecorator {
            else
                 return LOG.exit((DocumentPart)rootPart.get().getChild(this, partName));                           
         } else {
-            throw LOG.throwing(new Exceptions.InvalidObjectName(Constants.NO_ID, partName));                    
+            throw LOG.throwing(new Exceptions.InvalidObjectName(partName));                    
         }        
     }
     
-    StreamableDocumentPart getStreamableChildPart(Document document, QualifiedName partName) throws Exceptions.InvalidObjectName {
+    StreamableDocumentPart getStreamableChildPart(Document document, RepositoryPath partName) throws Exceptions.InvalidObjectName {
         LOG.entry(document, partName);
         DocumentPart part = getChildPart(document, partName);
         if (part.getType() != RepositoryObject.Type.STREAMABLE_DOCUMENT_PART) 
-            throw LOG.throwing(new Exceptions.InvalidObjectName(Constants.NO_ID, partName));
+            throw LOG.throwing(new Exceptions.InvalidObjectName(partName));
         else {
             return LOG.exit((StreamableDocumentPart)part);
         } 
     }
        
     @Override
-    public InputStream getData(String rootId, QualifiedName objectName, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
-        LOG.entry(rootId, objectName, Options.loggable(options));
-        Optional<QualifiedName> partName = Options.PART.getValue(options);
+    public InputStream getData(RepositoryPath objectName, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
+        LOG.entry(objectName, Options.loggable(options));
+        RepositoryPath partName = objectName.getPartPath();
         
-        if (partName.isPresent()) {
+        if (!partName.isEmpty()) {
             try {
-                DocumentLink object = baseRepository.getDocumentLink(rootId, objectName, options);
-                return LOG.exit(getStreamableChildPart(object, partName.get()).getData(this));
+                DocumentLink object = baseRepository.getDocumentLink(objectName.getDocumentPath(), options);
+                return LOG.exit(getStreamableChildPart(object, partName).getData(this));
             } catch (Exceptions.InvalidWorkspace e) {
-                throw LOG.throwing(new Exceptions.InvalidObjectName(rootId, objectName));
+                throw LOG.throwing(new Exceptions.InvalidObjectName(objectName));
             }           
         } else {
-            return LOG.exit(baseRepository.getData(rootId, objectName, options));
+            return LOG.exit(baseRepository.getData(objectName, options));
         }
     }
 
     @Override
-    public void writeData(String rootId, QualifiedName objectName, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
-        LOG.entry(rootId, objectName, "<out>", Options.loggable(options));
-        Optional<QualifiedName> partName = Options.PART.getValue(options);
+    public void writeData(RepositoryPath objectName, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
+        LOG.entry(objectName, "<out>", Options.loggable(options));
+        RepositoryPath partName = objectName.getPartPath();
         
-        if (partName.isPresent()) {
+        if (!partName.isEmpty()) {
             try {
-                DocumentLink object = baseRepository.getDocumentLink(rootId, objectName, options);
-                getStreamableChildPart(object, partName.get()).writeDocument(this, out);
+                DocumentLink object = baseRepository.getDocumentLink(objectName, options);
+                getStreamableChildPart(object, partName).writeDocument(this, out);
             } catch (Exceptions.InvalidWorkspace e) {
-                throw LOG.throwing(new Exceptions.InvalidObjectName(rootId, objectName));
+                throw LOG.throwing(new Exceptions.InvalidObjectName(objectName));
             }           
         } else {
-            baseRepository.writeData(rootId, objectName, out, options);
+            baseRepository.writeData(objectName, out, options);
         }
         LOG.exit();
     }
     
     @Override
-    public DocumentPart getPart(Reference rfrnc, QualifiedName partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
+    public DocumentPart getPart(Reference rfrnc, RepositoryPath partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
         LOG.entry(rfrnc, partName);
         Document object = baseRepository.getDocument(rfrnc);
         return LOG.exit(getChildPart(object, partName));
     }
 
     @Override
-    public InputStream getData(Reference rfrnc, Optional<QualifiedName> partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+    public InputStream getData(Reference rfrnc, RepositoryPath partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
         LOG.entry(rfrnc, partName);
-        if (partName.isPresent()) {            
-            Document object = baseRepository.getDocument(rfrnc);
-            return LOG.exit(getStreamableChildPart(object, partName.get()).getData(this));
-        } else {    
+        if (partName.isEmpty()) {            
             return LOG.exit(baseRepository.getData(rfrnc, partName));
+        } else {    
+            Document object = baseRepository.getDocument(rfrnc);
+            return LOG.exit(getStreamableChildPart(object, partName).getData(this));
         }
     }
 
     @Override
-    public void writeData(Reference rfrnc, Optional<QualifiedName> partName, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+    public void writeData(Reference rfrnc, RepositoryPath partName, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
         LOG.entry(rfrnc, partName, "<out>");
-        if (partName.isPresent()) {            
-            Document object = baseRepository.getDocument(rfrnc);
-            getStreamableChildPart(object, partName.get()).writeDocument(this, out);
-        } else {    
+        if (partName.isEmpty()) {            
             baseRepository.writeData(rfrnc, partName, out);
+        } else {    
+            Document object = baseRepository.getDocument(rfrnc);
+            getStreamableChildPart(object, partName).writeDocument(this, out);
         }
         LOG.exit();
     }
     
-    private Stream<DocumentPart> getMatchingChildren(DocumentPart part, QualifiedName partName) {
+    private Stream<DocumentPart> getMatchingChildren(DocumentPart part, RepositoryPath partName) {
         LOG.entry(part, partName);
         if (partName.parent.isEmpty()) {
-            try {
-                Predicate<String> matcher = Parsers.parseUnixWildcard(partName.part).build(Builders.toPattern()).asPredicate();
-                return LOG.exit(part.getChildren(this).filter(child->matcher.test(child.getName().part)).map(DocumentPart.class::cast));
-            } catch (PatternSyntaxException e) {
-                throw LOG.throwing(new RuntimeException(e));
-            }
+            Predicate<NamedRepositoryObject> matcher = element-> { 
+                try {
+                    return ((NamedElement)partName.part).pattern.match(((NamedElement)element.getName().part).name);
+                } catch (PatternSyntaxException e) {
+                    throw LOG.throwing(new RuntimeException(e));
+                }
+            };
+            return LOG.exit(part.getChildren(this).filter(matcher).map(DocumentPart.class::cast));
+
         } else {
-            return LOG.exit(getMatchingChildren(part, partName.parent).flatMap(child->getMatchingChildren(child, QualifiedName.of(partName.part))));
+            return LOG.exit(getMatchingChildren(part, partName.parent).flatMap(child->getMatchingChildren(child, RepositoryPath.ROOT.add(partName.part))));
         }
     }
 
     @Override
-    public Stream<DocumentPart> catalogueParts(Reference rfrnc, QualifiedName partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
+    public Stream<DocumentPart> catalogueParts(Reference rfrnc, RepositoryPath partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
         LOG.entry(rfrnc, partName);
         Document object = baseRepository.getDocument(rfrnc);
         Optional<DocumentPart> rootPart = getRootPart(object);
@@ -215,39 +216,39 @@ public class PartHandlerService extends RepositoryDecorator {
     }
 
     @Override
-    public NamedRepositoryObject getObjectByName(String rootId, QualifiedName objectName, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, objectName, Options.loggable(options));
+    public NamedRepositoryObject getObjectByName(RepositoryPath objectName, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(objectName, Options.loggable(options));
 
-        Optional<QualifiedName> partName = Options.PART.getValue(options);
+        RepositoryPath partName = objectName.getPartPath();
         
-        if (partName.isPresent()) {
-            try {
-                DocumentLink object = baseRepository.getDocumentLink(rootId, objectName, options);
-                return LOG.exit(getChildPart(object, partName.get()));
-            } catch (Exceptions.InvalidWorkspace e) {
-                throw LOG.throwing(new Exceptions.InvalidObjectName(rootId, objectName));
-            }           
+        if (partName.isEmpty()) {
+            return LOG.exit(mapResult(baseRepository.getObjectByName(objectName, options)));
         } else {
-            return LOG.exit(mapResult(baseRepository.getObjectByName(rootId, objectName, options)));
+            try {
+                DocumentLink object = baseRepository.getDocumentLink(objectName.getDocumentPath(), options);
+                return LOG.exit(getChildPart(object, partName));
+            } catch (Exceptions.InvalidWorkspace e) {
+                throw LOG.throwing(new Exceptions.InvalidObjectName(objectName));
+            }           
         }
     }
 
     @Override
-    public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName objectName, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
-        LOG.entry(rootId, objectName, query, Options.loggable(options));
-        Optional<QualifiedName> partName = Options.PART.getValue(options);
+    public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath objectName, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
+        LOG.entry(objectName, query, Options.loggable(options));
+        RepositoryPath partName = objectName.getPartPath();
         
-        if (partName.isPresent()) {
+        if (partName.isEmpty()) {
+            return LOG.exit(mapResult(baseRepository.catalogueByName(objectName, query, options)));        
+        } else {
             Options.Search.Builder newOptions = Options.Search.EMPTY.addOptions(options).addOption(Options.NO_IMPLICIT_WILDCARD);
-            return LOG.exit(baseRepository.catalogueByName(rootId, objectName, query, newOptions.build())
+            return LOG.exit(baseRepository.catalogueByName(objectName.getDocumentPath(), query, newOptions.build())
                 .filter(object -> object.getType() == RepositoryObject.Type.DOCUMENT_LINK)
                 .map(DocumentLink.class::cast)
                 .map(this::getRootPart)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .flatMap(document -> getMatchingChildren(document, partName.get())));
-        } else {
-            return LOG.exit(mapResult(baseRepository.catalogueByName(rootId, objectName, query, options)));        
+                .flatMap(document -> getMatchingChildren(document, partName)));
         }
     }
 }

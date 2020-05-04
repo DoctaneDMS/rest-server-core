@@ -7,8 +7,6 @@ package com.softwareplumbers.dms.rest.server.model;
 
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Reference;
-import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
 import java.io.StringReader;
@@ -18,8 +16,8 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
-import javax.ws.rs.core.MediaType;
 import com.softwareplumbers.dms.Exceptions.*;
+import com.softwareplumbers.dms.RepositoryPath;
 
 
 /**
@@ -42,12 +40,12 @@ public class LocalAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public Query getObjectACL(String rootId, QualifiedName path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) {
+    public Query getObjectACL(RepositoryPath path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 
     @Override
-    public Query getAccessConstraint(JsonObject userMetadata, String rootId, QualifiedName pathTemplate) {
+    public Query getAccessConstraint(JsonObject userMetadata, RepositoryPath pathTemplate) {
         if (userMetadata.getBoolean("serviceAccount", false))
             return Query.UNBOUNDED;
         else 
@@ -66,7 +64,7 @@ public class LocalAuthorizationService implements AuthorizationService {
 
 
     @Override
-    public Query getObjectACLById(String rootId, QualifiedName path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId {
+    public Query getObjectACLById(RepositoryPath path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId {
         return Query.from("serviceAccount", Range.equals(JsonValue.TRUE));
     }
 }
