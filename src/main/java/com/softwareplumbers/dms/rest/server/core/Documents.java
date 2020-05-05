@@ -374,7 +374,7 @@ public class Documents {
 
             Query accessConstraint = authorizationService.getAccessConstraint(userMetadata, RepositoryPath.ROOT);
             JsonArrayBuilder results = Json.createArrayBuilder();
-            Stream<DocumentLink> links = service.catalogueByName(RepositoryPath.ROOT.addDocumentId(id, null), accessConstraint, Options.FREE_SEARCH).map(DocumentLink.class::cast);
+            Stream<DocumentLink> links = service.catalogueByName(RepositoryPath.ROOT.addDocumentId(id), accessConstraint, Options.FREE_SEARCH).map(DocumentLink.class::cast);
             if (links != null) links.forEach(item -> results.add(item.toJson()));
             return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build());
                     

@@ -43,6 +43,10 @@ public class CoreServerTest extends DocumentServiceTest  {
 
     boolean init = true;
     
+    public CoreServerTest() {
+        super(false);
+    }
+    
     // TODO: make this BeforeAll in junit 5
     public void initSchema() {
         try {

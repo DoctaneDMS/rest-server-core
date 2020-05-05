@@ -17,5 +17,7 @@ public enum UpdateType {
     /** Create or update, depending */
     CREATE_OR_UPDATE,
     /** Copy */
-    COPY
+    COPY,
+    /** Publish - create a new version of something which already exists */
+    PUBLISH
 }

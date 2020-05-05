@@ -7,16 +7,11 @@ import javax.json.JsonObjectBuilder;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.core.XMLOutput.CannotConvertFormatException;
 import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.Exceptions.BaseException;
 import com.softwareplumbers.dms.NamedRepositoryObject;
-import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
-import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
-import com.softwareplumbers.dms.Exceptions.InvalidReference;
-import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
-import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryPath;
 import org.slf4j.ext.XLogger;
-import javax.json.JsonValue;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -41,22 +36,6 @@ public class Error {
 				.add("cause", cause)
 				.build();
 	}
-        
-	public static JsonObject mapServiceError(InvalidReference err) {
-		return Json.createObjectBuilder()
-                .add("code","INVALID_REFERENCE")
-				.add("error", "Reference " + err.reference + " is invalid")
-				.add("reference", err.reference.toJson())
-				.build();		
-	}
-	
-	public static JsonObject mapServiceError(InvalidWorkspace err) {
-		return Json.createObjectBuilder()
-                .add("code","INVALID_WORKSPACE")
-				.add("error", "Workspace name " + err.workspace + " is invalid")
-				.add("workspaceName", err.workspace.toString())
-				.build();		
-	}
     
     public static JsonObject mapServiceError(InvalidContentType err) {
 		return Json.createObjectBuilder()
@@ -71,38 +50,14 @@ public class Error {
 				.build();
     }
 
-	public static JsonObject mapServiceError(InvalidWorkspaceState err) {
-		JsonObjectBuilder builder = Json.createObjectBuilder()
-                .add("code","INVALID_WORKSPACE_STATE")
-				.add("error", "Workspace " + err.workspace + " is in invalid state " + err.state)
-				.add("workspaceName", err.workspace.join("/"));
-	
-		if (err.state != null) builder = builder.add("state", err.state.toString());
-				
-		return builder.build();		
+	public static JsonObject mapServiceError(BaseException err) {
+		return err.toJson();		
 	}
 	
-	public static JsonObject mapServiceError(InvalidObjectName err) {
-		return Json.createObjectBuilder()
-                .add("code","INVALID_OBJECT_NAME")
-				.add("error", "Object name " + err.name + " is not valid")
-
-				.add("name", err.name.toString())
-				.build();		
-	}
-
     public static JsonObject mapServiceError(InvalidRepository err) {
 		return Json.createObjectBuilder()
 				.add("error", "Invalid repository " + err.repository)
 				.add("name", err.repository)
-				.build();		
-	}
-    
-	public static JsonObject mapServiceError(InvalidDocumentId err) {
-		return Json.createObjectBuilder()
-                .add("code","INVALID_DOCUMENT_ID")
-				.add("error", "Document " + err.id + " is not found")
-				.add("id", err.id)
 				.build();		
 	}
 

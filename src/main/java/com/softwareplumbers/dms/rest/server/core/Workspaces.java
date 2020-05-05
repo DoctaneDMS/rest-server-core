@@ -53,6 +53,7 @@ import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
 import com.softwareplumbers.dms.rest.server.model.AuthorizationService.ObjectAccessRole;
 
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
+import com.softwareplumbers.dms.Exceptions.InvalidVersionName;
 import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryPath.DocumentIdElement;
@@ -235,10 +236,7 @@ public class Workspaces {
 
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository)));
-            
-            String rootId = workspacePath.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
-            workspacePath = workspacePath.afterRootId();
-            
+                        
             Optional<DocumentIdElement> id = workspacePath.getDocumentId();
 
             // Might we return multiple results?
@@ -307,6 +305,7 @@ public class Workspaces {
             case COPY: return ObjectAccessRole.CREATE;
             case UPDATE: return ObjectAccessRole.UPDATE;
             case CREATE_OR_UPDATE: return ObjectAccessRole.CREATE;
+            case PUBLISH: return ObjectAccessRole.CREATE;
             default:
                 throw new RuntimeException("Uknown UpdateType");
         }
@@ -355,20 +354,14 @@ public class Workspaces {
 
             if (service == null || authorizationService == null) 
                 return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.repositoryNotFound(repository)));
-
             if (workspacePath == null || workspacePath.isEmpty())
                 return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.missingResourcePath()));
-
-            RepositoryObject.Type type = RepositoryObject.getType(object);
-
-            String rootId = workspacePath.getRootId().map(e->e.id).orElse(Constants.ROOT_ID);
-            workspacePath = workspacePath.afterRootId();
-            
             if (!workspacePath.getPartPath().isEmpty())
                 return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.partNotAllowed()));
             if (!workspacePath.getQueryPath().isEmpty())
                 return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.wildcardNotAllowed()));                
 
+            RepositoryObject.Type type = RepositoryObject.getType(object);
             Query acl = authorizationService.getObjectACL(workspacePath.getDocumentPath(), type, null, getRequiredRole(updateType));
                 
             if (!acl.containsItem(userMetadata)) {
@@ -383,21 +376,27 @@ public class Workspaces {
     
                 Workspace workspace;
 
-                if (updateType == UpdateType.CREATE) {
-                	Options.Create.Builder options = Options.Create.EMPTY
-                        .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
-                    workspace = service.createWorkspaceByName(workspacePath.getDocumentPath(), state, metadata, options.build());
-                } else if (updateType == UpdateType.COPY) {
-                    Query aclSource = authorizationService.getObjectACL(name, type, null, ObjectAccessRole.READ);
-                    if (!acl.containsItem(userMetadata)) {
-                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
-                    }
-                    workspace = service.copyWorkspace(name, workspacePath.getDocumentPath(), createWorkspace);
-                } else {
-                    Options.Update.Builder options = Options.Update.EMPTY
-                        .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
-                        .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE);
-                    workspace = service.updateWorkspaceByName(workspacePath.getDocumentPath(), state, metadata, options.build());
+                switch (updateType) {
+                    case CREATE:
+                        Options.Create.Builder createOpts = Options.Create.EMPTY
+                            .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
+                        workspace = service.createWorkspaceByName(workspacePath.getDocumentPath(), state, metadata, createOpts.build());
+                        break;
+                    case COPY:
+                        Query aclSource = authorizationService.getObjectACL(name, type, null, ObjectAccessRole.READ);
+                        if (!acl.containsItem(userMetadata)) {
+                            return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
+                        }
+                        workspace = service.copyWorkspace(name, workspacePath.getDocumentPath(), createWorkspace);
+                        break;
+                    case PUBLISH:
+                        String newVersion = workspacePath.part.getVersion().orElseThrow(()->new InvalidVersionName(workspacePath, ""));
+                        workspace = (Workspace)service.publish(workspacePath.currentVersion(), newVersion);
+                    default:
+                        Options.Update.Builder updateOpts = Options.Update.EMPTY
+                            .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
+                            .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE);
+                        workspace = service.updateWorkspaceByName(workspacePath.getDocumentPath(), state, metadata, updateOpts.build());
                 }
                 
                 return LOG.exit(Response.accepted().type(MediaType.APPLICATION_JSON).entity(workspace.toJson()).build());    
@@ -448,6 +447,9 @@ public class Workspaces {
             LOG.error(err.getMessage());
             return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidObjectName err) {
+            LOG.error(err.getMessage());
+            return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
+        } catch (InvalidVersionName err) {
             LOG.error(err.getMessage());
             return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(err)));
         } catch (InvalidReference err) {
