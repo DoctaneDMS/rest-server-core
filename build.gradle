@@ -152,7 +152,7 @@ dependencies {
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
     compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.11'
-    compile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT'
+    compile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.2.0'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'
     compile group: 'org.opensaml', name: 'opensaml-core', version: '3.3.0'
@@ -172,9 +172,9 @@ dependencies {
     defaultService group: 'org.springframework.boot', name:'spring-boot-starter-jdbc'
     defaultService group: 'com.h2database', name: 'h2', version: '1.4.200'
     defaultService group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
-    defaultService group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: 'master-SNAPSHOT'
+    defaultService group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: '0.2.0'
     
-    testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: 'master-SNAPSHOT', classifier: 'tests'
-    testCompile group: 'com.softwareplumbers.oss', name:'dms-client-spring', version: 'master-SNAPSHOT'
+    testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.2.0', classifier: 'tests'
+    testCompile group: 'com.softwareplumbers.oss', name:'dms-client-spring', version: '0.2.0'
     testCompile group: 'org.springframework.boot', name:'spring-boot-starter-test'
 }
