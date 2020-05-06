@@ -195,8 +195,13 @@ public class RepositoryDecorator implements RepositoryService {
     }
 
     @Override
-    public VersionedRepositoryObject publish(RepositoryPath rp, String versionName) throws Exceptions.InvalidObjectName, Exceptions.InvalidVersionName {
-        return mapResult(baseRepository.publish(rp, versionName));
+    public DocumentLink publishDocumentLink(RepositoryPath rp, String versionName, JsonObject metadata) throws Exceptions.InvalidObjectName, Exceptions.InvalidVersionName {
+        return mapResult(baseRepository.publishDocumentLink(rp, versionName, metadata));
+    }
+
+    @Override
+    public Workspace publishWorkspace(RepositoryPath rp, String versionName, JsonObject metadata) throws Exceptions.InvalidWorkspace, Exceptions.InvalidVersionName {
+        return mapResult(baseRepository.publishWorkspace(rp, versionName, metadata));
     }
 
     @Override

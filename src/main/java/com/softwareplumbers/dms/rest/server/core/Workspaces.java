@@ -391,7 +391,7 @@ public class Workspaces {
                         break;
                     case PUBLISH:
                         String newVersion = workspacePath.part.getVersion().orElseThrow(()->new InvalidVersionName(workspacePath, ""));
-                        workspace = (Workspace)service.publish(workspacePath.currentVersion(), newVersion);
+                        workspace = service.publishWorkspace(workspacePath.currentVersion(), newVersion, metadata);
                     default:
                         Options.Update.Builder updateOpts = Options.Update.EMPTY
                             .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace)
@@ -409,34 +409,41 @@ public class Workspaces {
 
                 DocumentLink link;
                 
-                if (updateType == UpdateType.CREATE) {
-                    if (reference == null) {
-                        throw new InvalidDocumentId("null");
-                    } else {
-                        Options.Create.Builder options = Options.Create.EMPTY.addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
-                        link = service.createDocumentLink(workspacePath, reference, options.build());
-                    }
-                    
-                } else if (updateType == UpdateType.COPY) {
-                    Query aclSource = authorizationService.getObjectACL(name, type, null, ObjectAccessRole.READ);
-                    if (!acl.containsItem(userMetadata)) {
-                        return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
-                    }
-                    link = service.copyDocumentLink(name, workspacePath, createWorkspace);
-                } else {
-                    if (reference == null || reference.id == null) {
-                        link = service.updateDocumentLink(workspacePath, null, null, metadata);
-                    } else {
-                        Options.Update.Builder options = Options.Update.EMPTY
-                            .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE)
-                            .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
-                        link = service.updateDocumentLink(workspacePath, reference, options.build());
-                    }
+                switch(updateType) {
+                    case CREATE:
+                        if (reference == null) throw new InvalidDocumentId("null");
+                        Options.Create.Builder createOpts = Options.Create.EMPTY.addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
+                        link = service.createDocumentLink(workspacePath, reference, createOpts.build());
+                        if (metadata != null && !metadata.isEmpty()) {
+                            link = service.updateDocumentLink(link.getName(), Constants.NO_TYPE, Constants.NO_STREAM, metadata);
+                        }                    
+                    case COPY:
+                        Query aclSource = authorizationService.getObjectACL(name, type, null, ObjectAccessRole.READ);
+                        if (!acl.containsItem(userMetadata)) {
+                            return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, name.toString())));
+                        }
+                        link = service.copyDocumentLink(name, workspacePath, createWorkspace);
+                        if (metadata != null && !metadata.isEmpty()) {
+                            link = service.updateDocumentLink(link.getName(), Constants.NO_TYPE, Constants.NO_STREAM, metadata);
+                        }                   
+                    case PUBLISH:
+                        String newVersion = workspacePath.part.getVersion().orElseThrow(()->new InvalidVersionName(workspacePath, ""));
+                        link = service.publishDocumentLink(workspacePath.currentVersion(), newVersion, metadata);                        
+                    default:
+                        if (reference == null || reference.id == null) {
+                            link = service.updateDocumentLink(workspacePath, null, null, metadata);
+                        } else {
+                            Options.Update.Builder options = Options.Update.EMPTY
+                                .addOptionIf(Options.CREATE_MISSING_ITEM, updateType == UpdateType.CREATE_OR_UPDATE)
+                                .addOptionIf(Options.CREATE_MISSING_PARENT, createWorkspace);
+                            link = service.updateDocumentLink(workspacePath, reference, options.build());
+                            if (metadata != null && !metadata.isEmpty()) {
+                                link = service.updateDocumentLink(link.getName(), Constants.NO_TYPE, Constants.NO_STREAM, metadata);
+                            }                    
+                        }
                 }
                 
-                if (metadata != null && !metadata.isEmpty()) {
-                    link = service.updateDocumentLink(link, null, null, metadata);
-                }
+
                 
                 return LOG.exit(Response.accepted().entity(link.toJson()).build());
             }
