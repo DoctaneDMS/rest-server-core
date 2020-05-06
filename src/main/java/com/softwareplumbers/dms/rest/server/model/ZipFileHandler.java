@@ -41,12 +41,17 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /** Implementation of DocumentNavigatorService over ZipFiles.
  *
  * @author Jonathan Essex
  */
 public class ZipFileHandler implements PartHandler {
+    
+    private static final XLogger LOG = XLoggerFactory.getXLogger(ZipFileHandler.class);
+
     
     private static class ZipFileData implements LocalData {
         public final LocalData delegate;
@@ -62,19 +67,25 @@ public class ZipFileHandler implements PartHandler {
 
         @Override
         public NamedRepositoryObject getChild(RepositoryBrowser service, RepositoryObject object, RepositoryPath name) throws InvalidObjectName {
+            LOG.entry(service, object, name);
             if (name.parent.isEmpty()) {
                 switch (name.part.type) {
                     case PART_ROOT:
-                        return self;
+                        return LOG.exit(self);
                     case PART_PATH:
                         NamedElement part = (NamedElement)name.part;
-                        return children.stream().filter(child -> child.getName().part.equals(name.part)).findAny().orElseThrow(()->new InvalidObjectName(name));
+                        return LOG.exit(
+                            children.stream().filter(child -> child.getName().part.equals(name.part)).findAny()
+                                .orElseThrow(()->new InvalidObjectName(name))
+                        );
                     default:
-                        throw new InvalidObjectName(name);
+                        throw LOG.throwing(new InvalidObjectName(name));
                            
                 }
             } else {
-                return getChild(service, object, name.parent).getChild(service, RepositoryPath.ROOT.add(name.part));
+                return LOG.exit(
+                    getChild(service, object, name.parent).getChild(service, RepositoryPath.ROOT.add(name.part))
+                );
             }
         }
         
@@ -137,6 +148,8 @@ public class ZipFileHandler implements PartHandler {
     }
             
     public DocumentPart build(RepositoryService service, Document zipfile) {
+        
+        LOG.entry(service, zipfile);
 
         Map<RepositoryPath, ZipFileData> localData = new HashMap<>();
         RepositoryPath parentName = zipfile instanceof NamedRepositoryObject ? ((NamedRepositoryObject)zipfile).getName() : RepositoryPath.ROOT;
@@ -167,12 +180,12 @@ public class ZipFileHandler implements PartHandler {
                 currentEntry = zifs.getNextEntry();
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw LOG.throwing(new RuntimeException(e));
         }
         
         // Technically we should try to correct any directory entries with zero members to navigable = false;
         
-        return localData.get(RepositoryPath.PART_ROOT).self;
+        return LOG.exit(localData.get(parentName.addRootPart()).self);
         
     }
 

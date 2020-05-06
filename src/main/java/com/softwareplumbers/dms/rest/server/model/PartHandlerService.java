@@ -18,6 +18,7 @@ import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryPath;
+import com.softwareplumbers.dms.RepositoryPath.ElementType;
 import com.softwareplumbers.dms.RepositoryPath.NamedElement;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.StreamableDocumentPart;
@@ -190,7 +191,7 @@ public class PartHandlerService extends RepositoryDecorator {
     
     private Stream<DocumentPart> getMatchingChildren(DocumentPart part, RepositoryPath partName) {
         LOG.entry(part, partName);
-        if (partName.parent.isEmpty()) {
+        if (partName.parent.isEmpty() || partName.parent.part.type == ElementType.PART_ROOT) {
             Predicate<NamedRepositoryObject> matcher = element-> { 
                 try {
                     return ((NamedElement)partName.part).pattern.match(((NamedElement)element.getName().part).name);
