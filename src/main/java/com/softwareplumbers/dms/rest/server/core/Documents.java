@@ -2,8 +2,7 @@ package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
-import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
-import com.softwareplumbers.dms.rest.server.model.AuthorizationService.DocumentAccessRole;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService.DocumentAccessRole;
 import static com.softwareplumbers.dms.Constants.*;
 
 import java.io.InputStream;
@@ -53,6 +52,7 @@ import java.util.List;
 import javax.json.JsonValue;
 import javax.ws.rs.container.ContainerRequestContext;
 import org.slf4j.ext.XLoggerFactory;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
 
 /** Handle CRUD operations on documents.
  * 
@@ -78,7 +78,7 @@ public class Documents {
 	private RepositoryServiceFactory repositoryServiceFactory;
     private AuthorizationServiceFactory authorizationServiceFactory;
     
-    private  AuthorizationService getAuthorizationService(String repository) throws InvalidRepository {
+    private  RepositoryAuthorizationService getAuthorizationService(String repository) throws InvalidRepository {
         try {
             return authorizationServiceFactory.getService(repository);
         } catch (NoSuchBeanDefinitionException e) {
@@ -147,7 +147,7 @@ public class Documents {
         LOG.entry(repository, id, version);
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -232,7 +232,7 @@ public class Documents {
         LOG.entry(repository, id, version, contentType);
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -310,7 +310,7 @@ public class Documents {
         LOG.entry(repository, id, version);
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -366,7 +366,7 @@ public class Documents {
         LOG.entry(repository, id, version);
         try {
             RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -414,7 +414,7 @@ public class Documents {
         LOG.entry(repository, metadata_part.getName(), file_part.getName());
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -482,7 +482,7 @@ public class Documents {
         LOG.entry(repository, request.getMethod());
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -543,7 +543,7 @@ public class Documents {
         LOG.entry(repository, id, metadata_part.getName(), file_part.getName());
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -618,7 +618,7 @@ public class Documents {
         LOG.entry(repository, id, workspace, createWorkspace, request);
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 
@@ -683,7 +683,7 @@ public class Documents {
         LOG.entry(repository, id, workspace, createWorkspace, metadata);
     	try {
     		RepositoryService service = getRepositoryService(repository);
-            AuthorizationService authorizationService = getAuthorizationService(repository);
+            RepositoryAuthorizationService authorizationService = getAuthorizationService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
     		if (service == null || authorizationService == null) 

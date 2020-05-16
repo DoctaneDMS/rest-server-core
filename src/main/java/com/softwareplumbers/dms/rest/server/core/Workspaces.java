@@ -49,8 +49,7 @@ import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.Constants;
-import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
-import com.softwareplumbers.dms.rest.server.model.AuthorizationService.ObjectAccessRole;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService.ObjectAccessRole;
 
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidVersionName;
@@ -69,6 +68,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
 import org.slf4j.ext.XLoggerFactory;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
 
 
 /** Handle catalog operations on repositories and documents.
@@ -229,7 +229,7 @@ public class Workspaces {
             Query filterConstraint = filter != null && filter.length() > 0 ? Query.urlDecode(filter) : Query.UNBOUNDED;
             LOG.debug("Decoded filter: {}", filterConstraint);
             RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
             List<MediaType> acceptableTypes = MediaTypes.getAcceptableMediaTypes(headers.getAcceptableMediaTypes(), MediaType.valueOf(contentType));
             MediaType requestedMediaType = MediaTypes.getPreferredMediaType(acceptableTypes, GET_RESULT_TYPES);  
@@ -274,7 +274,7 @@ public class Workspaces {
                 NamedRepositoryObject result;
                 result = service.getObjectByName(workspacePath);
                 if (result != null) { 
-                    Query acl = authorizationService.getObjectACL(result, AuthorizationService.ObjectAccessRole.READ);
+                    Query acl = authorizationService.getObjectACL(result, RepositoryAuthorizationService.ObjectAccessRole.READ);
                     if (!acl.containsItem(userMetadata)) {
                         return LOG.exit(Error.errorResponse(Status.FORBIDDEN, Error.unauthorized(acl, result)));
                     }
@@ -349,7 +349,7 @@ public class Workspaces {
         LOG.entry(repository, workspacePath, createWorkspace, updateType, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
@@ -510,7 +510,7 @@ public class Workspaces {
         LOG.entry(repository, workspacePath, createWorkspace, returnExisting, object);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
@@ -632,7 +632,7 @@ public class Workspaces {
         LOG.entry(repository, path, metadata_part, file_part, createWorkspace, createDocument);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
@@ -710,7 +710,7 @@ public class Workspaces {
         LOG.entry(repository, path, metadata_part, file_part, createWorkspace);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
             if (service == null || authorizationService == null) 
@@ -773,7 +773,7 @@ public class Workspaces {
         LOG.entry(repository, path);
         try {
             RepositoryService service = repositoryServiceFactory.getService(repository);
-            AuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authorizationService = authorizationServiceFactory.getService(repository);
             JsonObject userMetadata = (JsonObject)requestContext.getProperty("userMetadata");
 
 

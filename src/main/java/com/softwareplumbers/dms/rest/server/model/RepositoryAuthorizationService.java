@@ -5,11 +5,14 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
+import com.softwareplumbers.authz.AuthorizationService;
+import com.softwareplumbers.authz.AuthzExceptions.InvalidPath;
 import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Exceptions.InvalidDocumentId;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidReference;
@@ -24,10 +27,34 @@ import javax.ws.rs.core.MediaType;
  *
  * @author Jonathan Essex
  */
-public interface AuthorizationService {
+public class RepositoryAuthorizationService {
     
     public enum DocumentAccessRole { CREATE, READ, UPDATE }
+    public enum DocumentTypes { DOCUMENT }
     public enum ObjectAccessRole { CREATE, READ, UPDATE, CREATE_OR_UPDATE, DELETE }
+    
+    private AuthorizationService<DocumentTypes, DocumentAccessRole, RepositoryPath> documentAuthService;
+    private AuthorizationService<RepositoryObject.Type, ObjectAccessRole, RepositoryPath> objectAuthService;
+    
+    public RepositoryAuthorizationService(
+        AuthorizationService<DocumentTypes, DocumentAccessRole, RepositoryPath> documentAuthService,
+        AuthorizationService<RepositoryObject.Type, ObjectAccessRole, RepositoryPath> objectAuthService
+    ) {
+        this.documentAuthService = documentAuthService;
+        this.objectAuthService = objectAuthService;
+    }
+    
+    public RepositoryAuthorizationService() {
+        this(AuthorizationService.publicAuthz(), AuthorizationService.publicAuthz());
+    }
+    
+    public void setDocumentAuthorizationService(AuthorizationService<DocumentTypes, DocumentAccessRole, RepositoryPath> documentAuthService) {
+        this.documentAuthService = documentAuthService;
+    }
+    
+    public void setObjectAuthorizationService(AuthorizationService<RepositoryObject.Type, ObjectAccessRole, RepositoryPath> objectAuthService) {
+        this.objectAuthService = objectAuthService;
+    }
     
     public static ObjectAccessRole castRole(DocumentAccessRole dar) {
         return ObjectAccessRole.valueOf(dar.toString());
@@ -51,7 +78,18 @@ public interface AuthorizationService {
      * @return An access control list that can be used to determine if a user has the given role for the referenced document
      * @throws InvalidReference
      */
-    Query getDocumentACL(Reference ref, String mediaType, JsonObject metadata, DocumentAccessRole role) throws InvalidReference;
+    public Query getDocumentACL(Reference ref, String mediaType, JsonObject metadata, DocumentAccessRole role) throws InvalidReference {
+        try {
+            RepositoryPath path = RepositoryPath.ROOT;
+            if (ref != null) { 
+                path = path.addDocumentId(ref.id);
+                if (ref.version != null) path.setVersion(ref.version);
+            }
+            return documentAuthService.getObjectACL(path, DocumentTypes.DOCUMENT, metadata, role);
+        } catch (InvalidPath e) {
+            throw new InvalidReference(ref);
+        }
+    }
     
     /** Get the Access Control List for a document.
      * 
@@ -61,7 +99,7 @@ public interface AuthorizationService {
      * @param role Role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the referenced document
      */
-    default Query getDocumentACL(Document doc, DocumentAccessRole role) {
+    public Query getDocumentACL(Document doc, DocumentAccessRole role) {
         try {
             return getDocumentACL(doc.getReference(), doc.getMediaType(), doc.getMetadata(), role);
         } catch (InvalidReference err) {
@@ -90,7 +128,13 @@ public interface AuthorizationService {
      * @throws InvalidObjectName
      * @throws InvalidWorkspace
      */
-    Query getObjectACL(RepositoryPath path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace;
+    public Query getObjectACL(RepositoryPath path, RepositoryObject.Type type, JsonObject metadata, ObjectAccessRole role) throws InvalidObjectName {
+        try {
+            return objectAuthService.getObjectACL(path, type, metadata, role);
+        } catch (InvalidPath e) {
+            throw new InvalidObjectName(path);
+        }
+    }
     
     /**  Get the Access Control List for a Repository Object (Workspace or Document).
      * 
@@ -100,10 +144,10 @@ public interface AuthorizationService {
      * @param role to get ACL for
      * @return An access control list that can be used to determine if a user has the given role for the object
      */
-    default Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
+    public Query getObjectACL(NamedRepositoryObject object, ObjectAccessRole role) {
         try {
             return getObjectACL(object.getName(), object.getType(), object.getMetadata(), role);
-        } catch (InvalidObjectName | InvalidWorkspace err) {
+        } catch (InvalidObjectName err) {
             throw new RuntimeException("Unexpectedly invalid name " + object.getName());
         } 
     }
@@ -121,7 +165,9 @@ public interface AuthorizationService {
      * @throws InvalidWorkspace if root id is not valid
      * @throws InvalidDocumentId if documentId is not valid
      */
-    Query getObjectACLById(RepositoryPath path, String documentId, ObjectAccessRole role) throws InvalidObjectName, InvalidWorkspace, InvalidDocumentId;
+    public Query getObjectACLById(RepositoryPath path, String documentId, ObjectAccessRole role) throws InvalidObjectName {
+        return getObjectACL(path.addDocumentId(documentId), RepositoryObject.Type.DOCUMENT_LINK, null, role);
+    }
 
     /** Get An Access Constraint for the given user searching on the given path.
      * 
@@ -136,7 +182,9 @@ public interface AuthorizationService {
      * @param pathTemplate Path to search on (may contain wildcards).
      * @return An access constraint which can filter out search results for which the user has no permission to view
      */
-    Query getAccessConstraint(JsonObject userMetadata, RepositoryPath pathTemplate);    
+    public Query getAccessConstraint(JsonObject userMetadata, RepositoryPath pathTemplate) {
+        return objectAuthService.getAccessConstraint(userMetadata, pathTemplate);
+    }   
     
     /** Get An Access Constraint for the given user searching on the given path.
      * 
@@ -150,7 +198,7 @@ public interface AuthorizationService {
      * @param searchRoot Origin of search (search returns only children of provided object).
      * @return An access constraint which can filter out search results for which the user has no permission to view
      */
-    default Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot) {
+    public Query getAccessConstraint(JsonObject userMetadata, NamedRepositoryObject searchRoot) {
         return getAccessConstraint(userMetadata, searchRoot.getName());
     }
     
@@ -162,5 +210,7 @@ public interface AuthorizationService {
      * @param userId
      * @return application specific metadata for that user Id 
      */
-    JsonObject getUserMetadata(String userId);
+    public JsonObject getUserMetadata(String userId) {
+        return objectAuthService.getUserMetadata(userId);
+    }
 }

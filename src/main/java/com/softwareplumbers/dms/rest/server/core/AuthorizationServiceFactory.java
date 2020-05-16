@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
 
 /** Service Locator for Authentication Services.
  *
@@ -18,5 +18,5 @@ public interface AuthorizationServiceFactory {
      * @param name
      * @return An authorization service
      */
-    AuthorizationService getService(String name);
+    RepositoryAuthorizationService getService(String name);
 }

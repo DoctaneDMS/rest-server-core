@@ -94,7 +94,7 @@
         <property name="SAMLResponseHandlerService" ref="softwarePlumbersSAMLServer"/>
     </bean>
 
-    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.PublicAuthorizationService" scope="singleton"/>
+    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService" scope="singleton"/>
 
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">

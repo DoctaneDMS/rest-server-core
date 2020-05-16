@@ -1,6 +1,5 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.AuthorizationService;
 import org.slf4j.ext.XLogger;
 import java.io.IOException;
 import javax.annotation.Priority;
@@ -15,6 +14,7 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import javax.json.JsonObject;
 import org.slf4j.ext.XLoggerFactory;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
 
 /**
  * UserMetadata filter.
@@ -61,7 +61,7 @@ public class UserMetadataFilter implements ContainerRequestFilter {
 
         if (repository != null) {
             String userId = requestContext.getSecurityContext().getUserPrincipal().getName();
-            AuthorizationService authService = authorizationServiceFactory.getService(repository);
+            RepositoryAuthorizationService authService = authorizationServiceFactory.getService(repository);
             if (authService != null) { 
                 JsonObject userMetadata = authorizationServiceFactory.getService(repository).getUserMetadata(userId);
                 requestContext.setProperty("userMetadata", userMetadata);
