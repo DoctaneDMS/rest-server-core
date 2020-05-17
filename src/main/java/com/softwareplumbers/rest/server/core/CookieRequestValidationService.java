@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 import java.security.Key;
 import java.time.LocalDateTime;

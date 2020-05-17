@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 import java.io.IOException;
 import javax.ws.rs.container.ContainerRequestContext;

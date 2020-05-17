@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 public enum SystemKeyPairs {
     DEFAULT_SERVICE_ACCOUNT

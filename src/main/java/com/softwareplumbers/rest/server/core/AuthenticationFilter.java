@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 import org.slf4j.ext.XLogger;
 import java.io.IOException;

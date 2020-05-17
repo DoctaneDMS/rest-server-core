@@ -1,5 +1,9 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.rest.server.core.CORSRequestFilter;
+import com.softwareplumbers.rest.server.core.CORSResponseFilter;
+import com.softwareplumbers.rest.server.core.Authentication;
+import com.softwareplumbers.rest.server.core.AuthenticationFilter;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
 import org.springframework.stereotype.Component;

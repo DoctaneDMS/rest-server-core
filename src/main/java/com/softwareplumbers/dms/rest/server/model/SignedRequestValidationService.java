@@ -5,8 +5,8 @@
  */
 package com.softwareplumbers.dms.rest.server.model;
 
-import com.softwareplumbers.dms.rest.server.core.SystemKeyPairs;
-import com.softwareplumbers.dms.rest.server.core.SystemSecretKeys;
+import com.softwareplumbers.rest.server.core.SystemKeyPairs;
+import com.softwareplumbers.rest.server.core.SystemSecretKeys;
 import org.slf4j.ext.XLogger;
 import com.softwareplumbers.keymanager.InitializationFailure;
 import com.softwareplumbers.keymanager.BadKeyException;

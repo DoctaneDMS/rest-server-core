@@ -1,5 +1,7 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
+import com.softwareplumbers.dms.rest.server.core.Error;
+import com.softwareplumbers.dms.rest.server.core.InvalidRepository;
 import com.softwareplumbers.dms.rest.server.model.AuthenticationService;
 import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService;
 import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLParsingError;

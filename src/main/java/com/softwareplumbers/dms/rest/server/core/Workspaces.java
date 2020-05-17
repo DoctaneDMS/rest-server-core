@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.rest.server.core.Authenticated;
+import com.softwareplumbers.rest.server.core.AuthorizationServiceFactory;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

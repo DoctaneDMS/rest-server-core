@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.rest.server.core.Authenticated;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import java.util.stream.Stream;
 

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 import com.softwareplumbers.dms.rest.server.model.SignonService;
 import javax.ws.rs.core.Response;

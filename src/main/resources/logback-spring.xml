@@ -11,9 +11,11 @@
     <root level="INFO">
         <appender-ref ref="Console" />
     </root>
+    <logger name="com.softwareplumbers.rest.server.core" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server.model" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.service.sql" level="TRACE"/>
+    <logger name="com.softwareplumbers.common.sql" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.keymanager" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.plugin.auth.ti" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" level="INFO"/>

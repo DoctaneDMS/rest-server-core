@@ -4,7 +4,7 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.common.test.DocumentServiceTest;
 import com.softwareplumbers.dms.common.test.TestModel;
-import com.softwareplumbers.dms.service.sql.Schema;
+import com.softwareplumbers.common.sql.Schema;
 import java.sql.SQLException;
 import java.util.UUID;
 import org.junit.runner.RunWith;

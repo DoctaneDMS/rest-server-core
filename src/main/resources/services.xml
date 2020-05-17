@@ -12,10 +12,9 @@
     <context:annotation-config />
 
     <!--- import config for H2 database type -->    
-    <import resource="classpath:/com/softwareplumbers/dms/service/sql/h2db.xml" />
+    <import resource="classpath:com/softwareplumbers/dms/service/sql/h2db.xml" />
+    <import resource="classpath:com/softwareplumbers/dms/service/sql/entities.xml" />
   
-    <!--- choose SQL API variant -->  
-    <bean id="SQLAPI" class="com.softwareplumbers.dms.service.sql.SQLAPIFactory" />
 
     <!--- configure datasource -->
 	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
@@ -29,7 +28,20 @@
     <bean id="filestore" class="com.softwareplumbers.dms.service.sql.LocalFilesystem">
         <property name="Path" value="/var/tmp/doctane/files"/> 
     </bean>
-
+    
+    <bean id="Schema" class="com.softwareplumbers.common.sql.Schema"> 
+        <property name="createScript" ref="createScript"/>
+        <property name="updateScript" ref="updateScript"/>
+        <property name="dropScript" ref="dropScript"/>
+        <property name="entityMap" ref="entityMap"/>
+    </bean>
+    
+    <bean id="database" class="com.softwareplumbers.dms.service.sql.DocumentDatabase">
+        <property name="createOption" value="RECREATE"/>
+        <property name="operations" ref="dms.operations"/>
+        <property name="templates" ref="dms.templates"/>
+    </bean>
+         
     <!--- configure base repository -->
     <bean id="base" class="com.softwareplumbers.dms.service.sql.SQLRepositoryService" scope="singleton">
         <property name="filestore" ref="filestore"/> 
@@ -51,19 +63,19 @@
         <constructor-arg index="1" value="/var/tmp/certs"/>
         <constructor-arg index="2" value="#{systemProperties['doctane.keystore.password']}"/>
         <!-- for some reason specifying a value attribute here does not work -->
-        <constructor-arg index="3"><value>com.softwareplumbers.dms.rest.server.core.SystemSecretKeys</value></constructor-arg>
-        <constructor-arg index="4"><value>com.softwareplumbers.dms.rest.server.core.SystemKeyPairs</value></constructor-arg>
+        <constructor-arg index="3"><value>com.softwareplumbers.rest.server.core.SystemSecretKeys</value></constructor-arg>
+        <constructor-arg index="4"><value>com.softwareplumbers.rest.server.core.SystemKeyPairs</value></constructor-arg>
     </bean>
 
     
-    <bean id="dummyValidation" class="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" scope="singleton">
+    <bean id="dummyValidation" class="com.softwareplumbers.rest.server.core.DummyRequestValidationService" scope="singleton">
         <constructor-arg index="0" value="tmp"/>
     </bean>
             
     <bean id="auth.dummy" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
         <property name="RequestValidationService" ref="dummyValidation"/>
         <property name="SignonService">
-            <bean class="com.softwareplumbers.dms.rest.server.core.DummySignonService">
+            <bean class="com.softwareplumbers.rest.server.core.DummySignonService">
                 <constructor-arg index="0" ref="dummyValidation"/>
             </bean>
         </property>
@@ -76,7 +88,7 @@
     
     <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
 
-    <bean id="cookieRequestValidationService" class="com.softwareplumbers.dms.rest.server.core.CookieRequestValidationService">
+    <bean id="cookieRequestValidationService" class="com.softwareplumbers.rest.server.core.CookieRequestValidationService">
         <constructor-arg index="0" ref="keymgr"/>
         <constructor-arg index="1" value="tmp"/>
     </bean>
@@ -85,7 +97,7 @@
         <property name="RequestValidationService" ref="cookieRequestValidationService"/>
         <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
         <property name="SignonService">
-            <bean class="com.softwareplumbers.dms.rest.server.core.SAMLSignonService">
+            <bean class="com.softwareplumbers.rest.server.core.SAMLSignonService">
                 <property name="SAMLProtocolHandlerService" ref="softwarePlumbersSAMLServer"/>
                 <property name="assertionConsumerURI" value="http://localhost:8080/auth/tmp/saml"/>
                 <property name="issuerId" value="doctane-api-saml2"/>
@@ -109,7 +121,7 @@
    
     <bean id="AuthenticationServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthenticationServiceFactory"/>
+    	<property name="serviceLocatorInterface" value="com.softwareplumbers.rest.server.core.AuthenticationServiceFactory"/>
         <property name="serviceMappings">
             <props>
                 <prop key="tmp">auth.tmp</prop>
@@ -120,7 +132,7 @@
     
     <bean id="AuthorizationServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthorizationServiceFactory"/>
+    	<property name="serviceLocatorInterface" value="com.softwareplumbers.rest.server.core.AuthorizationServiceFactory"/>
         <property name="serviceMappings">
             <props>
                 <prop key="tmp">authz.public</prop>

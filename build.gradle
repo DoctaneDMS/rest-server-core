@@ -173,9 +173,11 @@ dependencies {
     defaultService group: 'org.springframework.boot', name:'spring-boot-starter-jdbc'
     defaultService group: 'com.h2database', name: 'h2', version: '1.4.200'
     defaultService group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
-    defaultService group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: '0.2.0'
+    defaultService group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: '0.2.3'
     
     testCompile group: 'com.softwareplumbers.oss', name:'dms-interface-core', version: '0.2.0', classifier: 'tests'
     testCompile group: 'com.softwareplumbers.oss', name:'dms-client-spring', version: '0.2.0'
     testCompile group: 'org.springframework.boot', name:'spring-boot-starter-test'
+    testCompile group: 'com.softwareplumbers.oss', name:'dms-service-sql', version: '0.2.3'
+    testCompile group: 'com.softwareplumbers.oss', name:'fluent-statement', version: '0.0.10'
 }

@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.rest.server.core.Authenticated;
+import com.softwareplumbers.rest.server.core.AuthorizationServiceFactory;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService.DocumentAccessRole;

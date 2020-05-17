@@ -1,5 +1,7 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.rest.server.core.CookieRequestValidationService;
+import com.softwareplumbers.rest.server.core.SystemKeyPairs;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
@@ -59,7 +61,7 @@ import com.softwareplumbers.dms.RepositoryBrowser;
 import com.softwareplumbers.dms.StreamableRepositoryObject;
 import com.softwareplumbers.dms.common.impl.RepositoryObjectFactory;
 import com.softwareplumbers.dms.rest.server.model.UpdateType;
-import com.softwareplumbers.dms.service.sql.Schema;
+import com.softwareplumbers.common.sql.Schema;
 import com.softwareplumbers.keymanager.BadKeyException;
 import com.softwareplumbers.keymanager.InitializationFailure;
 import com.softwareplumbers.keymanager.KeyManager;

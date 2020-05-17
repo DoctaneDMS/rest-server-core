@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 public enum SystemSecretKeys {
     JWT_SIGNING_KEY

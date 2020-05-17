@@ -1,5 +1,8 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
+import com.softwareplumbers.dms.rest.server.core.Error;
+import com.softwareplumbers.rest.server.core.Authenticated;
+import com.softwareplumbers.rest.server.core.AuthorizationServiceFactory;
 import org.slf4j.ext.XLogger;
 import java.io.IOException;
 import javax.annotation.Priority;

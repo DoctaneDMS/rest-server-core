@@ -13,8 +13,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.softwareplumbers.dms.rest.server.core.SystemKeyPairs;
-import com.softwareplumbers.dms.rest.server.core.SystemSecretKeys;
+import com.softwareplumbers.rest.server.core.SystemKeyPairs;
+import com.softwareplumbers.rest.server.core.SystemSecretKeys;
 import com.softwareplumbers.keymanager.KeyManager;
 
 public class KeyStoreTest {
