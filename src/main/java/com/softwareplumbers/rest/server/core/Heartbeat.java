@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;

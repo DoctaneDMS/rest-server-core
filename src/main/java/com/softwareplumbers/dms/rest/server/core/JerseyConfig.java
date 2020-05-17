@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
+import com.softwareplumbers.rest.server.core.Heartbeat;
 import com.softwareplumbers.rest.server.core.CORSRequestFilter;
 import com.softwareplumbers.rest.server.core.CORSResponseFilter;
 import com.softwareplumbers.rest.server.core.Authentication;
