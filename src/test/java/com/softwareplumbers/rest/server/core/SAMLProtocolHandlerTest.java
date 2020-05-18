@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.core;
+package com.softwareplumbers.rest.server.core;
 
 import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService;
 import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService.SAMLInitialisationError;

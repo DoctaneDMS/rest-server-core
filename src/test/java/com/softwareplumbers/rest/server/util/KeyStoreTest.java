@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.util;
+package com.softwareplumbers.rest.server.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
