@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.AuthenticationService;
+import com.softwareplumbers.rest.server.model.AuthenticationService;
 
 /** Service Locator for Authentication Services.
  *

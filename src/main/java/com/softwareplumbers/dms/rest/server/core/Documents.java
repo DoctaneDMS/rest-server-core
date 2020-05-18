@@ -1,8 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.rest.server.core.Authenticated;
-import com.softwareplumbers.rest.server.core.AuthorizationServiceFactory;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService.DocumentAccessRole;
 import static com.softwareplumbers.dms.Constants.*;
@@ -55,6 +53,8 @@ import javax.json.JsonValue;
 import javax.ws.rs.container.ContainerRequestContext;
 import org.slf4j.ext.XLoggerFactory;
 import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
+import com.softwareplumbers.rest.server.model.CoreExceptions;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationServiceFactory;
 
 /** Handle CRUD operations on documents.
  * 
@@ -78,21 +78,21 @@ public class Documents {
 	///////////---------  member variables --------////////////
 
 	private RepositoryServiceFactory repositoryServiceFactory;
-    private AuthorizationServiceFactory authorizationServiceFactory;
+    private RepositoryAuthorizationServiceFactory authorizationServiceFactory;
     
-    private  RepositoryAuthorizationService getAuthorizationService(String repository) throws InvalidRepository {
+    private  RepositoryAuthorizationService getAuthorizationService(String repository) throws CoreExceptions.InvalidService {
         try {
             return authorizationServiceFactory.getService(repository);
         } catch (NoSuchBeanDefinitionException e) {
-            throw new InvalidRepository(repository);
+            throw new CoreExceptions.InvalidService(repository);
         }
     }
     
-    private  RepositoryService getRepositoryService(String repository) throws InvalidRepository {
+    private  RepositoryService getRepositoryService(String repository) throws CoreExceptions.InvalidService {
         try {
             return repositoryServiceFactory.getService(repository);
         } catch (NoSuchBeanDefinitionException e) {
-            throw new InvalidRepository(repository);
+            throw new CoreExceptions.InvalidService(repository);
         }
     }
     
@@ -116,7 +116,7 @@ public class Documents {
      * @param authorizationServiceFactory 
      */
     @Autowired
-    public void setAuthorizationServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
+    public void setAuthorizationServiceFactory(RepositoryAuthorizationServiceFactory authorizationServiceFactory) {
         this.authorizationServiceFactory = authorizationServiceFactory;
     }
 
@@ -145,7 +145,7 @@ public class Documents {
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
         @Context ContainerRequestContext requestContext
-    ) {
+    ) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, version);
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -195,8 +195,6 @@ public class Documents {
     		} else {
     			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch(InvalidReference e) { 
     		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
@@ -230,7 +228,7 @@ public class Documents {
         @QueryParam("contentType") @DefaultValue("*/*") MediaType contentType,
         @Context HttpHeaders headers,
         @Context ContainerRequestContext requestContext
-    ) {
+    ) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, version, contentType);
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -272,9 +270,7 @@ public class Documents {
                     .entity(Error.documentNotFound(repository,id,version))
                     .build());    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch (RuntimeException e) {
+    	}  catch (RuntimeException e) {
     		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
     		return LOG.exit(Response
@@ -308,7 +304,7 @@ public class Documents {
     	@PathParam("id") String id,
     	@QueryParam("version") String version,
         @Context ContainerRequestContext requestContext
-    ) {
+    ) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, version);
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -335,8 +331,6 @@ public class Documents {
     		} else {
     			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository,id,version)));    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
     		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
@@ -364,7 +358,7 @@ public class Documents {
         @PathParam("id") String id,
         @QueryParam("version") String version,
         @Context ContainerRequestContext requestContext
-    ) {
+    ) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, version);
         try {
             RepositoryService service = getRepositoryService(repository);
@@ -380,9 +374,7 @@ public class Documents {
             if (links != null) links.forEach(item -> results.add(item.toJson()));
             return LOG.exit(Response.ok().type(MediaType.APPLICATION_JSON).type(MediaType.APPLICATION_JSON).entity(results.build()).build());
                     
-        } catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
-    	} catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             LOG.error(e.getMessage());
             e.printStackTrace(System.err);
             return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR,Error.reportException(e)));
@@ -412,7 +404,7 @@ public class Documents {
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
     	@FormDataParam("file") FormDataBodyPart file_part,
         @Context ContainerRequestContext requestContext        
-    	) {
+    	) throws CoreExceptions.InvalidService {
         LOG.entry(repository, metadata_part.getName(), file_part.getName());
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -452,8 +444,6 @@ public class Documents {
     		} else {
     			return LOG.exit(Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure()));    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (RuntimeException e) {
     		LOG.error(e.getMessage());
     		e.printStackTrace(System.err);
@@ -480,7 +470,7 @@ public class Documents {
     	@PathParam("repository") String repository,
     	@Context HttpServletRequest request,
         @Context ContainerRequestContext requestContext        
-    	) {
+    	) throws CoreExceptions.InvalidService {
         LOG.entry(repository, request.getMethod());
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -507,8 +497,6 @@ public class Documents {
     		} else {
     			return Error.errorResponse(Status.BAD_REQUEST,Error.unexpectedFailure());    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidReference e) {
     		return Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e));
         } catch (RuntimeException e) {
@@ -541,7 +529,7 @@ public class Documents {
     	@FormDataParam("metadata") FormDataBodyPart metadata_part,
     	@FormDataParam("file") FormDataBodyPart file_part,
         @Context ContainerRequestContext requestContext        
-    ) {
+    ) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, metadata_part.getName(), file_part.getName());
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -581,8 +569,6 @@ public class Documents {
     		} else {
     			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
     		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	} catch (RuntimeException e) {
@@ -616,7 +602,7 @@ public class Documents {
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
     	@Context HttpServletRequest request,
         @Context ContainerRequestContext requestContext
-    ) {
+    ) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, workspace, createWorkspace, request);
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -644,8 +630,6 @@ public class Documents {
     		} else {
     			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
     		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {
@@ -681,7 +665,7 @@ public class Documents {
     	@QueryParam("createWorkspace") @DefaultValue("false") boolean createWorkspace,
         @Context ContainerRequestContext requestContext,
     	JsonObject metadata
-    	) {
+    	) throws CoreExceptions.InvalidService {
         LOG.entry(repository, id, workspace, createWorkspace, metadata);
     	try {
     		RepositoryService service = getRepositoryService(repository);
@@ -709,8 +693,6 @@ public class Documents {
     		} else {
     			return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.documentNotFound(repository, id, null)));    			
     		}
-    	} catch(InvalidRepository e) { 
-    		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));
     	} catch (InvalidDocumentId e) {
     		return LOG.exit(Error.errorResponse(Status.NOT_FOUND,Error.mapServiceError(e)));    		
     	}catch (RuntimeException e) {

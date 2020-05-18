@@ -1,11 +1,12 @@
 package com.softwareplumbers.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.core.Error;
-import com.softwareplumbers.dms.rest.server.core.InvalidRepository;
-import com.softwareplumbers.dms.rest.server.model.AuthenticationService;
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService;
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLParsingError;
-import com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService.RequestValidationError;
+//import com.softwareplumbers.dms.rest.server.core.Error;
+import com.softwareplumbers.rest.server.model.AuthenticationService;
+import com.softwareplumbers.rest.server.model.CoreExceptions;
+import com.softwareplumbers.rest.server.model.CoreExceptions.AuthenticationError;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService.SAMLParsingError;
+import com.softwareplumbers.rest.server.model.SignedRequestValidationService.RequestValidationError;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.format.DateTimeFormatter;
@@ -53,11 +54,11 @@ public class Authentication {
     
     private final AuthenticationServiceFactory authenticationServiceFactory;
     
-    private  AuthenticationService getAuthenticationService(String repository) throws InvalidRepository {
+    private  AuthenticationService getAuthenticationService(String repository) throws CoreExceptions.InvalidService {
         try {
             return authenticationServiceFactory.getService(repository);
         } catch (NoSuchBeanDefinitionException e) {
-            throw new InvalidRepository(repository);
+            throw new CoreExceptions.InvalidService(repository);
         }
     }
     
@@ -106,6 +107,9 @@ public class Authentication {
      * @param samlResponse SAML response signed by IDP containing authenticated user details
      * @param relayState Client URI for redirect
      * @return A SEE OTHER response redirecting to the URI specified in relayState
+     * @throws CoreExceptions.InvalidService if repository is invalid
+     * @throws CoreExceptions.AuthenticationError is request cannot be validated
+
      */
     @Path("{repository}/saml")
     @POST
@@ -114,7 +118,9 @@ public class Authentication {
         @PathParam("repository") String repository,     
         @FormParam("SAMLResponse") String samlResponse,
         @FormParam("RelayState") String relayState
-    ) {
+        
+    ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
+    {
         LOG.entry();
                 
         try {     
@@ -135,11 +141,8 @@ public class Authentication {
                 return LOG.exit(Response.status(Status.FORBIDDEN).build());
             }
         } catch(SAMLParsingError | URISyntaxException e) {
-            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
-        } catch(InvalidRepository e) {
-            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
-        }
-        
+            throw LOG.throwing(new CoreExceptions.AuthenticationError(e));
+        }         
     }
     
     /**  Handle service authentication request (i.e.authentication via public key)
@@ -152,6 +155,8 @@ public class Authentication {
      * @param request Request for access to the API (a base 64 encoded JSON object)
      * @param signature Signature of request (base 64 encoded)
      * @return A JWT token providing access to the API
+     * @throws CoreExceptions.InvalidService is repository is invalid
+     * @throws CoreExceptions.AuthenticationError is request cannot be validated
      */
     @Path("{repository}/service")
     @GET
@@ -159,7 +164,8 @@ public class Authentication {
         @PathParam("repository") String repository,     
         @QueryParam("request") String request,
         @QueryParam("signature") String signature
-    ) {
+    ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
+    {
         LOG.entry();
         
         try {
@@ -175,10 +181,8 @@ public class Authentication {
                 return LOG.exit(Response.status(Status.FORBIDDEN).build());
             }
         } catch(RequestValidationError e) {
-            return LOG.exit(Error.errorResponse(Status.INTERNAL_SERVER_ERROR, Error.reportException(e)));
-        } catch (InvalidRepository e) {
-            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
-        }
+            throw LOG.throwing(new AuthenticationError(e));
+        } 
     }
     
     /** Redirect the requestor to the preferred authentication service for the given repository 
@@ -186,20 +190,18 @@ public class Authentication {
      * @param repository Repository we want a sign-on for
      * @param relayState Target URI in the requesting application; where to go to after interactive authentication
      * @return A redirect response
+     * @throws CoreExceptions.InvalidService if repository is invalid
      */
     @Path("{repository}/signon")
     @GET
     public Response handleRedirect(
         @PathParam("repository") String repository,
         @QueryParam("relayState") String relayState
-    ) {
+    ) throws CoreExceptions.InvalidService 
+    {
         LOG.entry();
-        try {
-            AuthenticationService authService = getAuthenticationService(repository);
-            return LOG.exit(authService.getSignonService().redirect(relayState));
-        } catch (InvalidRepository e) {
-            return LOG.exit(Error.errorResponse(Status.NOT_FOUND, Error.mapServiceError(e)));
-        }
+        AuthenticationService authService = getAuthenticationService(repository);
+        return LOG.exit(authService.getSignonService().redirect(relayState));
     }
 
 }

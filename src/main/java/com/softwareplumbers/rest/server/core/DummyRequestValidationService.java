@@ -15,7 +15,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
-import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
+import com.softwareplumbers.rest.server.model.RequestValidationService;
 import org.slf4j.ext.XLoggerFactory;
 
 /** Dummy authentication service

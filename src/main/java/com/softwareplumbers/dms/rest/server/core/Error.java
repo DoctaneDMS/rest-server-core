@@ -54,13 +54,6 @@ public class Error {
 		return err.toJson();		
 	}
 	
-    public static JsonObject mapServiceError(InvalidRepository err) {
-		return Json.createObjectBuilder()
-				.add("error", "Invalid repository " + err.repository)
-				.add("name", err.repository)
-				.build();		
-	}
-
 	public static JsonObject documentNotFound(String repository, String id, String version) {
 		JsonObjectBuilder builder = Json.createObjectBuilder()
 				.add("error", "Document " + id + " with version " + (version == null ? "none" : version.toString()) + " does not exist in repository " + repository)

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
+import com.softwareplumbers.rest.server.model.RequestValidationService;
 import javax.annotation.Priority;
 import org.apache.log4j.MDC;
 import org.slf4j.ext.XLoggerFactory;

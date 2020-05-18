@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.rest.server.model;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Response.ResponseBuilder;

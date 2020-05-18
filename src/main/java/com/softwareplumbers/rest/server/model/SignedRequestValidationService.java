@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.softwareplumbers.dms.rest.server.model;
+package com.softwareplumbers.rest.server.model;
 
 import com.softwareplumbers.rest.server.core.SystemKeyPairs;
 import com.softwareplumbers.rest.server.core.SystemSecretKeys;

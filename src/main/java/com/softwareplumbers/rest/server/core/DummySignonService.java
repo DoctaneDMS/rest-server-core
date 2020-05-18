@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.SignonService;
+import com.softwareplumbers.rest.server.model.SignonService;
 import java.net.URI;
 import javax.ws.rs.core.Response;
 

@@ -5,9 +5,9 @@
  */
 package com.softwareplumbers.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService;
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError;
-import com.softwareplumbers.dms.rest.server.model.SignonService;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError;
+import com.softwareplumbers.rest.server.model.SignonService;
 import java.util.Optional;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;

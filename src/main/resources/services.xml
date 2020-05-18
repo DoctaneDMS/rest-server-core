@@ -72,7 +72,7 @@
         <constructor-arg index="0" value="tmp"/>
     </bean>
             
-    <bean id="auth.dummy" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
+    <bean id="auth.dummy" class="com.softwareplumbers.rest.server.model.AuthenticationService" scope="singleton">
         <property name="RequestValidationService" ref="dummyValidation"/>
         <property name="SignonService">
             <bean class="com.softwareplumbers.rest.server.core.DummySignonService">
@@ -82,18 +82,18 @@
         <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
     </bean>
     
-    <bean id="signedRequestValidationService" class="com.softwareplumbers.dms.rest.server.model.SignedRequestValidationService" scope="singleton">
+    <bean id="signedRequestValidationService" class="com.softwareplumbers.rest.server.model.SignedRequestValidationService" scope="singleton">
                 <constructor-arg index="0" ref="keymgr"/>
     </bean>
     
-    <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
+    <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
 
     <bean id="cookieRequestValidationService" class="com.softwareplumbers.rest.server.core.CookieRequestValidationService">
         <constructor-arg index="0" ref="keymgr"/>
         <constructor-arg index="1" value="tmp"/>
     </bean>
                 
-    <bean id="auth.tmp" class="com.softwareplumbers.dms.rest.server.model.AuthenticationService" scope="singleton">
+    <bean id="auth.tmp" class="com.softwareplumbers.rest.server.model.AuthenticationService" scope="singleton">
         <property name="RequestValidationService" ref="cookieRequestValidationService"/>
         <property name="SignedRequestValidationService" ref="signedRequestValidationService"/>
         <property name="SignonService">
@@ -106,7 +106,7 @@
         <property name="SAMLResponseHandlerService" ref="softwarePlumbersSAMLServer"/>
     </bean>
 
-    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService" scope="singleton"/>
+    <bean id="authz.public" class="com.softwareplumbers.authz.impl.PublicAuthorizationService" scope="singleton"/>
 
     <bean id="RepositoryServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
@@ -130,9 +130,10 @@
         </property>
     </bean>
     
-    <bean id="AuthorizationServiceFactory"
+    <bean id="workspace.AuthorizationServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-    	<property name="serviceLocatorInterface" value="com.softwareplumbers.rest.server.core.AuthorizationServiceFactory"/>
+        <qualifier value="workspaceAuthorization"/>
+        <property name="serviceLocatorInterface" value="com.softwareplumbers.authz.AuthorizationServiceFactory"/>
         <property name="serviceMappings">
             <props>
                 <prop key="tmp">authz.public</prop>
@@ -140,5 +141,19 @@
             </props>
         </property>
     </bean>
-     
+
+    <bean id="document.AuthorizationServiceFactory"
+            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+        <qualifier value="documentAuthorization"/>
+        <property name="serviceLocatorInterface" value="com.softwareplumbers.authz.AuthorizationServiceFactory"/>
+        <property name="serviceMappings">
+            <props>
+                <prop key="tmp">authz.public</prop>
+                <prop key="dummy">authz.public</prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="AuthorizationServiceFactory" class="com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationServiceFactory" />
+          
 </beans>

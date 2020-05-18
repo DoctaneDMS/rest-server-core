@@ -18,7 +18,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import javax.ws.rs.core.Response.ResponseBuilder;
-import com.softwareplumbers.dms.rest.server.model.RequestValidationService;
+import com.softwareplumbers.rest.server.model.RequestValidationService;
 import org.slf4j.ext.XLoggerFactory;
 
 /** Cookie-based Authentication Service.

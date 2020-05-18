@@ -1,8 +1,7 @@
 package com.softwareplumbers.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.core.Error;
-import com.softwareplumbers.rest.server.core.Authenticated;
-import com.softwareplumbers.rest.server.core.AuthorizationServiceFactory;
+import com.softwareplumbers.authz.AuthorizationService;
+import com.softwareplumbers.authz.AuthorizationServiceFactory;
 import org.slf4j.ext.XLogger;
 import java.io.IOException;
 import javax.annotation.Priority;
@@ -17,7 +16,9 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import javax.json.JsonObject;
 import org.slf4j.ext.XLoggerFactory;
-import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
+import com.softwareplumbers.rest.server.model.CoreExceptions;
+import javax.ws.rs.core.Response;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 /**
  * UserMetadata filter.
@@ -38,7 +39,7 @@ public class UserMetadataFilter implements ContainerRequestFilter {
 
     private static final XLogger LOG = XLoggerFactory.getXLogger(UserMetadataFilter.class);
 
-    private AuthorizationServiceFactory authorizationServiceFactory;
+    private AuthorizationServiceFactory<?,?,?> authorizationServiceFactory;
 
     /**
      * Use by Spring to inject a service factory for retrieval of a named
@@ -47,6 +48,7 @@ public class UserMetadataFilter implements ContainerRequestFilter {
      * @param authorizationServiceFactory A factory for retrieving named services
      */
     @Autowired
+    @Qualifier("workspaceAuthorization")
     public void setRepositoryServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
         this.authorizationServiceFactory = authorizationServiceFactory;
     }
@@ -64,22 +66,18 @@ public class UserMetadataFilter implements ContainerRequestFilter {
 
         if (repository != null) {
             String userId = requestContext.getSecurityContext().getUserPrincipal().getName();
-            RepositoryAuthorizationService authService = authorizationServiceFactory.getService(repository);
+            AuthorizationService authService = authorizationServiceFactory.getService(repository);
             if (authService != null) { 
                 JsonObject userMetadata = authorizationServiceFactory.getService(repository).getUserMetadata(userId);
                 requestContext.setProperty("userMetadata", userMetadata);
             } else {
                 requestContext.abortWith(
-                    LOG.exit(
-                        Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository))
-                    )
+                    Response.status(Status.NOT_FOUND).entity(new CoreExceptions.InvalidService(repository).toJson()).build()
                 );
             }
         } else {
             requestContext.abortWith(
-                LOG.exit(
-                    Error.errorResponse(Status.NOT_FOUND, Error.repositoryNotFound(repository))
-                )
+                Response.status(Status.NOT_FOUND).entity(new CoreExceptions.InvalidService(repository).toJson()).build()
             );
         }
 

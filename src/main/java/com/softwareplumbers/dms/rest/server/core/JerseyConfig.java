@@ -5,6 +5,7 @@ import com.softwareplumbers.rest.server.core.CORSRequestFilter;
 import com.softwareplumbers.rest.server.core.CORSResponseFilter;
 import com.softwareplumbers.rest.server.core.Authentication;
 import com.softwareplumbers.rest.server.core.AuthenticationFilter;
+import com.softwareplumbers.rest.server.core.CoreExceptionMapper;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ public class JerseyConfig extends ResourceConfig {
         register(CORSResponseFilter.class);
 	    register(MultiPartFeature.class);
 	    register(AuthenticationFilter.class);
+        register(CoreExceptionMapper.class);
 	}
 
 }

@@ -1,8 +1,8 @@
 package com.softwareplumbers.dms.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService;
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLInitialisationError;
-import com.softwareplumbers.dms.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService.SAMLInitialisationError;
+import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;

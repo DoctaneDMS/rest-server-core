@@ -1,7 +1,6 @@
 package com.softwareplumbers.dms.rest.server.core;
 
 import com.softwareplumbers.rest.server.core.Authenticated;
-import com.softwareplumbers.rest.server.core.AuthorizationServiceFactory;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -71,6 +70,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
 import org.slf4j.ext.XLoggerFactory;
 import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationService;
+import com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationServiceFactory;
 
 
 /** Handle catalog operations on repositories and documents.
@@ -101,7 +101,7 @@ public class Workspaces {
     ///////////---------  member variables --------////////////
 
     private RepositoryServiceFactory repositoryServiceFactory;
-    private AuthorizationServiceFactory authorizationServiceFactory;
+    private RepositoryAuthorizationServiceFactory authorizationServiceFactory;
 
     ///////////---------  static methods ----------///////////
     
@@ -129,7 +129,7 @@ public class Workspaces {
      * @param authorizationServiceFactory 
      */
     @Autowired
-    public void setAuthorizationServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
+    public void setAuthorizationServiceFactory(RepositoryAuthorizationServiceFactory authorizationServiceFactory) {
         this.authorizationServiceFactory = authorizationServiceFactory;
     }
     

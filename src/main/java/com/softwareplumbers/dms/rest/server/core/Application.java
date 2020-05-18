@@ -9,7 +9,7 @@ import org.springframework.context.annotation.ImportResource;
 /** Spring Application Class and Servlet Initializer. 
  */
 @SpringBootApplication
-@ComponentScan({"com.softwareplumbers.dms.rest.server", "com.softwareplumbers.rest.server.core"})
+@ComponentScan({"com.softwareplumbers.dms.rest.server", "com.softwareplumbers.rest.server"})
 @ImportResource("classpath:services.xml")
 public class Application extends SpringBootServletInitializer {
 
