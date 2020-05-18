@@ -48,8 +48,7 @@ public class UserMetadataFilter implements ContainerRequestFilter {
      * @param authorizationServiceFactory A factory for retrieving named services
      */
     @Autowired
-    @Qualifier("workspaceAuthorization")
-    public void setRepositoryServiceFactory(AuthorizationServiceFactory authorizationServiceFactory) {
+    public void setRepositoryServiceFactory(AuthorizationServiceFactory<?,?,?> authorizationServiceFactory) {
         this.authorizationServiceFactory = authorizationServiceFactory;
     }
 

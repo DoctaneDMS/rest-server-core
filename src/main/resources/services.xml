@@ -11,53 +11,6 @@
     
     <context:annotation-config />
 
-    <!--- import config for H2 database type -->    
-    <import resource="classpath:com/softwareplumbers/dms/service/sql/h2db.xml" />
-    <import resource="classpath:com/softwareplumbers/dms/service/sql/entities.xml" />
-  
-
-    <!--- configure datasource -->
-	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
-		<property name="driverClassName" value="org.h2.Driver" />
-		<property name="url" value="jdbc:h2:file:/var/tmp/doctane/test" />
-		<property name="username" value="sa" />
-		<property name="password" value="" />
-	</bean> 
-    
-    <!--- configure filestore -->
-    <bean id="filestore" class="com.softwareplumbers.dms.service.sql.LocalFilesystem">
-        <property name="Path" value="/var/tmp/doctane/files"/> 
-    </bean>
-    
-    <bean id="Schema" class="com.softwareplumbers.common.sql.Schema"> 
-        <property name="createScript" ref="createScript"/>
-        <property name="updateScript" ref="updateScript"/>
-        <property name="dropScript" ref="dropScript"/>
-        <property name="entityMap" ref="entityMap"/>
-    </bean>
-    
-    <bean id="database" class="com.softwareplumbers.dms.service.sql.DocumentDatabase">
-        <property name="createOption" value="RECREATE"/>
-        <property name="operations" ref="dms.operations"/>
-        <property name="templates" ref="dms.templates"/>
-    </bean>
-         
-    <!--- configure base repository -->
-    <bean id="base" class="com.softwareplumbers.dms.service.sql.SQLRepositoryService" scope="singleton">
-        <property name="filestore" ref="filestore"/> 
-    </bean>
-
-    <!-- compose additional repository services, such as ZipFileHandler -->
-    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
-        <property name="baseRepository" ref="base"/>
-        <property name="handlers">
-            <array>
-                <bean class="com.softwareplumbers.dms.rest.server.model.ZipFileHandler"/>
-            </array>
-        </property>
-    </bean>
-
-                                          
     <bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
         <constructor-arg index="0" value="/var/tmp/doctane-proxy.keystore"/>
         <constructor-arg index="1" value="/var/tmp/certs"/>
@@ -108,17 +61,17 @@
 
     <bean id="authz.public" class="com.softwareplumbers.authz.impl.PublicAuthorizationService" scope="singleton"/>
 
-    <bean id="RepositoryServiceFactory"
+    <bean id="document.AuthorizationServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-        <property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
+        <property name="serviceLocatorInterface" value="com.softwareplumbers.authz.AuthorizationServiceFactory"/>
         <property name="serviceMappings">
             <props>
-                <prop key="tmp">tmp</prop>
-                <prop key="dummy">tmp</prop>
+                <prop key="tmp">authz.public</prop>
+                <prop key="dummy">authz.public</prop>
             </props>
         </property>
     </bean>
-   
+
     <bean id="AuthenticationServiceFactory"
             class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
     	<property name="serviceLocatorInterface" value="com.softwareplumbers.rest.server.core.AuthenticationServiceFactory"/>
@@ -129,31 +82,5 @@
             </props>
         </property>
     </bean>
-    
-    <bean id="workspace.AuthorizationServiceFactory"
-            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-        <qualifier value="workspaceAuthorization"/>
-        <property name="serviceLocatorInterface" value="com.softwareplumbers.authz.AuthorizationServiceFactory"/>
-        <property name="serviceMappings">
-            <props>
-                <prop key="tmp">authz.public</prop>
-                <prop key="dummy">authz.public</prop>
-            </props>
-        </property>
-    </bean>
-
-    <bean id="document.AuthorizationServiceFactory"
-            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-        <qualifier value="documentAuthorization"/>
-        <property name="serviceLocatorInterface" value="com.softwareplumbers.authz.AuthorizationServiceFactory"/>
-        <property name="serviceMappings">
-            <props>
-                <prop key="tmp">authz.public</prop>
-                <prop key="dummy">authz.public</prop>
-            </props>
-        </property>
-    </bean>
-
-    <bean id="AuthorizationServiceFactory" class="com.softwareplumbers.dms.rest.server.model.RepositoryAuthorizationServiceFactory" />
-          
+              
 </beans>
