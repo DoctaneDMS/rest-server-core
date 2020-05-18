@@ -10,7 +10,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.NewCookie;
 
-import com.softwareplumbers.dms.rest.server.util.JWTSecurityContext;
+import com.softwareplumbers.rest.server.util.JWTSecurityContext;
 import com.softwareplumbers.keymanager.KeyManager;
 import org.slf4j.ext.XLogger;
 

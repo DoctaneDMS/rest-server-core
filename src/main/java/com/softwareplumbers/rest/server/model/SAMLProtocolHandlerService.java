@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.rest.server.model;
 
-import com.softwareplumbers.dms.rest.server.util.IdioticShibbolethSpringResourceBridge;
+import com.softwareplumbers.rest.server.util.IdioticShibbolethSpringResourceBridge;
 import org.slf4j.ext.XLogger;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

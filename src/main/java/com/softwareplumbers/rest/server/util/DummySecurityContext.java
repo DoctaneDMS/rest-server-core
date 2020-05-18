@@ -1,4 +1,4 @@
-package com.softwareplumbers.dms.rest.server.util;
+package com.softwareplumbers.rest.server.util;
 
 import java.security.Principal;
 

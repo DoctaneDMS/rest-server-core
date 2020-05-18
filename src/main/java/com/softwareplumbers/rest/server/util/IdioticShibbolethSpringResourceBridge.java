@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.softwareplumbers.dms.rest.server.util;
+package com.softwareplumbers.rest.server.util;
 
 import java.io.File;
 import java.io.IOException;

@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.rest.server.core;
 
-import com.softwareplumbers.dms.rest.server.util.DummySecurityContext;
+import com.softwareplumbers.rest.server.util.DummySecurityContext;
 import org.slf4j.ext.XLogger;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
