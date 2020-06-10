@@ -1,48 +1,29 @@
-# Document Management REST Server Core
+# Doctane REST Server Core
 
-Core interfaces and support code for for the DMS rest server core.
+Core interfaces and support code for Doctane rest servers. This module provides authentication services which
+are used to protect endpoints defined in other modules. For modules using these authentication services, see:
+
+* rest-server-dms [here](https://projects.softwareplumbers.com/document-management/rest-server-dms)
+* rest-server-feeds [here](https://projects.softwareplumbers.com/document-management/rest-server-feeds)
+* rest-server-authz (planned)
 
 ## Architecture
 
-Provides core interfaces and support code for a RESTFul DMS server written in Java. The DMS server is a stateless standalone java executable, implemeted using Spring Boot, Jersey, and Jax-RS. The actual back end is a pluggable spring module, for which several implementations are provided, including Apache Jackrabbit and IBM Filenet P8.
+Provides core interfaces and support code for a RESTFul server written in Java. The server is a standalone java executable, implemeted using Spring Boot, Jersey, and Jax-RS. 
 
 Build support is provided using gradle, and CI via Gitlab's native gitlab-ci.yml
 
-## DMS Services
+## Authentication Services
 
-Doctane provides two basic groups of services - Document Services (under the <tenant>/docs path) and Workspace Service (under the <tenant>/ws path). In
-addition, authentication services are provided under <tenant>/auth, allowing different tenants to use different authentication protocols if necessary.
+REST Server Core currently supports SAML2 and public key authentication protocols under the 
+<authentication tenant>/auth path. Successful authentication to the Doctane server via either
+of these protocols creates a JWT token with a limited lifespan, which can be used to secure 
+further API calls for a tenant until the token expires. Once the token expires, the API client 
+must re-authenticate via SAML2 or another supported protocol.
 
-### Document Services 
-
-Very simply, document services allow for anonymous storage of a document with associated metadata. A document is written using an http 
-POST, which returns a document reference which is composed of a unique document id and a version code. The document can then be read with a GET 
-using the same document id; an old version of a document can be read by specifying both the document id and the version code.
-
-For detailed information concerning document service see the Documents class in the com.softwareplumbers.dms.rest.server.core package.
-
-### Workspace Services
-
-Workspaces may contain documents and other workspaces. Everything contained in a workspace must have a unique name. The same document 
-may exist in several workspaces; it may have a different name in each. A workspace may be Open, Closed, or Finalized; this effects
-which version of a document is retrieved by default.
-
-  | State      | Effect |
-  |------------|--------|
-  | Open       | Documents may be freely added and removed; most recent version of a document is retrieved with GET |
-  | Closed     | Any attempt to add or remove document will cause an error; GET will retrieve document version which was current when closed |
-  | Finalized  | Documents may be added or removed;  GET will retrieve document version which was current when finalized |
- 
-For detailed information concerning workspace services see the Workspaces class in the com.softwareplumbers.dms.rest.server.core package.
-
-## Authentication
-
-Doctane currently supports SAML2 and public key authentication protocols under the <authentication tenant>/auth path. Successful authentication to the Doctane server via either
-of these protocols creates a JWT token with a limited lifespan, which can be used to secure further API calls for a tenant until the token expires.
-Once the token expires, the API client must re-authenticate via SAML2 or another supported protocol.
-
-Authentication tenants are non necessarily the same as API tenants; A call to single authentication tenant (e.g. softwareplumbers/auth/service) may be
-providing authentication for several API tenants (softwareplumbers-qa/docs, softwareplumbers-prod/docs, etc).
+Authentication tenants are non necessarily the same as API tenants; A call to single authentication
+tenant (e.g. softwareplumbers/auth/service) may be providing authentication for several API tenants
+(softwareplumbers-qa/docs, softwareplumbers-prod/docs, etc).
 
 ### Public Key Authentication Protocol
 
@@ -57,55 +38,11 @@ SAML2 IDP, which returns a response to the client which the client then POSTs to
 doctane server considers the SAML response to be valid, it will respond with a SEE OTHER containing the JWT token. The actual URI 
 redirected to in the SEE OTHER is specified in the relay state parameter of the original authentication request.
 
-## Authorization
-
-Authorization to access a repository object (document or workspace) is a function of user metadata and an ACL. Doctane has an internal 
-service module for each API tenant which will retrieve the ACL for a respository object; this ACL takes the form of a list of filters. 
-A user is granted access to a document if any of the returned filters for the document returns 'true' when applied to the user's metadata.
-
-The function which returns the ACL takes a repository object's metadata as an argument; the results will be cached for a predetermined period. 
-The cached ACL is always refreshed if it does not grant access to a document for a user; thus, a change to document or folder metadata
-which permits access to a data will always take effect immediately, wheres a change to document metadata which removes access will only 
-take effect when the cache entry expires.
-
-A User's metadata is a union of data returned by the IDP and data returned by the authorization service's getUserMetadata method. The
-data returned by the IDP are stored in the authentication token and thus cached at the client for the duration of the user session, 
-and the data from the authorization service is cached by the Doctane server for a predetermined period.
-
-For search operations the process is slightly different. The authorization service getAccessConstraint method is passed both the user
-metadata and the path to be searched; the filters returned are passed in to the API search operation to ensure that only accessible
-repository objects are returned.
 
 ### Configuration
 
-The main configuration file for the Doctane server is a file services.xml. This file contains several spring bean definitions, as described below.
-
-## Repository Service Factory
-
-The Doctane server uses one of a number of plug-in modules to connect to a document store. The repository module must
-be defined as a spring bean and implement the RepositoryService interface. The RepositoryServiceFactory maps these
-repository service beans to tenants. The below configuration would map a tenant 'test' to the bean 'test.service.bean'.
-Multiple mappings can be specified by adding additional 'prop' elements.
-
-```xml
-   <bean id="RepositoryServiceFactory"
-            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-     <property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.RepositoryServiceFactory"/>
-     <property name="serviceMappings">
-       <props>
-         <prop key="test">test.service.bean</prop>
-       </props>
-     </property>
-   </bean>
-```
-
-The rest-server-core package contains only a single implementation of RepositoryService, SQLRepositoryService, which uses
-an embedded H2 database for metadata and local file-based storage for documents. SQLRepositoryService is a reference 
-implementation against which all standard unit tests are run; it is not strictly intended for production use - although
-it should work well enough for small groups. Details for configuring SQLRepositoryService are included later in this file.
-
-Various implementations of RepositoryService, including FilenetRepositoryService, MySQLRepositoryService, and 
-MongoRepositoryService, are available from Software Plumbers as separately licensable modules.
+The main configuration file for any Doctane server is a file services.xml. This file contains several spring bean definitions, 
+as described below (or in the README for the specific service module)
 
 ## Key Manager
 
@@ -220,117 +157,4 @@ on /auth/<repo>/service or the SAMLResponseHandlerService on /auth/<repo>/saml. 
         <property name="SAMLResponseHandlerService" ref="softwarePlumbersSAMLServer"/>
     </bean>
 ```
-
-## Authorization Components
-
-### Authorization Service Map
-
-The authorization service map maps a set of authorization services to each tenant. Each set of authentication services
-must be defined as a spring bean and implement the AuthorizationService interface. The configuration below maps the tenant 
-'test' to a set of authorization services implemented by the spring bean 'authz.public'.
-
-```xml
-    <bean id="AuthorizationServiceFactory"
-            class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
-    	<property name="serviceLocatorInterface" value="com.softwareplumbers.dms.rest.server.core.AuthorizationServiceFactory"/>
-        <property name="serviceMappings">
-            <props>
-                <prop key="tmp">authz.public</prop>
-            </props>
-        </property>
-    </bean>
-```
-
-### Core authorization services
-
-The following bean defines a public authorization service which grants access to all authenticated users.
-
-```xml
-    <bean id="authz.public" class="com.softwareplumbers.dms.rest.server.model.PublicAuthorizationService" scope="singleton"/>
-```
-
-The following bean defines a local authorization service which grants access to the named users (...in this case the user
-name is DEFAULT_SERVICE_ACCOUNT) and will supply the given value (formatted as JSON) as user metadata.
-
-```xml
-    <bean name="authz.local" class="com.softwareplumbers.dms.rest.server.model.LocalAuthorizationService" scope="singleton">
-        <property name="localUsers">
-            <util:map>
-                <entry key="DEFAULT_SERVICE_ACCOUNT" value='{ "serviceAccount" : true }'/>
-            </util:map>
-        </property>
-    </bean>
-```        
-
-The following bean defines a federated authorization services created from two underlying authorization services authz.local
-and authz.ti.
-
-```xml
-        <bean name="authz.federated" class="com.softwareplumbers.dms.rest.server.model.FederatedAuthorizationService" scope="singleton">
-            <property name="authorizationServices" >
-                <util:list value-type="com.softwareplumbers.dms.rest.server.model.AuthorizationService" >
-                    <ref bean="authz.ti"/>
-                    <ref bean="authz.local"/>
-                </util:list>
-            </property>
-        </bean>
-```
-
-## SQLRepositoryService
-
-The H2 SQLRepositoryService is the reference implementation of a Doctane RepositoryService. Sample
-configuration is included below. Firstly, the database platform support file must be imported:
-
-```xml
-    <import resource="classpath:/com/softwareplumbers/dms/rest/server/sql/h2db.xml" />
-```
-
-The h2db.xml file contains scripts for building the Doctane database schema, and templates
-for various common database operations. In many cases, customizing SQLRepositoryService for
-a different database platform will simply require fine-tuning these scripts and templates
-for the platform in question.
-
-```xml
-    <bean id="SQLAPI" class="com.softwareplumbers.dms.rest.server.sql.SQLAPIFactory" />
-```
-
-The next bean encapsulates all the low-level database operations that the Doctane server
-uses to manipulate and store document data. In some cases, it may be necessary to customise
-this class in order to provided an optimal implementation for a given database platform. 
-
-```xml
-    <!--- configure datasource -->
-	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
-		<property name="driverClassName" value="org.h2.Driver" />
-		<property name="url" value="jdbc:h2:file:/var/tmp/doctane/db" />
-		<property name="username" value="sa" />
-		<property name="password" value="" />
-	</bean> 
-```
-
-The above datasource bean configures the connection to the database in a standard way.
-
-```xml
-    <!--- configure base repository -->
-    <bean id="base" class="com.softwareplumbers.dms.rest.server.sql.SQLRepositoryService" scope="singleton">
-        <property name="basePath" value="/var/tmp/doctane/files"/> 
-    </bean>
-```
-
-Finally, we can configure the SQLRepositoryService itself. 
-
-```
-    <!-- compose additional repository services, such as ZipFileHandler -->
-    <bean id="tmp" class="com.softwareplumbers.dms.rest.server.model.PartHandlerService" scope="singleton">
-        <property name="baseRepository" ref="base"/>
-        <property name="handlers">
-            <array>
-                <bean class="com.softwareplumbers.dms.rest.server.model.ZipFileHandler"/>
-            </array>
-        </property>
-    </bean>
-```
-
-And then we can configure add-on capabilities. The configuration above adds the capability to browse
-files within a zip archive.
 
