@@ -20,14 +20,14 @@ build:
   script:
    - gradle -P ci_version=${CI_COMMIT_REF_NAME} -P mavenUploadUser=${MAVEN_UPLOAD_USER} -P mavenUploadPassword=${MAVEN_UPLOAD_PASSWORD} -Dorg.gradle.java.home=${JDK_HOME} build test uploadArchives
      
-deploy:
+buildMonolithMaster:
   stage: downstream-builds
   only: 
     - master
   script:
     - "curl -X POST -F token=${DOCTANE_MONOLITH_TRIGGER_TOKEN} -F ref=master https://projects.softwareplumbers.com/api/v4/projects/137/trigger/pipeline" 
   
-deploy:
+buildMonolithQA:
   stage: downstream-builds
   only: 
     - ^0.9\..+$/
