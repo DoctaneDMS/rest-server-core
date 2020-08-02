@@ -166,7 +166,7 @@ public class Authentication {
         @QueryParam("signature") String signature
     ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
     {
-        LOG.entry();
+        LOG.entry(repository, request, signature);
         
         try {
             AuthenticationService authService = getAuthenticationService(repository);
