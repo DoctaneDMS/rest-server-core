@@ -151,7 +151,7 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-logging")
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
-    compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.17'
+    compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.18'
     compile group: 'com.softwareplumbers.oss', name:'authz-interface-core', version: '0.0.2'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'
