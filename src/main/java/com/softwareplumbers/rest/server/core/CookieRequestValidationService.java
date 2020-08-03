@@ -20,6 +20,7 @@ import io.jsonwebtoken.Jwts;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import com.softwareplumbers.rest.server.model.RequestValidationService;
 import org.slf4j.ext.XLoggerFactory;
+import org.springframework.http.HttpHeaders;
 
 /** Cookie-based Authentication Service.
  * 
@@ -29,16 +30,25 @@ import org.slf4j.ext.XLoggerFactory;
 public class CookieRequestValidationService implements RequestValidationService {
     
     private static final XLogger LOG = XLoggerFactory.getXLogger(CookieRequestValidationService.class);
+
+    // SameSite not supported by the version of javax/ws I am using at the moment.
+    enum SameSite { None, Lax, Strict };
     
     private final Key jwtSigningKey;
     private final String repository;
+    private SameSite sameSite;
 
-    public CookieRequestValidationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager, String repository) {
+    public CookieRequestValidationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager, String repository, SameSite sameSite) {
         jwtSigningKey = keyManager.getKey(SystemSecretKeys.JWT_SIGNING_KEY);
         this.repository = repository;
+        this.sameSite = sameSite;
     }
     
-    public NewCookie generateCookie(String uid) {
+    public CookieRequestValidationService(KeyManager<SystemSecretKeys, SystemKeyPairs> keyManager, String repository) {
+        this(keyManager, repository, SameSite.Lax);
+    }
+    
+    public String generateCookie(String uid) {
         LOG.entry(uid);
         ZonedDateTime expirationDate = LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault());
         Date expirationDateAsDate = Date.from(expirationDate.toInstant());
@@ -47,11 +57,12 @@ public class CookieRequestValidationService implements RequestValidationService 
             .setExpiration(expirationDateAsDate)
             .signWith(jwtSigningKey)
             .compact();
-        NewCookie cookie = new NewCookie(
+        Cookie cookie = new NewCookie(
              "DoctaneUserToken/"+repository, jwt, 
              "/", null, Cookie.DEFAULT_VERSION, "Doctane User Token", 
-             NewCookie.DEFAULT_MAX_AGE, expirationDateAsDate, false, false);
-        return LOG.exit(cookie);    
+             NewCookie.DEFAULT_MAX_AGE, expirationDateAsDate, sameSite == SameSite.None, false);
+        String cookieString = cookie.toString() + "; SameSite=" + sameSite; // Yuk. No support for SameSite in NewCookie yet. Vomit Vomit Vomit.
+        return LOG.exit(cookieString);    
     }
     
     /** Generate a cookie for the provided User Id.
@@ -63,7 +74,7 @@ public class CookieRequestValidationService implements RequestValidationService 
     @Override
     public ResponseBuilder sendIdentityToken(ResponseBuilder response, String uid) {
         LOG.entry(uid);
-        return LOG.exit(response.cookie(generateCookie(uid)));
+        return LOG.exit(response.header(HttpHeaders.SET_COOKIE, generateCookie(uid)));
     }
     
     /** Validate that request is authenticated and generate an appropriate security context
