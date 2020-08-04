@@ -98,7 +98,7 @@ public class CoreExceptions {
             }
         }
         public JsonObjectBuilder buildJson(JsonObjectBuilder bldr) {
-            return super.buildJson(bldr).add("cause", getCause().getMessage());
+            return getCause() == null ? super.buildJson(bldr) : super.buildJson(bldr).add("cause", getCause().getMessage());
         }        
     }    
   
