@@ -124,7 +124,7 @@ public class Authentication {
     ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
     {
         // this was a desperate effort to just stop the SAML process messing with the relay state by decoding it.
-        String relayState = new String(Base64.getDecoder().decode(relayStateBase64), Charsets.ASCII);
+        String relayState = new String(Base64.getUrlDecoder().decode(relayStateBase64), Charsets.ASCII);
         LOG.entry(repository, samlResponse, relayState);
                 
         try {     
