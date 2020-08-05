@@ -121,7 +121,7 @@ public class Authentication {
         
     ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
     {
-        LOG.entry();
+        LOG.entry(repository, samlResponse, relayState);
                 
         try {     
             AuthenticationService authService = getAuthenticationService(repository);
