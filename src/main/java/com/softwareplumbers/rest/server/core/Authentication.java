@@ -1,6 +1,7 @@
 package com.softwareplumbers.rest.server.core;
 
 //import com.softwareplumbers.dms.rest.server.core.Error;
+import com.drew.lang.Charsets;
 import com.softwareplumbers.rest.server.model.AuthenticationService;
 import com.softwareplumbers.rest.server.model.CoreExceptions;
 import com.softwareplumbers.rest.server.model.CoreExceptions.AuthenticationError;
@@ -10,6 +11,7 @@ import com.softwareplumbers.rest.server.model.SignedRequestValidationService.Req
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Date;
 
 import javax.inject.Singleton;
@@ -105,7 +107,7 @@ public class Authentication {
      * 
      * @param repository Repository to authorize
      * @param samlResponse SAML response signed by IDP containing authenticated user details
-     * @param relayState Client URI for redirect
+     * @param relayStateBase64 client URI for redirect encoded in Base64
      * @return A SEE OTHER response redirecting to the URI specified in relayState
      * @throws CoreExceptions.InvalidService if repository is invalid
      * @throws CoreExceptions.AuthenticationError is request cannot be validated
@@ -117,10 +119,12 @@ public class Authentication {
     public Response handleSamlResponse(
         @PathParam("repository") String repository,     
         @FormParam("SAMLResponse") String samlResponse,
-        @FormParam("RelayState") String relayState
+        @FormParam("RelayState") String relayStateBase64
         
     ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
     {
+        // this was a desperate effort to just stop the SAML process messing with the relay state by decoding it.
+        String relayState = new String(Base64.getDecoder().decode(relayStateBase64), Charsets.ASCII);
         LOG.entry(repository, samlResponse, relayState);
                 
         try {     
