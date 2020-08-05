@@ -119,13 +119,12 @@ public class Authentication {
     public Response handleSamlResponse(
         @PathParam("repository") String repository,     
         @FormParam("SAMLResponse") String samlResponse,
-        @FormParam("RelayState") String relayStateBase64
+        @FormParam("RelayState") String relayState
         
     ) throws CoreExceptions.InvalidService, CoreExceptions.AuthenticationError
     {
-        LOG.entry(repository, "<too long>", relayStateBase64);
+        LOG.entry(repository, "<SAMLResponse redacted>", relayState);
         // this was a desperate effort to just stop the SAML process messing with the relay state by decoding it.
-        String relayState = new String(Base64.getDecoder().decode(relayStateBase64), Charsets.ASCII);
                 
         try {     
             AuthenticationService authService = getAuthenticationService(repository);
@@ -203,7 +202,7 @@ public class Authentication {
         @QueryParam("relayState") String relayState
     ) throws CoreExceptions.InvalidService 
     {
-        LOG.entry();
+        LOG.entry(repository, relayState);
         AuthenticationService authService = getAuthenticationService(repository);
         return LOG.exit(authService.getSignonService().redirect(relayState));
     }

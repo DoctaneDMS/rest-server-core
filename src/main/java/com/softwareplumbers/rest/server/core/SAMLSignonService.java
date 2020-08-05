@@ -5,9 +5,12 @@
  */
 package com.softwareplumbers.rest.server.core;
 
+import com.drew.lang.Charsets;
 import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService;
 import com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService.SAMLOutputError;
 import com.softwareplumbers.rest.server.model.SignonService;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Optional;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
@@ -57,9 +60,9 @@ public class SAMLSignonService implements SignonService {
             UriBuilder builder = UriBuilder
                 .fromUri(samlService.getIDPEndpoint())
                 .queryParam("SAMLRequest", samlService.formatRequest(assertionConsumerURI, issuerId))
-                .queryParam("RelayState", relayState);
+                .queryParam("RelayState", URLEncoder.encode(relayState, Charsets.UTF_8.name()));
             return Response.seeOther(builder.build()).build();
-        } catch (SAMLOutputError err) {
+        } catch (SAMLOutputError | UnsupportedEncodingException err) {
             throw new RuntimeException(err);
         }
     }
