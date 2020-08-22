@@ -28,14 +28,14 @@ apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
 bootRun {
-	systemProperties = System.properties
+    systemProperties = System.properties
     systemProperty "doctane.keystore.password", propValue("keystorePassword", "changeme")
     systemProperty "spring.profiles.active", "test"
     classpath = sourceSets.test.runtimeClasspath
 }
 
 test {
-	systemProperties = System.properties
+    systemProperties = System.properties
     systemProperty "doctane.keystore.password", propValue("keystorePassword", "changeme")
     systemProperty "spring.profiles.active", "test"
     systemProperty "spring.datasource.hikari.maximum-pool-size", 20
@@ -71,8 +71,7 @@ task repackageTask1(type: BootRepackage, dependsOn: bootJar1) {
 
 jar {
 	enabled = true
-	// exclude services.xml from the library (because when we include this as a library we will specify our own services.xml)
-	exclude("services.xml","**/JerseyConfig.class","**/Application.class","application.properties","logback-spring.xml")
+	exclude("config/**","**/JerseyConfig.class","**/Application.class")
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -152,6 +151,7 @@ dependencies {
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.25.1'
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
     compile group: 'com.softwareplumbers.oss', name:'key-manager', version: '0.0.21'
+    compile group: 'com.softwareplumbers.oss', name:'resource-path', version: '0.0.1'
     compile group: 'com.softwareplumbers.oss', name:'authz-interface-core', version: '0.0.2'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile group: 'org.opensaml', name: 'opensaml-saml-api', version: '3.3.0'

@@ -10,6 +10,15 @@
        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" xmlns:aop="http://www.springframework.org/schema/aop">
     
     <context:annotation-config />
+    
+    <bean id="ResourcePath" class="com.softwareplumbers.common.resourcepath.ResourcePath">
+        <property name="locations">
+            <array>
+                <value>$spring.config.location</value>
+                <value>classpath:/config</value>
+            </array>
+        </property>
+    </bean>
 
     <bean id ="keymgr" class="com.softwareplumbers.keymanager.KeyManager" scope="singleton">
         <constructor-arg index="0" value="/var/tmp/doctane-proxy.keystore"/>
@@ -39,7 +48,10 @@
                 <constructor-arg index="0" ref="keymgr"/>
     </bean>
     
-    <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService" scope="singleton"/>
+    <bean id="softwarePlumbersSAMLServer" class="com.softwareplumbers.rest.server.model.SAMLProtocolHandlerService" scope="singleton">
+        <property name="entityId" value="https://auth.softwareplumbers.com/auth/realms/doctane-test"/>
+        <property name="providerMetadata" value="#{@ResourcePath['idp-metadata.xml']}"/>
+    </bean>
 
     <bean id="cookieRequestValidationService" class="com.softwareplumbers.rest.server.core.CookieRequestValidationService">
         <constructor-arg index="0" ref="keymgr"/>

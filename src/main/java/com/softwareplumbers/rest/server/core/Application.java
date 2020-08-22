@@ -4,13 +4,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.ImportResource;
 
 /** Spring Application Class and Servlet Initializer. 
  */
 @SpringBootApplication
 @ComponentScan({"com.softwareplumbers.rest.server.core" })
-@ImportResource("classpath:services.xml")
 public class Application extends SpringBootServletInitializer {
 
 	@Override

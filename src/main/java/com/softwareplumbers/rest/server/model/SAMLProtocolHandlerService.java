@@ -74,6 +74,7 @@ import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.opensaml.xmlsec.signature.support.SignatureValidator;
 import org.slf4j.ext.XLoggerFactory;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
@@ -119,36 +120,57 @@ public class SAMLProtocolHandlerService {
     
     private static final XLogger LOG = XLoggerFactory.getXLogger(SAMLProtocolHandlerService.class);
     
-    private final MetadataResolver idpMetadataResolver;
-    private final Credential idpCredential;
     private final UnmarshallerFactory unmarshallerFactory;
     private final MarshallerFactory marshallerFactory;
     private final DocumentBuilderFactory documentBuilderFactory;
-    private final String entityId;
-    private final String idpEndpoint;
+    private String entityId;
+    private Resource metadataResource;
     
-    public SAMLProtocolHandlerService(String entityId) throws SAMLInitialisationError {
-        LOG.entry(entityId);
+    private static class ProviderData {
+        public final MetadataResolver idpMetadataResolver;
+        public final Credential idpCredential;
+        public final String idpEndpoint;
         
+        public ProviderData(String entityId, Resource metadataResource) throws IOException, SAMLInitialisationError {
+            idpMetadataResolver = initialiseMetadataResolver(metadataResource, entityId);
+            idpCredential = getIDPCredential(idpMetadataResolver, entityId);
+            idpEndpoint = getIDPEndpoint(idpMetadataResolver, entityId).orElseThrow(()->new SAMLInitialisationError("can't locate endpoint"));                    
+        }
+    }
+    
+    private ProviderData providerData = null;
+
+    private final synchronized ProviderData getProviderData() {
+        if (this.providerData == null) {
+            try {
+                this.providerData = new ProviderData(entityId, metadataResource);
+            } catch (IOException | SAMLInitialisationError e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return providerData;
+    }
+    
+    public SAMLProtocolHandlerService(String entityId, Resource metadataResource) throws SAMLInitialisationError {
+        LOG.entry(entityId, metadataResource);        
         try {
             InitializationService.initialize();        
             this.entityId = entityId;
+            this.metadataResource = metadataResource;
             documentBuilderFactory = DocumentBuilderFactory.newInstance();
             documentBuilderFactory.setNamespaceAware(true);
             unmarshallerFactory = XMLObjectProviderRegistrySupport.getUnmarshallerFactory();
             marshallerFactory = XMLObjectProviderRegistrySupport.getMarshallerFactory();
-            ClassPathResource metadataResource = new ClassPathResource("/idp-metadata.xml");
-            idpMetadataResolver = initialiseMetadataResolver(metadataResource, entityId);
-            idpCredential = getIDPCredential(idpMetadataResolver, entityId);
-            idpEndpoint = getIDPEndpoint(idpMetadataResolver, entityId).orElseThrow(()->new SAMLInitialisationError("can't locate endpoint"));
-        } catch (InitializationException | IOException e) {
+        } catch (InitializationException e) {
             throw new SAMLInitialisationError("can't initialize SAML subsystem", e);
         }
         LOG.exit();
     }
     
+
+    
     public SAMLProtocolHandlerService() throws SAMLInitialisationError {
-        this("https://auth.softwareplumbers.com/auth/realms/doctane-test");
+        this("https://auth.softwareplumbers.com/auth/realms/doctane-test", new ClassPathResource("/config/idp-metadata.xml"));
     }
  
     /** Get the SAML2 nameId from a SAML response
@@ -160,7 +182,7 @@ public class SAMLProtocolHandlerService {
         return assertion.getSubject().getNameID().getValue();
     }
     
-    public static MetadataResolver initialiseMetadataResolver(ClassPathResource resource, String entityId) throws SAMLInitialisationError, IOException {
+    public static MetadataResolver initialiseMetadataResolver(Resource resource, String entityId) throws SAMLInitialisationError, IOException {
         try {
             ResourceBackedMetadataResolver idpMetadataResolver = new ResourceBackedMetadataResolver(new IdioticShibbolethSpringResourceBridge(resource));
             idpMetadataResolver.setRequireValidMetadata(true);
@@ -224,7 +246,7 @@ public class SAMLProtocolHandlerService {
             org.opensaml.xmlsec.signature.Signature signature = response.getSignature();
             if (signature == null) return false;
             profileValidator.validate(signature);
-            SignatureValidator.validate(signature, idpCredential);
+            SignatureValidator.validate(signature, getIDPCredential());
         } catch (SignatureException exp) {
             return false;
         }       
@@ -257,12 +279,26 @@ public class SAMLProtocolHandlerService {
         return entityId;
     }
     
+    public void setEntityId(String entityId) {
+        this.providerData = null;
+        this.entityId = entityId;
+    }
+    
+    public Resource getProviderMetadata() {
+        return metadataResource;
+    }
+
+    public void setProviderMetadata(Resource metadataResource) {
+        this.providerData = null;
+        this.metadataResource = metadataResource;
+    }
+    
     public String getIDPEndpoint() {
-        return idpEndpoint;
+        return getProviderData().idpEndpoint;
     }
     
     public Credential getIDPCredential() {
-        return idpCredential;
+        return getProviderData().idpCredential;
     }
     
     /**
@@ -320,7 +356,7 @@ public class SAMLProtocolHandlerService {
         authRequest.setIssueInstant(DateTime.now());
         authRequest.setIssuer(buildIssuer(issuerId.orElse(this.entityId)));
         authRequest.setNameIDPolicy(buildNameIdPolicy());
-        authRequest.setDestination(this.idpEndpoint);
+        authRequest.setDestination(getIDPEndpoint());
         authRequest.setProtocolBinding(SAML2_POST_BINDING);
         ByteArrayOutputStream encoded = new ByteArrayOutputStream();
         try (OutputStream out = encode(encoded)) {
