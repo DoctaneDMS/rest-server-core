@@ -34,7 +34,7 @@ public class IdioticShibbolethSpringResourceBridge implements Resource {
     
     @Override
     public boolean exists() {
-        return springResource.exists();
+        return springResource != null && springResource.exists();
     }
 
     @Override

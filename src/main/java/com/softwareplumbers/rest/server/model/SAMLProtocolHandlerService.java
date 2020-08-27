@@ -132,15 +132,18 @@ public class SAMLProtocolHandlerService {
         public final String idpEndpoint;
         
         public ProviderData(String entityId, Resource metadataResource) throws IOException, SAMLInitialisationError {
+            LOG.entry(entityId, metadataResource);
             idpMetadataResolver = initialiseMetadataResolver(metadataResource, entityId);
             idpCredential = getIDPCredential(idpMetadataResolver, entityId);
-            idpEndpoint = getIDPEndpoint(idpMetadataResolver, entityId).orElseThrow(()->new SAMLInitialisationError("can't locate endpoint"));                    
+            idpEndpoint = getIDPEndpoint(idpMetadataResolver, entityId).orElseThrow(()->new SAMLInitialisationError("can't locate endpoint"));     
+            LOG.exit();
         }
     }
     
     private ProviderData providerData = null;
 
     private final synchronized ProviderData getProviderData() {
+        LOG.entry();
         if (this.providerData == null) {
             try {
                 this.providerData = new ProviderData(entityId, metadataResource);
@@ -148,7 +151,7 @@ public class SAMLProtocolHandlerService {
                 throw new RuntimeException(e);
             }
         }
-        return providerData;
+        return LOG.exit(providerData);
     }
     
     public SAMLProtocolHandlerService(String entityId, Resource metadataResource) throws SAMLInitialisationError {
@@ -162,7 +165,7 @@ public class SAMLProtocolHandlerService {
             unmarshallerFactory = XMLObjectProviderRegistrySupport.getUnmarshallerFactory();
             marshallerFactory = XMLObjectProviderRegistrySupport.getMarshallerFactory();
         } catch (InitializationException e) {
-            throw new SAMLInitialisationError("can't initialize SAML subsystem", e);
+            throw LOG.throwing(new SAMLInitialisationError("can't initialize SAML subsystem", e));
         }
         LOG.exit();
     }
@@ -178,20 +181,22 @@ public class SAMLProtocolHandlerService {
      * @return the name of the principal encoded in the SAML response
      */
     public static String getName(org.opensaml.saml.saml2.core.Response samlResponse) {
+        LOG.entry(samlResponse);
         Assertion assertion = samlResponse.getAssertions().get(0);
-        return assertion.getSubject().getNameID().getValue();
+        return LOG.exit(assertion.getSubject().getNameID().getValue());
     }
     
     public static MetadataResolver initialiseMetadataResolver(Resource resource, String entityId) throws SAMLInitialisationError, IOException {
+        LOG.entry(resource, entityId);
         try {
             ResourceBackedMetadataResolver idpMetadataResolver = new ResourceBackedMetadataResolver(new IdioticShibbolethSpringResourceBridge(resource));
             idpMetadataResolver.setRequireValidMetadata(true);
             idpMetadataResolver.setParserPool(XMLObjectProviderRegistrySupport.getParserPool());
             idpMetadataResolver.setId(entityId);
             idpMetadataResolver.initialize();
-            return idpMetadataResolver;
+            return LOG.exit(idpMetadataResolver);
         } catch (ComponentInitializationException e) {
-            throw new SAMLInitialisationError("Could not initialse SAML subsystem", e);
+            throw LOG.throwing(new SAMLInitialisationError("Could not initialse SAML subsystem", e));
         }
     }
     
@@ -201,15 +206,21 @@ public class SAMLProtocolHandlerService {
     }
     
     public static Optional<String> getIDPEndpoint(MetadataResolver idpMetadataResolver, String entityId) throws SAMLInitialisationError {
+        LOG.entry(idpMetadataResolver, entityId);
         CriteriaSet criteriaSet = new CriteriaSet();
         criteriaSet.add(new EntityIdCriterion(entityId));
         try {
             EntityDescriptor entity = idpMetadataResolver.resolveSingle(criteriaSet);
             if (entity == null) throw new SAMLInitialisationError("could not find SAML entity " + entityId + " in SAML config file");
             IDPSSODescriptor sso = entity.getIDPSSODescriptor(SAML2_PROTOCOL);
-            return sso.getEndpoints().stream().filter(SAMLProtocolHandlerService::filterEndpoint).map(endpoint->endpoint.getLocation()).findAny();
+            return LOG.exit(sso.getEndpoints()
+                    .stream()
+                    .filter(SAMLProtocolHandlerService::filterEndpoint)
+                    .map(endpoint->endpoint.getLocation())
+                    .findAny()
+            );
         } catch (ResolverException e) {
-            throw new SAMLInitialisationError("could not initialse SAML subsystem", e);
+            throw LOG.throwing(new SAMLInitialisationError("could not initialse SAML subsystem", e));
         }
     }
     
@@ -220,7 +231,7 @@ public class SAMLProtocolHandlerService {
      * @return the Credential used to validate signatures from the SAML2 IDP
      */
     public static Credential getIDPCredential(MetadataResolver idpMetadataResolver, String entityId) throws SAMLInitialisationError {
-        
+        LOG.entry(idpMetadataResolver, entityId);
         try {
             KeyInfoCredentialResolver keyResolver = DefaultSecurityConfigurationBootstrap.buildBasicInlineKeyInfoCredentialResolver();
             
@@ -234,13 +245,14 @@ public class SAMLProtocolHandlerService {
             CriteriaSet criteriaSet = new CriteriaSet();
             criteriaSet.add(new EntityIdCriterion(entityId));
             criteriaSet.add(new EntityRoleCriterion(IDPSSODescriptor.DEFAULT_ELEMENT_NAME));
-            return credentialResolver.resolveSingle(criteriaSet);
+            return LOG.exit(credentialResolver.resolveSingle(criteriaSet));
         } catch (ComponentInitializationException | ResolverException e) {
-            throw new SAMLInitialisationError("Could not initialse SAML subsystem", e);
+            throw LOG.throwing(new SAMLInitialisationError("Could not initialse SAML subsystem", e));
         }
     }
     
     public boolean validateSignature(Response response) {
+        LOG.entry(response);
         SAMLSignatureProfileValidator profileValidator = new SAMLSignatureProfileValidator();
         try {
             org.opensaml.xmlsec.signature.Signature signature = response.getSignature();
@@ -248,9 +260,9 @@ public class SAMLProtocolHandlerService {
             profileValidator.validate(signature);
             SignatureValidator.validate(signature, getIDPCredential());
         } catch (SignatureException exp) {
-            return false;
+            return LOG.exit(false);
         }       
-        return true;
+        return LOG.exit(true);
     }
     
     public boolean hasDocumentViewerRole(Response response) {
@@ -259,6 +271,7 @@ public class SAMLProtocolHandlerService {
     }
     
     public Response parseSamlResponse(String samlResponse) throws SAMLParsingError {
+        LOG.entry(samlResponse);
         try {
             ByteArrayInputStream is = new ByteArrayInputStream(Base64.getDecoder().decode(samlResponse));
             DocumentBuilder docBuilder = documentBuilderFactory.newDocumentBuilder();
@@ -269,36 +282,44 @@ public class SAMLProtocolHandlerService {
             Unmarshaller unmarshaller = unmarshallerFactory.getUnmarshaller(element);
             if (unmarshaller == null) throw new RuntimeException("Can't create XML unmarshaller");
             XMLObject responseXmlObj = unmarshaller.unmarshall(element);
-            return (Response)responseXmlObj;
+            return LOG.exit((Response)responseXmlObj);
         } catch (ParserConfigurationException | SAXException | IOException | UnmarshallingException e) {
-            throw new SAMLParsingError("Could not parse SAML response", e);
+            throw LOG.throwing(new SAMLParsingError("Could not parse SAML response", e));
         } 
     }
     
     public String getEntityId() {
-        return entityId;
+        LOG.entry();
+        return LOG.exit(entityId);
     }
     
     public void setEntityId(String entityId) {
+        LOG.entry(entityId);
         this.providerData = null;
         this.entityId = entityId;
+        LOG.exit();
     }
     
     public Resource getProviderMetadata() {
-        return metadataResource;
+        LOG.entry();
+        return LOG.exit(metadataResource);
     }
 
     public void setProviderMetadata(Resource metadataResource) {
+        LOG.entry(metadataResource);
         this.providerData = null;
         this.metadataResource = metadataResource;
+        LOG.exit();
     }
     
     public String getIDPEndpoint() {
-        return getProviderData().idpEndpoint;
+        LOG.entry();
+        return LOG.exit(getProviderData().idpEndpoint);
     }
     
     public Credential getIDPCredential() {
-        return getProviderData().idpCredential;
+        LOG.entry();
+        return LOG.exit(getProviderData().idpCredential);
     }
     
     /**
@@ -371,7 +392,7 @@ public class SAMLProtocolHandlerService {
             transformer.transform(source, result);
             out.flush();
         } catch (MarshallingException | TransformerException | IOException e) {
-            throw new SAMLOutputError("Error creating SAML request", e);
+            throw LOG.throwing(new SAMLOutputError("Error creating SAML request", e));
         }
         try { encoded.close(); } catch (IOException e) { LOG.catching(e); };
         return LOG.exit(encoded.toString());
