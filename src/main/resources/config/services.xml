@@ -14,7 +14,7 @@
     <bean id="ResourcePath" class="com.softwareplumbers.common.resourcepath.ResourcePath">
         <property name="locations">
             <array>
-                <value>$spring.config.location</value>
+                <value>#{systemProperties['spring.config.location']}</value>
                 <value>classpath:/config</value>
             </array>
         </property>
@@ -29,6 +29,7 @@
         <constructor-arg index="4"><value>com.softwareplumbers.rest.server.core.SystemKeyPairs</value></constructor-arg>
     </bean>
 
+    <bean id="manager" class="com.softwareplumbers.rest.server.core.CoreServerMBean" scope="singleton"/>
     
     <bean id="dummyValidation" class="com.softwareplumbers.rest.server.core.DummyRequestValidationService" scope="singleton">
         <constructor-arg index="0" value="tmp"/>

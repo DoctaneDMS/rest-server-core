@@ -12,9 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.util.Base64;
 import java.util.Optional;
-import java.util.zip.InflaterInputStream;
 import org.apache.commons.io.IOUtils;
 import static org.junit.Assert.assertTrue;
 
