@@ -158,3 +158,40 @@ on /auth/<repo>/service or the SAMLResponseHandlerService on /auth/<repo>/saml. 
     </bean>
 ```
 
+## Management Beans
+
+We can also configure the optional MBean interface. This allows certain administrative operations
+to be performed on a running server via jConsole or (if supported) through the application 
+server's administrative interface. Generally it is not recommended that these MBeans are deployed
+in a production environment; if so, steps should be taken to secure the JMX interface of the
+server process.
+
+The core server code implements a single Mbean interface:
+
+```xml
+    <bean id="core.server" class="com.softwareplumbers.rest.server.core.CoreServerMBean" scope="singleton"/>
+```
+
+This mbean provides two methods, getStatus - which prints a variety of information related to the server
+configuration, and getToken, which can be used to generate a test token which provides temporary access to the 
+Doctane REST api.
+
+Various Doctane services provide additional mbeans to support additional management functions. There is some
+additional boilerplate required to make Spring manage and expose the various mbeans; please see the Spring
+documentation for details specific to your environment. The below snippet should help you get started:
+
+```xml
+
+    <bean id="core.server" class="com.softwareplumbers.rest.server.core.CoreServerMBean" scope="singleton"/>
+
+    <bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+        <property name="beans">
+            <map>
+                <entry key="bean:name=core.server" value-ref="core.server"/>
+            </map>
+        </property>
+        <!---
+        <property name="server" ref="mbeanServer"/>
+        -->
+    </bean>
+```
