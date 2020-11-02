@@ -22,7 +22,8 @@ public class CoreExceptions {
     
     public static enum Type {
         INVALID_SERVICE,
-        AUTHENTICATION_ERROR
+        AUTHENTICATION_ERROR,
+        AUTHORIZATION_ERROR
     }
     
     /** Base exception.
@@ -32,24 +33,32 @@ public class CoreExceptions {
      */
     public static class BaseException extends Exception {
         public final Type type;
+        
         public BaseException(Type type, String reason) {
             super(reason);
             this.type = type;
         }
+        
         public BaseException(Type type, Exception cause) {
             super(cause);
             this.type = type;
         }
+        
         public static Optional<Type> getType(JsonObject obj) {
             try {
-                return Optional.of(Type.valueOf(obj.getString("type")));
+                return Optional.ofNullable(obj.getString("type")).map(Type::valueOf);
             } catch (Exception e) {
                 return Optional.empty();
             }
         }
+        
         public JsonObjectBuilder buildJson(JsonObjectBuilder bldr) {
-            return bldr.add("type", type.toString());
+            bldr.add("type", type.toString());
+            bldr.add("error", getMessage());
+            if (getCause() != null) bldr.add("cause", getCause().getMessage());
+            return bldr;
         }
+        
         public JsonObject toJson() {
             return buildJson(Json.createObjectBuilder()).build();
         }
@@ -68,15 +77,16 @@ public class CoreExceptions {
             this.service = service;
         }
         
-        public static Optional<Type> getService(JsonObject obj) {
+        public static Optional<String> getService(JsonObject obj) {
             try {
-                return Optional.of(Type.valueOf(obj.getString("service")));
+                return Optional.ofNullable(obj.getString("service"));
             } catch (Exception e) {
                 return Optional.empty();
             }
         }
+        @Override
         public JsonObjectBuilder buildJson(JsonObjectBuilder bldr) {
-            return super.buildJson(bldr).add("service", service.toString());
+            return super.buildJson(bldr).add("service", service);
         }        
     }
 
@@ -87,19 +97,57 @@ public class CoreExceptions {
     public static class AuthenticationError extends BaseException {
 
         public AuthenticationError(Exception cause) {
-            super(Type.AUTHENTICATION_ERROR, "Authentication Error " + cause.getMessage());
+            super(Type.AUTHENTICATION_ERROR, cause);
         }
         
-        public static Optional<Type> getCause(JsonObject obj) {
+    } 
+    
+    /**
+     *
+     * @author SWPNET\jonessex
+     */
+    public static class AuthorizationError extends BaseException {
+        
+        JsonObject acl;
+        String location;
+        JsonObject metadata;
+
+        public AuthorizationError(String error, JsonObject acl, String location, JsonObject metadata) {
+            super(Type.AUTHORIZATION_ERROR, error);
+            this.acl = acl;
+            
+        }
+        
+        public static Optional<JsonObject> getAcl(JsonObject obj) {
             try {
-                return Optional.of(Type.valueOf(obj.getString("cause")));
+                return Optional.ofNullable(obj.getJsonObject("acl"));
             } catch (Exception e) {
                 return Optional.empty();
             }
         }
-        public JsonObjectBuilder buildJson(JsonObjectBuilder bldr) {
-            return getCause() == null ? super.buildJson(bldr) : super.buildJson(bldr).add("cause", getCause().getMessage());
+        
+        public static Optional<JsonObject> getMetadata(JsonObject obj) {
+            try {
+                return Optional.ofNullable(obj.getJsonObject("metadata"));
+            } catch (Exception e) {
+                return Optional.empty();
+            }
         }        
-    }    
+        
+        public static Optional<String> getLocation(JsonObject obj) {
+            try {
+                return Optional.ofNullable(obj.getString("location"));
+            } catch (Exception e) {
+                return Optional.empty();
+            }
+        }
+
+        public JsonObjectBuilder buildJson(JsonObjectBuilder bldr) {
+            if (acl != null) bldr.add("acl", acl);
+            if (metadata != null) bldr.add("metadata", metadata);
+            if (location != null) bldr.add("location", location);
+            return bldr;
+        }        
+    }     
   
 }

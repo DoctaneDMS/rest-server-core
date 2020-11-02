@@ -32,6 +32,9 @@ public class CoreExceptionMapper implements ExceptionMapper<CoreExceptions.BaseE
             case AUTHENTICATION_ERROR:
                 builder = Response.status(Response.Status.INTERNAL_SERVER_ERROR);
                 break;
+            case AUTHORIZATION_ERROR:
+                builder = Response.status(Response.Status.FORBIDDEN);
+                break;
         }
         builder.entity(error.toJson());
         return LOG.exit(builder.build());        
