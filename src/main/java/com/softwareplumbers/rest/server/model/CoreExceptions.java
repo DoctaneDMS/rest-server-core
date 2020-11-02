@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
 
 /** Exception classes for Feed services.
  *
@@ -108,19 +109,19 @@ public class CoreExceptions {
      */
     public static class AuthorizationError extends BaseException {
         
-        JsonObject acl;
+        JsonValue acl;
         String location;
         JsonObject metadata;
 
-        public AuthorizationError(String error, JsonObject acl, String location, JsonObject metadata) {
+        public AuthorizationError(String error, JsonValue acl, String location, JsonObject metadata) {
             super(Type.AUTHORIZATION_ERROR, error);
             this.acl = acl;
             
         }
         
-        public static Optional<JsonObject> getAcl(JsonObject obj) {
+        public static Optional<JsonValue> getAcl(JsonObject obj) {
             try {
-                return Optional.ofNullable(obj.getJsonObject("acl"));
+                return Optional.ofNullable(obj.get("acl"));
             } catch (Exception e) {
                 return Optional.empty();
             }
